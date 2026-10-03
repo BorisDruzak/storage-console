@@ -30,6 +30,20 @@
 - Локальный Python — 3.14; обязательный Python 3.13 проверен в Docker image.
 - Browser plugin в списке skills отсутствует; использован repository Playwright workflow.
 
+## Wave 0B — schema и collector contracts
+
+2026-10-04:
+
+- 47 required domain tables и supporting volume_aliases, ingest_batches, jobs созданы immutable migration `0002`.
+- UUID/FK constraints, canonical volume/object uniqueness, timezone-aware timestamps.
+- Version 1 batch envelope и typed records для девяти collector domains: bounded counts/strings/numbers,
+  UTC normalization, extra-field rejection, согласованные count/time window.
+- Python 3.13 + disposable PostgreSQL: 18 tests PASS; upgrade/check/downgrade/upgrade/check PASS.
+- Ruff и strict mypy PASS. Independent review: исправлены storage bounds и сохранение volume identity
+  в change events до разрешения object FK.
+- Ingest/read API, generated OpenAPI и concurrent worker queue пока не реализованы.
+- Partitioning/retention и operational domain processing остаются последующим этапам спецификации.
+
 ## Далее
 
 Wave 0B backend/contracts/domain DB, Wave 0C полный shell/pages/typed domain API, Wave 0D production deployment/runbook не завершены.

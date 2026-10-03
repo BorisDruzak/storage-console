@@ -1,6 +1,7 @@
 from alembic import context
 
-from packages.shared.database import make_engine, metadata
+from packages.shared.database import make_engine
+from packages.shared.models import metadata
 from packages.shared.settings import Settings
 
 engine = make_engine(Settings().database_url)
