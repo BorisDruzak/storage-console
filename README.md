@@ -104,7 +104,7 @@ Backup, snapshot consistency, verification и restore test — отдельны�
 Public OpenAPI: `packages/contracts/openapi/storage-console-v1.json`.
 После изменения routes/contracts выполните `python -m packages.contracts.export_openapi`;
 `--check` проверяет совпадение с runtime и выполняется в CI.
-Collector provisioning/user sessions и queue продолжают реализацию Wave 0B/0D.
+Collector provisioning/user sessions продолжают реализацию Wave 1/0D.
 Live collectors не подключены.
 
 ## Read API — текущая реализация Wave 0B
@@ -121,6 +121,22 @@ Missing/future observations дают UNKNOWN; превышение cadence — O
 Свежий heartbeat не создаёт HEALTHY для operational domain: нужны актуальные persisted
 policy findings. Неполное покрытие остаётся видимым даже при CRITICAL в другом scope.
 Volumes/shares отдельно показывают metadata quality; aliases содержат только активные значения.
+
+## PostgreSQL worker queue
+
+Ingest атомарно создаёт `ingest_postprocess` job вместе с receipt/domain records/audit.
+Replay не создаёт вторую задачу. Worker использует `FOR UPDATE SKIP LOCKED` и transaction
+advisory lock, сохраняет handler effect и COMPLETE в одной транзакции.
+Handlers выполняют только DB effects через предоставленный connection: внешний I/O
+этой гарантией не покрывается. Foundation handler проверяет применённый receipt и пишет
+`INGEST_POSTPROCESSED`; operational policy processing относится к следующим waves.
+
+Ошибки handler-а откатывают его savepoint; сохраняется generic `HANDLER_FAILED`.
+Retry: exponential delay 2–300 секунд, default 5 attempts (enqueue допускает 1–20).
+После лимита — FAILED; неизвестный kind — terminal `UNKNOWN_JOB_KIND`.
+При потере процесса транзакция откатывается, задача остаётся доступной следующему worker.
+`next_attempt_at`, attempts/status/error и UTC completion time хранятся в PostgreSQL.
+Worker продолжает heartbeat и проверяет SIGTERM/SIGINT между задачами.
 
 ## Наблюдаемость и внешние gates
 

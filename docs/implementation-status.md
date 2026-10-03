@@ -67,7 +67,14 @@
 - Python 3.13/PostgreSQL: 55 tests PASS; migration cycle/check, Ruff, strict mypy (52 files),
   OpenAPI repeatability и Gitleaks PASS. Fresh Compose read smoke: все сервисы healthy.
   Independent review и четыре regression RED→GREEN: multi-collector freshness и unknown scopes.
-- Concurrent worker queue пока не реализована.
+- Concurrent worker queue реализована: atomic ingest enqueue, SKIP LOCKED/advisory lock,
+  savepoint rollback, bounded retries, terminal codes и transactional completion.
+  Foundation postprocess acknowledgement не выдаётся за operational policy processing.
+- Python 3.13/PostgreSQL: 62 tests PASS; Ruff, strict mypy (54 files), OpenAPI/migration
+  checks и Gitleaks PASS. Два worker в Compose, остановка/возобновление и restart:
+  один job, один postprocess effect, одна attempt; оба worker healthy.
+- Final review исправление: batch boundaries точно равны min/max records; inflated fresh
+  envelope со stale records воспроизведён RED→GREEN. Ранее принятые metadata не переписываются.
 - Partitioning/retention и operational domain processing остаются последующим этапам спецификации.
 
 ## Далее

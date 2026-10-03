@@ -7,7 +7,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
+from apps.worker.processor import HANDLERS
 from packages.shared.database import make_engine, service_heartbeats
+from packages.shared.jobs import process_one
 from packages.shared.logging import configure_logging
 from packages.shared.observability import configure_sentry
 from packages.shared.settings import Settings
@@ -26,11 +28,14 @@ def publish_heartbeat(engine: Engine) -> None:
 
 def run(settings: Settings, engine: Engine, stop: threading.Event) -> None:
     while not stop.is_set():
+        processed = False
         try:
             publish_heartbeat(engine)
+            processed = process_one(engine, HANDLERS)
         except SQLAlchemyError:
             logger.warning('runtime', extra={'event': 'worker_database_unavailable'})
-        stop.wait(settings.worker_interval_seconds)
+        if not processed:
+            stop.wait(settings.worker_interval_seconds)
 
 
 def main() -> None:

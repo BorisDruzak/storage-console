@@ -30,6 +30,7 @@ from packages.shared.ingest.core import IngestConflict, change, inventory
 from packages.shared.ingest.hygiene import hygiene
 from packages.shared.ingest.recovery import recovery
 from packages.shared.ingest.telemetry import diagnostic, telemetry
+from packages.shared.jobs import enqueue
 from packages.shared.models.core import collector_heartbeats, collectors, source_nodes
 from packages.shared.models.jobs import ingest_batches
 from packages.shared.models.security import audit_log
@@ -153,6 +154,12 @@ def accept[T: Record](engine: Engine, kind: str, batch: BatchEnvelope[T], token:
                     result="ACCEPTED",
                     details={"record_count": batch.record_count},
                 )
+            )
+            enqueue(
+                connection,
+                "ingest_postprocess",
+                {"receipt_id": str(receipt_id)},
+                "ingest:" + str(receipt_id),
             )
     except IngestConflict as error:
         raise HTTPException(409, detail=str(error)) from None
