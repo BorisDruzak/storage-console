@@ -50,3 +50,50 @@ test('overview remains usable on desktop and mobile without overflow', async ({ 
   }
   expect(errors).toEqual([]);
 });
+
+test('activity and recovery shells expose domain structure with unavailable evidence', async ({page})=>{
+  await page.goto('/#activity');
+  await expect(page.getByRole('columnheader',{name:'Достоверность'})).toBeVisible();
+  await expect(page.getByText('Для этого раздела ещё нет данных источников')).toBeVisible();
+  await page.getByRole('link',{name:'Восстановление',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Проверка восстановления'})).toBeVisible();
+  await expect(page.getByText('Нет данных',{exact:true})).toHaveCount(9);
+  await expect(page.getByText('Исправно',{exact:true})).toHaveCount(0);
+});
+
+test('test-only domain observations render event storm and independent recovery states',async({page},testInfo)=>{
+  test.skip(!!process.env.PLAYWRIGHT_BASE_URL,'Synthetic fixture entry is excluded from production dist');
+  const errors:string[]=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  for(const [width,height] of [[1280,900],[390,844]]) {
+    await page.setViewportSize({width,height});
+    await page.goto('/test-fixtures/domains.html#activity');
+    await expect(page.getByText('Событий в группе: 100')).toBeVisible();
+    await expect(page.locator('tbody tr')).toHaveCount(1);
+    expect((await page.locator('tbody tr').boundingBox())!.height).toBeLessThan(400);
+    await expect(page.getByText('80 %')).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await page.screenshot({path:testInfo.outputPath(`activity-${width}.png`),fullPage:true});
+    await page.locator('tbody details summary').first().click();
+    await expect(page.locator('tbody details').first()).toHaveAttribute('open','');
+    expect(await page.locator('tbody details[open] > code').textContent()).toContain('Длинный путь/'.repeat(20));
+    await page.getByRole('link',{name:'Восстановление',exact:true}).click();
+    await expect(page.getByText('Исправно',{exact:true})).toBeVisible();
+    await expect(page.getByText('Не защищена',{exact:true})).toBeVisible();
+    await expect(page.getByText('Нет данных',{exact:true})).toHaveCount(9);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await page.screenshot({path:testInfo.outputPath(`recovery-${width}.png`),fullPage:true});
+  }
+  expect(errors).toEqual([]);
+});
+
+test('stale domain fixture suppresses current confidence and platform health',async({page})=>{
+  test.skip(!!process.env.PLAYWRIGHT_BASE_URL,'Synthetic fixture entry is excluded from production dist');
+  await page.goto('/test-fixtures/domains.html?stale=1#activity');
+  await expect(page.getByText('Устаревшие данные',{exact:true})).toBeVisible();
+  await expect(page.getByText('80 %')).toHaveCount(0);
+  await page.getByRole('link',{name:'Восстановление',exact:true}).click();
+  await expect(page.getByText('Устаревшие данные',{exact:true})).toBeVisible();
+  await expect(page.getByText('Исправно',{exact:true})).toHaveCount(0);
+  await expect(page.getByText('Не защищена',{exact:true})).toHaveCount(0);
+});

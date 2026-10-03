@@ -6,6 +6,8 @@ import { sections, link, useRoute } from './navigation';
 import { OverviewPage } from './pages/OverviewPage';
 import { SourcesPage } from './pages/SourcesPage';
 import { StoragePage } from './pages/StoragePage';
+import { ActivityPage } from './pages/ActivityPage';
+import { RecoveryPage } from './pages/RecoveryPage';
 
 async function readiness({ signal }: { signal: AbortSignal }): Promise<boolean> {
   const response = await fetch('/ready', { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]) });
@@ -35,7 +37,7 @@ export function App() {
       </header>
       <div className="content">
         <h1 tabIndex={-1}>{t(`navigation.${section}`)}</h1>
-        {section === 'overview' ? <OverviewPage /> : section === 'sources' ? <SourcesPage /> : section === 'health' ? <StoragePage /> : <p>{t('common.unavailableEvidence')}</p>}
+        {section === 'overview' ? <OverviewPage /> : section === 'sources' ? <SourcesPage /> : section === 'health' ? <StoragePage /> : section === 'activity' ? <ActivityPage /> : section === 'recovery' ? <RecoveryPage /> : <p>{t('common.unavailableEvidence')}</p>}
       </div>
     </main>
   </div>;

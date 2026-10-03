@@ -45,7 +45,9 @@
     "allSources": "All sources",
     "apply": "Apply",
     "sourceFilter": "Source identifier",
-    "refreshing": "Refreshing…"
+    "refreshing": "Refreshing…",
+    "filteredEmpty": "No records match the selected filters",
+    "showFullValue": "Full value"
   },
   "auth": {
     "signIn": "Sign in",
@@ -133,5 +135,54 @@
     "STALE": "Stale",
     "ESTIMATED": "Estimated",
     "UNAVAILABLE": "Unavailable"
+  },
+  "activity": {
+    "time": "Time",
+    "event": "Event",
+    "actor": "User",
+    "client": "Client",
+    "path": "Path",
+    "change": "Before → After",
+    "confidence": "Confidence",
+    "before": "Before",
+    "after": "After",
+    "allEvents": "All events",
+    "groupCount": "Events in group: {{count}}",
+    "percent": "{{value}} %",
+    "grouping": "Repeated events for the same object with identical evidence are grouped within a minute."
+  },
+  "events": {
+    "CREATE": "Create",
+    "WRITE": "Write",
+    "RENAME": "Rename",
+    "DELETE": "Delete",
+    "METADATA_CHANGE": "Metadata change",
+    "SECURITY_CHANGE": "Permission change"
+  },
+  "recovery": {
+    "boundary": "Backup platform health and protection of each workload are evaluated separately.",
+    "platform": "Platform health",
+    "protection": "Workload protection",
+    "local": "Local snapshots",
+    "offhost": "Off-host protection",
+    "backup": "Latest backup",
+    "rpo": "Recovery point objective (RPO)",
+    "verify": "Backup verification",
+    "retention": "Retention and cleanup",
+    "restore": "Restore test",
+    "rto": "Recovery time objective (RTO)",
+    "consistency": "Backup consistency",
+    "seconds": "{{value}} s"
+  },
+  "protection": {
+    "PROTECTED": "Protected",
+    "UNPROTECTED": "Unprotected",
+    "UNKNOWN": "Protection unknown"
+  },
+  "consistency": {
+    "CRASH_CONSISTENT": "Crash consistent",
+    "GUEST_AGENT": "Guest agent assisted",
+    "VSS_QUIESCED": "VSS quiesced",
+    "UNKNOWN": "Consistency unknown"
   }
 }

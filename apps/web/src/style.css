@@ -37,6 +37,18 @@ code { overflow-wrap: anywhere; white-space: pre-wrap; }
 small { display: block; margin-top: 8px; }
 .pager { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 20px; }
 button, input { padding: 8px 12px; }
+select { font: inherit; padding: 8px 12px; max-width: 100%; }
+select:focus-visible { outline: 3px solid #59a6de; outline-offset: 3px; }
+.workloads { display: grid; gap: 24px; margin-top: 24px; }
+.ladder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; padding-left: 24px; }
+.ladder h3 { font-size: 15px; }
+.ladder li { min-width: 0; padding: 8px; }
+.activity-table { min-width: 1000px; table-layout: fixed; }
+.activity-table th:nth-child(5), .activity-table th:nth-child(6) { width: 210px; }
+.raw-value summary { cursor: pointer; color: #165f91; }
+.raw-value summary:focus-visible { outline: 3px solid #59a6de; outline-offset: 3px; }
+.raw-value code { display: block; margin-top: 8px; }
+@media (max-width: 600px) { .ladder { grid-template-columns: 1fr; } }
 button:disabled { cursor: default; opacity: .55; }
 .tabs { display: flex; flex-wrap: wrap; margin-top: 0; margin-bottom: 20px; }
 .tabs a { color: #165f91; background: white; border: 1px solid #dce3eb; }
