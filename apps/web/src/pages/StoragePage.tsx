@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { queries } from '../api/client';
@@ -10,6 +10,12 @@ const tabs = ['fileserver', 'volumes', 'smb', 'dfs', 'fsrm', 'vss', 'pve', 'netw
 function SourceFilter({ source, tab }: { source: string; tab: string }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(source);
+  useEffect(() => {
+    // Apply/back can return to the same snapshot before React renders the middle route.
+    const restore = () => setDraft(new URLSearchParams(window.location.hash.split('?')[1]).get('source_id') ?? '');
+    window.addEventListener('hashchange', restore);
+    return () => window.removeEventListener('hashchange', restore);
+  }, []);
   return <form onSubmit={event => { event.preventDefault(); window.location.hash = link('health', { tab, ...(draft.trim() ? { source_id: draft.trim() } : {}) }); }}><label>{t('common.sourceFilter')}<input value={draft} onChange={event => setDraft(event.target.value)} /></label><button type="submit">{t('common.apply')}</button></form>;
 }
 function Volumes({ shares }: { shares: boolean }) {

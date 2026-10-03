@@ -48,6 +48,21 @@ test('storage source filter restores its value when URL changes', async () => {
   expect(screen.getByLabelText('Идентификатор источника')).toHaveValue(second);
 });
 
+test('rapid apply then back restores URL value even without an intermediate render', async () => {
+  const first = '6a83a99d-247d-4e58-8c49-089c703ab42d';
+  const second = '6a83a99d-247d-4e58-8c49-089c703ab42e';
+  window.location.hash = '#health?tab=volumes&source_id=' + first;
+  mockApi();
+  await show();
+  fireEvent.change(screen.getByLabelText('Идентификатор источника'), {target:{value:second}});
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', {name:'Применить'}));
+    window.location.hash = '#health?tab=volumes&source_id=' + first;
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
+  expect(screen.getByLabelText('Идентификатор источника')).toHaveValue(first);
+});
+
 test('source page refreshes evidence while it remains open', async () => {
   vi.useFakeTimers();
   try {
