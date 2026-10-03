@@ -62,4 +62,8 @@ class BatchEnvelope[T: Record](Contract):
             for record in self.records
         ):
             raise ValueError("Record outside declared interval")
+        if self.first_event_at != min(
+            record.occurred_at for record in self.records
+        ) or self.last_event_at != max(record.occurred_at for record in self.records):
+            raise ValueError("Event interval does not match record boundaries")
         return self

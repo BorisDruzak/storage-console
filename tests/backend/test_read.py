@@ -252,6 +252,27 @@ def test_source_lag_is_not_hidden_by_fresh_heartbeat(ingest_setup):
     assert client.get(f"/api/v1/sources/{source}/freshness").json()["state"] == "CRITICAL"
 
 
+def test_fresh_envelope_cannot_disguise_stale_records(ingest_setup):
+    client, _, collector, token, source = ingest_setup
+    now = datetime.now(UTC).isoformat()
+    old = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+    payload = dict(
+        collector_id=str(collector),
+        batch_id="inflated-window",
+        schema_version=1,
+        sent_at=now,
+        first_event_at=old,
+        last_event_at=now,
+        record_count=1,
+        records=[dict(occurred_at=old, version="synthetic", lag_seconds=0)],
+    )
+    response = client.post(
+        "/api/v1/ingest/heartbeat", json=payload, headers={"Authorization": "Bearer " + token}
+    )
+    assert response.status_code == 422
+    assert client.get(f"/api/v1/sources/{source}/freshness").json()["state"] == "UNKNOWN"
+
+
 @pytest.mark.parametrize(
     "mode,expected", [("unseen", "UNKNOWN"), ("stale", "CRITICAL"), ("lag", "CRITICAL")]
 )

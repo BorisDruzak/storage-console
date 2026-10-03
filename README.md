@@ -82,6 +82,8 @@ npm run test:e2e
 Доступны `POST /api/v1/ingest/heartbeat`, `/inventory`, `/changes`, `/telemetry`, `/events`,
 `/acl`, `/recovery`, `/hygiene`, `/diagnostic-bundles`.
 Typed batch envelope version 1 содержит records и согласованные count/time window.
+`first_event_at`/`last_event_at` должны точно совпадать с min/max timestamps records;
+расширенный interval без соответствующих records отклоняется (422).
 `Authorization: Bearer <collector-token>` проверяется по hash зарегистрированного enabled collector;
 collector UUID должен совпадать с envelope. User credentials не принимаются.
 Все записи привязаны к source этого collector, source UUID в payload запрещён.
