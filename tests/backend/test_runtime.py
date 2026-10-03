@@ -92,3 +92,13 @@ def test_ingest_body_is_bounded():
     ) as client:
         response = client.post("/api/v1/ingest/heartbeat", content=b"x" * 1025)
     assert response.status_code == 413
+
+
+def test_read_database_error_uses_generic_response():
+    settings = Settings(database_url="postgresql+psycopg://user:private@127.0.0.1:1/missing")
+    engine = create_engine(settings.database_url, connect_args={"connect_timeout": 1})
+    with TestClient(create_app(settings, engine)) as client:
+        response = client.get("/api/v1/overview")
+        assert response.status_code == 503
+        assert response.json() == {"detail": "READ_UNAVAILABLE"}
+        assert "private" not in response.text

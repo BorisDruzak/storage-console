@@ -6,10 +6,8 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, func, insert, select, text, update
+from sqlalchemy import func, insert, select, update
 
-from apps.api.main import create_app
 from packages.shared.models import metadata
 from packages.shared.models.core import (
     collectors,
@@ -20,46 +18,8 @@ from packages.shared.models.core import (
     volumes,
 )
 from packages.shared.models.jobs import ingest_batches
-from packages.shared.settings import Settings
 
 pytestmark = pytest.mark.skipif(not os.getenv("TEST_DATABASE_URL"), reason="PostgreSQL required")
-
-
-@pytest.fixture
-def ingest_setup():
-    base = create_engine(os.environ["TEST_DATABASE_URL"])
-    schema = "test_" + uuid4().hex
-    with base.begin() as connection:
-        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-    engine = create_engine(
-        os.environ["TEST_DATABASE_URL"], connect_args={"options": f"-csearch_path={schema}"}
-    )
-    metadata.create_all(engine)
-    source, collector = uuid4(), uuid4()
-    token = secrets.token_urlsafe(32)
-    with engine.begin() as connection:
-        connection.execute(
-            insert(source_nodes).values(
-                id=source, source_type="FILESERVER", hostname="synthetic", instance_id=str(source)
-            )
-        )
-        connection.execute(
-            insert(collectors).values(
-                id=collector,
-                source_node_id=source,
-                collector_type="WINDOWS",
-                token_hash=hashlib.sha256(("collector:" + token).encode()).hexdigest(),
-            )
-        )
-    client = TestClient(create_app(Settings(), engine))
-    try:
-        yield client, engine, collector, token, source
-    finally:
-        client.close()
-        engine.dispose()
-        with base.begin() as connection:
-            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
-        base.dispose()
 
 
 def batch(collector, records, batch_id="synthetic", at=None):

@@ -61,7 +61,13 @@
   CI проверяет drift. Python 3.13/PostgreSQL: 40 tests PASS; Ruff/mypy PASS, migration cycle PASS.
 - Fresh Compose domain smoke: PostgreSQL/API/worker/Web healthy, `/ready` 200,
   Alembic check и worker health PASS; Gitleaks public source scan PASS.
-- Read API и concurrent worker queue пока не реализованы.
+- Read API реализован: overview, domain health, source detail/freshness и bounded volumes/shares.
+  Freshness учитывает всех enabled collectors; missing/stale/future evidence и lag не маскируются.
+  Persisted policy findings необходимы для domain HEALTHY; UNKNOWN coverage сохраняется при CRITICAL.
+- Python 3.13/PostgreSQL: 55 tests PASS; migration cycle/check, Ruff, strict mypy (52 files),
+  OpenAPI repeatability и Gitleaks PASS. Fresh Compose read smoke: все сервисы healthy.
+  Independent review и четыре regression RED→GREEN: multi-collector freshness и unknown scopes.
+- Concurrent worker queue пока не реализована.
 - Partitioning/retention и operational domain processing остаются последующим этапам спецификации.
 
 ## Далее

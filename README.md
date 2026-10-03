@@ -102,8 +102,23 @@ Backup, snapshot consistency, verification и restore test — отдельны�
 Public OpenAPI: `packages/contracts/openapi/storage-console-v1.json`.
 После изменения routes/contracts выполните `python -m packages.contracts.export_openapi`;
 `--check` проверяет совпадение с runtime и выполняется в CI.
-Collector provisioning/user sessions, read API и queue продолжают реализацию Wave 0B/0D.
+Collector provisioning/user sessions и queue продолжают реализацию Wave 0B/0D.
 Live collectors не подключены.
+
+## Read API — текущая реализация Wave 0B
+
+Доступны `GET /api/v1/overview`, `/health/domains`, `/sources`, `/sources/{id}`,
+`/sources/{id}/freshness`, `/volumes`, `/shares`. Пагинация: `limit` 1–100,
+`offset` 0–1000000; volumes/shares допускают фильтр `source_id` (неизвестный source → 404).
+Ответы читаются в согласованной PostgreSQL snapshot; ошибка БД → generic 503.
+
+Freshness учитывает каждый enabled collector: receipt time, event time, collector last_seen
+и heartbeat lag. Ответ показывает collector counts и bottleneck UUID; cursor/event timestamps
+относятся к этому collector. `last_success_at` — время последнего успешного ingest source.
+Missing/future observations дают UNKNOWN; превышение cadence — OBSERVE/WARNING/CRITICAL.
+Свежий heartbeat не создаёт HEALTHY для operational domain: нужны актуальные persisted
+policy findings. Неполное покрытие остаётся видимым даже при CRITICAL в другом scope.
+Volumes/shares отдельно показывают metadata quality; aliases содержат только активные значения.
 
 ## Наблюдаемость и внешние gates
 

@@ -12,6 +12,7 @@ from starlette.requests import Request
 
 from apps.api.body_limit import IngestBodyLimit
 from apps.api.ingest import router as ingest_router
+from apps.api.read.routes import router as read_router
 from packages.shared.database import make_engine
 from packages.shared.logging import configure_logging
 from packages.shared.observability import configure_sentry
@@ -36,12 +37,18 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
 
     application = FastAPI(title="Storage Console API", version="0.1.0", lifespan=lifespan)
     application.include_router(ingest_router(database))
+    application.include_router(read_router(database))
     application.add_middleware(IngestBodyLimit, max_bytes=config.max_ingest_bytes)
 
     @application.exception_handler(RequestValidationError)
     async def invalid_request(_: Request, __: RequestValidationError) -> JSONResponse:
         # Default validation errors echo input/ctx, potentially including forbidden content.
         return JSONResponse({"detail": "INVALID_REQUEST"}, status_code=422)
+
+    @application.exception_handler(SQLAlchemyError)
+    async def read_unavailable(_: Request, __: SQLAlchemyError) -> JSONResponse:
+        logger.warning("runtime", extra={"event": "database_unavailable"})
+        return JSONResponse({"detail": "READ_UNAVAILABLE"}, status_code=503)
 
     @application.get("/health")
     def health() -> dict[str, str]:
