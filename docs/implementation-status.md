@@ -75,11 +75,15 @@
   один job, один postprocess effect, одна attempt; оба worker healthy.
 - Final review исправление: batch boundaries точно равны min/max records; inflated fresh
   envelope со stale records воспроизведён RED→GREEN. Ранее принятые metadata не переписываются.
+- Backend foundation Tasks 1–6 опубликованы: `bee5f78f780df9249a0f29f0fd0af26894705902`;
+  [CI](https://github.com/BorisDruzak/storage-console/actions/runs/37151579965) success,
+  backend/frontend/Compose/secrets PASS. Sonar skipped — external acceptance gate unverified.
 - Partitioning/retention и operational domain processing остаются последующим этапам спецификации.
 
 ## Далее
 
-Wave 0B backend/contracts/domain DB, Wave 0C полный shell/pages/typed domain API, Wave 0D production deployment/runbook не завершены.
+Wave 0B backend/contracts/domain DB/queue реализованы; external Sonar gate не подтверждён.
+Wave 0C полный shell/pages/typed domain API и Wave 0D production deployment/runbook не завершены.
 Wave 1–8 collectors и operational/discovery modules не реализованы.
 Полные pilot критерии v0.1 пока не выполнены.
 
