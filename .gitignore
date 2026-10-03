@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+coverage.xml
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+.vite/
+playwright-report/
+test-results/
+coverage/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime / data
+data/
+postgres-data/
+diagnostics/
+backups/
+*.log
+*.sqlite
+*.db
+
+# Build
+build/
+tmp/
