@@ -9,16 +9,27 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from apps.api.auth import collector_token, token_hash
+from packages.contracts.acl import ACLRecord
 from packages.contracts.changes import ChangeRecord
 from packages.contracts.common import BatchEnvelope, Contract, Record
+from packages.contracts.diagnostics import DiagnosticRecord
+from packages.contracts.events import EvidenceRecord
 from packages.contracts.heartbeat import HeartbeatRecord
+from packages.contracts.hygiene import HygieneRecord
 from packages.contracts.inventory import (
     FileObjectRecord,
     InventoryRecord,
     ShareRecord,
     VolumeRecord,
 )
+from packages.contracts.recovery import BackupRecord, RecoveryRecord, VSSRecord
+from packages.contracts.telemetry import TelemetryRecord
+from packages.shared.ingest.acl import acl
+from packages.shared.ingest.activity import evidence
 from packages.shared.ingest.core import IngestConflict, change, inventory
+from packages.shared.ingest.hygiene import hygiene
+from packages.shared.ingest.recovery import recovery
+from packages.shared.ingest.telemetry import diagnostic, telemetry
 from packages.shared.models.core import collector_heartbeats, collectors, source_nodes
 from packages.shared.models.jobs import ingest_batches
 from packages.shared.models.security import audit_log
@@ -104,6 +115,18 @@ def accept[T: Record](engine: Engine, kind: str, batch: BatchEnvelope[T], token:
                     inventory(connection, source, record)
                 elif isinstance(record, ChangeRecord):
                     change(connection, source, record)
+                elif isinstance(record, TelemetryRecord):
+                    telemetry(connection, source, record)
+                elif isinstance(record, EvidenceRecord):
+                    evidence(connection, source, record)
+                elif isinstance(record, ACLRecord):
+                    acl(connection, source, record)
+                elif isinstance(record, BackupRecord | VSSRecord):
+                    recovery(connection, source, record)
+                elif isinstance(record, HygieneRecord):
+                    hygiene(connection, source, record)
+                elif isinstance(record, DiagnosticRecord):
+                    diagnostic(connection, source, record)
                 else:
                     raise IngestConflict("UNSUPPORTED_RECORD")
             connection.execute(
@@ -156,5 +179,29 @@ def router(engine: Engine) -> APIRouter:
     @result.post("/changes", status_code=202)
     def changes_batch(batch: BatchEnvelope[ChangeRecord], token: Token) -> Receipt:
         return accept(engine, "changes", batch, token)
+
+    @result.post("/telemetry", status_code=202)
+    def telemetry_batch(batch: BatchEnvelope[TelemetryRecord], token: Token) -> Receipt:
+        return accept(engine, "telemetry", batch, token)
+
+    @result.post("/events", status_code=202)
+    def events_batch(batch: BatchEnvelope[EvidenceRecord], token: Token) -> Receipt:
+        return accept(engine, "events", batch, token)
+
+    @result.post("/acl", status_code=202)
+    def acl_batch(batch: BatchEnvelope[ACLRecord], token: Token) -> Receipt:
+        return accept(engine, "acl", batch, token)
+
+    @result.post("/recovery", status_code=202)
+    def recovery_batch(batch: BatchEnvelope[RecoveryRecord], token: Token) -> Receipt:
+        return accept(engine, "recovery", batch, token)
+
+    @result.post("/hygiene", status_code=202)
+    def hygiene_batch(batch: BatchEnvelope[HygieneRecord], token: Token) -> Receipt:
+        return accept(engine, "hygiene", batch, token)
+
+    @result.post("/diagnostic-bundles", status_code=202)
+    def diagnostic_batch(batch: BatchEnvelope[DiagnosticRecord], token: Token) -> Receipt:
+        return accept(engine, "diagnostic-bundles", batch, token)
 
     return result

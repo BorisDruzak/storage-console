@@ -1,0 +1,2604 @@
+{
+  "components": {
+    "schemas": {
+      "ACLRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "aces": {
+            "items": {
+              "$ref": "#/components/schemas/AceRecord"
+            },
+            "maxItems": 4096,
+            "title": "Aces",
+            "type": "array"
+          },
+          "dacl_fingerprint": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Dacl Fingerprint",
+            "type": "string"
+          },
+          "file_id": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Id"
+          },
+          "inheritance_enabled": {
+            "title": "Inheritance Enabled",
+            "type": "boolean"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "owner_identity": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Identity"
+          },
+          "scope_identity": {
+            "maxLength": 32767,
+            "minLength": 1,
+            "title": "Scope Identity",
+            "type": "string"
+          },
+          "volume_identity": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume Identity"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "scope_identity",
+          "dacl_fingerprint",
+          "inheritance_enabled",
+          "aces"
+        ],
+        "title": "ACLRecord",
+        "type": "object"
+      },
+      "AceRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "access_mask": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Access Mask",
+            "type": "integer"
+          },
+          "ace_type": {
+            "enum": [
+              "ALLOW",
+              "DENY"
+            ],
+            "title": "Ace Type",
+            "type": "string"
+          },
+          "inheritance_flags": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inheritance Flags"
+          },
+          "inherited": {
+            "title": "Inherited",
+            "type": "boolean"
+          },
+          "principal_identity": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Principal Identity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "principal_identity",
+          "ace_type",
+          "access_mask",
+          "inherited"
+        ],
+        "title": "AceRecord",
+        "type": "object"
+      },
+      "ApiError": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ApiError",
+        "type": "object"
+      },
+      "BackupRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "consistency": {
+            "default": "UNKNOWN",
+            "enum": [
+              "CRASH_CONSISTENT",
+              "GUEST_AGENT",
+              "VSS_QUIESCED",
+              "UNKNOWN"
+            ],
+            "title": "Consistency",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "job_identity": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Identity",
+            "type": "string"
+          },
+          "kind": {
+            "const": "backup",
+            "default": "backup",
+            "title": "Kind",
+            "type": "string"
+          },
+          "measured_rto_seconds": {
+            "anyOf": [
+              {
+                "maximum": 2147483647.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Rto Seconds"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "restore_test_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "COMPLETE",
+                  "FAILED",
+                  "UNKNOWN"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restore Test State"
+          },
+          "snapshot_created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Created At"
+          },
+          "snapshot_identity": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Identity"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "RUNNING",
+              "COMPLETE",
+              "FAILED",
+              "UNKNOWN"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "tested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tested At"
+          },
+          "verification_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "COMPLETE",
+                  "FAILED",
+                  "UNKNOWN"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification State"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          },
+          "workload_identity": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Workload Identity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "job_identity",
+          "workload_identity",
+          "state",
+          "started_at"
+        ],
+        "title": "BackupRecord",
+        "type": "object"
+      },
+      "BatchEnvelope_ACLRecord_": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "record_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/ACLRecord"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "first_event_at",
+          "last_event_at",
+          "record_count",
+          "records"
+        ],
+        "title": "BatchEnvelope[ACLRecord]",
+        "type": "object"
+      },
+      "BatchEnvelope_Annotated_Union_VSSRecord__BackupRecord___FieldInfo_annotation_NoneType__required_True__discriminator__kind____": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "record_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "backup": "#/components/schemas/BackupRecord",
+                  "vss": "#/components/schemas/VSSRecord"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/VSSRecord"
+                },
+                {
+                  "$ref": "#/components/schemas/BackupRecord"
+                }
+              ]
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "first_event_at",
+          "last_event_at",
+          "record_count",
+          "records"
+        ],
+        "title": "BatchEnvelope[Annotated[Union[VSSRecord, BackupRecord], FieldInfo(annotation=NoneType, required=True, discriminator='kind')]]",
+        "type": "object"
+      },
+      "BatchEnvelope_Annotated_Union_VolumeRecord__ShareRecord__FileObjectRecord___FieldInfo_annotation_NoneType__required_True__discriminator__kind____": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "record_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "object": "#/components/schemas/FileObjectRecord",
+                  "share": "#/components/schemas/ShareRecord",
+                  "volume": "#/components/schemas/VolumeRecord"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/VolumeRecord"
+                },
+                {
+                  "$ref": "#/components/schemas/ShareRecord"
+                },
+                {
+                  "$ref": "#/components/schemas/FileObjectRecord"
+                }
+              ]
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "first_event_at",
+          "last_event_at",
+          "record_count",
+          "records"
+        ],
+        "title": "BatchEnvelope[Annotated[Union[VolumeRecord, ShareRecord, FileObjectRecord], FieldInfo(annotation=NoneType, required=True, discriminator='kind')]]",
+        "type": "object"
+      },
+      "BatchEnvelope_ChangeRecord_": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "record_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeRecord"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "first_event_at",
+          "last_event_at",
+          "record_count",
+          "records"
+        ],
+        "title": "BatchEnvelope[ChangeRecord]",
+        "type": "object"
+      },
+      "BatchEnvelope_DiagnosticRecord_": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "record_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticRecord"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "first_event_at",
+          "last_event_at",
+          "record_count",
+          "records"
+        ],
+        "title": "BatchEnvelope[DiagnosticRecord]",
+        "type": "object"
+      },
+      "BatchEnvelope_EvidenceRecord_": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "record_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceRecord"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "first_event_at",
+          "last_event_at",
+          "record_count",
+          "records"
+        ],
+        "title": "BatchEnvelope[EvidenceRecord]",
+        "type": "object"
+      },
+      "BatchEnvelope_HeartbeatRecord_": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "record_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/HeartbeatRecord"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "first_event_at",
+          "last_event_at",
+          "record_count",
+          "records"
+        ],
+        "title": "BatchEnvelope[HeartbeatRecord]",
+        "type": "object"
+      },
+      "BatchEnvelope_HygieneRecord_": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "record_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/HygieneRecord"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "first_event_at",
+          "last_event_at",
+          "record_count",
+          "records"
+        ],
+        "title": "BatchEnvelope[HygieneRecord]",
+        "type": "object"
+      },
+      "BatchEnvelope_TelemetryRecord_": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "record_count": {
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Record Count",
+            "type": "integer"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/TelemetryRecord"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "first_event_at",
+          "last_event_at",
+          "record_count",
+          "records"
+        ],
+        "title": "BatchEnvelope[TelemetryRecord]",
+        "type": "object"
+      },
+      "ChangeRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "event_type": {
+            "enum": [
+              "CREATE",
+              "WRITE",
+              "RENAME",
+              "DELETE",
+              "METADATA_CHANGE",
+              "SECURITY_CHANGE"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "file_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "File Id",
+            "type": "string"
+          },
+          "new_relative_path": {
+            "anyOf": [
+              {
+                "maxLength": 32767,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Relative Path"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "old_relative_path": {
+            "anyOf": [
+              {
+                "maxLength": 32767,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Relative Path"
+          },
+          "parent_file_id": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent File Id"
+          },
+          "reason_mask": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Mask"
+          },
+          "source_event_id": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Event Id"
+          },
+          "volume_identity": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Volume Identity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "volume_identity",
+          "file_id",
+          "event_type"
+        ],
+        "title": "ChangeRecord",
+        "type": "object"
+      },
+      "DiagnosticRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "first_event_at": {
+            "format": "date-time",
+            "title": "First Event At",
+            "type": "string"
+          },
+          "last_event_at": {
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "METADATA_ONLY",
+              "AVAILABLE",
+              "UNAVAILABLE"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "storage_reference": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Reference"
+          },
+          "trigger_type": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Trigger Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "trigger_type",
+          "first_event_at",
+          "last_event_at",
+          "sha256",
+          "status"
+        ],
+        "title": "DiagnosticRecord",
+        "type": "object"
+      },
+      "EvidenceRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_identity": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Identity"
+          },
+          "change_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Event Id"
+          },
+          "client_identity": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Identity"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "evidence_type": {
+            "enum": [
+              "WINDOWS_4663",
+              "WINDOWS_4660",
+              "WINDOWS_5145",
+              "COLLECTOR"
+            ],
+            "title": "Evidence Type",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "source_event_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Source Event Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "source_event_id",
+          "evidence_type",
+          "confidence"
+        ],
+        "title": "EvidenceRecord",
+        "type": "object"
+      },
+      "FileObjectRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "file_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "File Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "object",
+            "default": "object",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 32767,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "object_type": {
+            "enum": [
+              "FILE",
+              "DIRECTORY"
+            ],
+            "title": "Object Type",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "parent_file_id": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent File Id"
+          },
+          "relative_path": {
+            "maxLength": 32767,
+            "minLength": 1,
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "maximum": 9.223372036854776e+18,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "volume_identity": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Volume Identity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "volume_identity",
+          "file_id",
+          "object_type",
+          "name",
+          "relative_path"
+        ],
+        "title": "FileObjectRecord",
+        "type": "object"
+      },
+      "HeartbeatRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "lag_seconds": {
+            "anyOf": [
+              {
+                "maximum": 2147483647.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lag Seconds"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "version"
+        ],
+        "title": "HeartbeatRecord",
+        "type": "object"
+      },
+      "HygieneRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "directory_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Directory Count",
+            "type": "integer"
+          },
+          "file_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "File Count",
+            "type": "integer"
+          },
+          "large_files": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LargeFileSample"
+            },
+            "maxItems": 1000,
+            "title": "Large Files",
+            "type": "array"
+          },
+          "long_paths": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PathSample"
+            },
+            "maxItems": 1000,
+            "title": "Long Paths",
+            "type": "array"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "quality": {
+            "enum": [
+              "COMPLETE",
+              "PARTIAL",
+              "STALE",
+              "ESTIMATED",
+              "UNAVAILABLE"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "scope_identity": {
+            "maxLength": 32767,
+            "minLength": 1,
+            "title": "Scope Identity",
+            "type": "string"
+          },
+          "temp_artifacts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TempStats"
+            },
+            "maxItems": 3,
+            "title": "Temp Artifacts",
+            "type": "array"
+          },
+          "total_bytes": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "zero_byte_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Zero Byte Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "scope_identity",
+          "quality",
+          "file_count",
+          "directory_count",
+          "total_bytes",
+          "zero_byte_count"
+        ],
+        "title": "HygieneRecord",
+        "type": "object"
+      },
+      "LargeFileSample": {
+        "additionalProperties": false,
+        "properties": {
+          "last_write_at": {
+            "format": "date-time",
+            "title": "Last Write At",
+            "type": "string"
+          },
+          "relative_path": {
+            "maxLength": 32767,
+            "minLength": 1,
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "size_bytes": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "relative_path",
+          "size_bytes",
+          "last_write_at"
+        ],
+        "title": "LargeFileSample",
+        "type": "object"
+      },
+      "PathSample": {
+        "additionalProperties": false,
+        "properties": {
+          "bucket": {
+            "enum": [
+              "240+",
+              "260+",
+              "320+",
+              "400+",
+              "500+"
+            ],
+            "title": "Bucket",
+            "type": "string"
+          },
+          "path_length": {
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Path Length",
+            "type": "integer"
+          },
+          "relative_path": {
+            "maxLength": 32767,
+            "minLength": 1,
+            "title": "Relative Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "relative_path",
+          "path_length",
+          "bucket"
+        ],
+        "title": "PathSample",
+        "type": "object"
+      },
+      "Receipt": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "default": true,
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "duplicate": {
+            "title": "Duplicate",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "duplicate"
+        ],
+        "title": "Receipt",
+        "type": "object"
+      },
+      "ShareRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "share",
+            "default": "share",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "protocol": {
+            "enum": [
+              "SMB",
+              "NFS"
+            ],
+            "title": "Protocol",
+            "type": "string"
+          },
+          "relative_path": {
+            "maxLength": 32767,
+            "minLength": 1,
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "volume_identity": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume Identity"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "name",
+          "relative_path",
+          "protocol"
+        ],
+        "title": "ShareRecord",
+        "type": "object"
+      },
+      "TelemetryRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "metric_name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Metric Name",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "quality": {
+            "default": "COMPLETE",
+            "enum": [
+              "COMPLETE",
+              "PARTIAL",
+              "STALE",
+              "ESTIMATED",
+              "UNAVAILABLE"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "scope_identity": {
+            "default": "source",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Scope Identity",
+            "type": "string"
+          },
+          "unit": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "metric_name",
+          "value",
+          "unit"
+        ],
+        "title": "TelemetryRecord",
+        "type": "object"
+      },
+      "TempStats": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "enum": [
+              "ACTIVE",
+              "RECENT",
+              "STALE"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "file_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "File Count",
+            "type": "integer"
+          },
+          "total_bytes": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Total Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "classification",
+          "file_count",
+          "total_bytes"
+        ],
+        "title": "TempStats",
+        "type": "object"
+      },
+      "VSSRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "kind": {
+            "const": "vss",
+            "default": "vss",
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "snapshot_identity": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Snapshot Identity",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "AVAILABLE",
+              "UNAVAILABLE",
+              "UNKNOWN"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "volume_identity": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Volume Identity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "volume_identity",
+          "snapshot_identity",
+          "created_at",
+          "state"
+        ],
+        "title": "VSSRecord",
+        "type": "object"
+      },
+      "VolumeRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "filesystem": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Filesystem",
+            "type": "string"
+          },
+          "free_bytes": {
+            "anyOf": [
+              {
+                "maximum": 9.223372036854776e+18,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Bytes"
+          },
+          "kind": {
+            "const": "volume",
+            "default": "volume",
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "mount_aliases": {
+            "default": [],
+            "items": {
+              "maxLength": 32767,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Mount Aliases",
+            "type": "array"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "total_bytes": {
+            "anyOf": [
+              {
+                "maximum": 9.223372036854776e+18,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Bytes"
+          },
+          "unique_identity": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Unique Identity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "unique_identity",
+          "filesystem"
+        ],
+        "title": "VolumeRecord",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "CollectorToken": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Storage Console API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/ingest/acl": {
+      "post": {
+        "operationId": "acl_batch_api_v1_ingest_acl_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnvelope_ACLRecord_"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Acl Batch",
+        "tags": [
+          "collector-ingest"
+        ]
+      }
+    },
+    "/api/v1/ingest/changes": {
+      "post": {
+        "operationId": "changes_batch_api_v1_ingest_changes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnvelope_ChangeRecord_"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Changes Batch",
+        "tags": [
+          "collector-ingest"
+        ]
+      }
+    },
+    "/api/v1/ingest/diagnostic-bundles": {
+      "post": {
+        "operationId": "diagnostic_batch_api_v1_ingest_diagnostic_bundles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnvelope_DiagnosticRecord_"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Diagnostic Batch",
+        "tags": [
+          "collector-ingest"
+        ]
+      }
+    },
+    "/api/v1/ingest/events": {
+      "post": {
+        "operationId": "events_batch_api_v1_ingest_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnvelope_EvidenceRecord_"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Events Batch",
+        "tags": [
+          "collector-ingest"
+        ]
+      }
+    },
+    "/api/v1/ingest/heartbeat": {
+      "post": {
+        "operationId": "heartbeat_api_v1_ingest_heartbeat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnvelope_HeartbeatRecord_"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Heartbeat",
+        "tags": [
+          "collector-ingest"
+        ]
+      }
+    },
+    "/api/v1/ingest/hygiene": {
+      "post": {
+        "operationId": "hygiene_batch_api_v1_ingest_hygiene_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnvelope_HygieneRecord_"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Hygiene Batch",
+        "tags": [
+          "collector-ingest"
+        ]
+      }
+    },
+    "/api/v1/ingest/inventory": {
+      "post": {
+        "operationId": "inventory_batch_api_v1_ingest_inventory_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnvelope_Annotated_Union_VolumeRecord__ShareRecord__FileObjectRecord___FieldInfo_annotation_NoneType__required_True__discriminator__kind____"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Inventory Batch",
+        "tags": [
+          "collector-ingest"
+        ]
+      }
+    },
+    "/api/v1/ingest/recovery": {
+      "post": {
+        "operationId": "recovery_batch_api_v1_ingest_recovery_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnvelope_Annotated_Union_VSSRecord__BackupRecord___FieldInfo_annotation_NoneType__required_True__discriminator__kind____"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Recovery Batch",
+        "tags": [
+          "collector-ingest"
+        ]
+      }
+    },
+    "/api/v1/ingest/telemetry": {
+      "post": {
+        "operationId": "telemetry_batch_api_v1_ingest_telemetry_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchEnvelope_TelemetryRecord_"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Telemetry Batch",
+        "tags": [
+          "collector-ingest"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "readiness_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "Database unavailable"
+          }
+        },
+        "summary": "Readiness"
+      }
+    }
+  }
+}

@@ -79,7 +79,8 @@ npm run test:e2e
 
 ## Collector ingest — текущая реализация Wave 0B
 
-Доступны `POST /api/v1/ingest/heartbeat`, `/inventory`, `/changes`.
+Доступны `POST /api/v1/ingest/heartbeat`, `/inventory`, `/changes`, `/telemetry`, `/events`,
+`/acl`, `/recovery`, `/hygiene`, `/diagnostic-bundles`.
 Typed batch envelope version 1 содержит records и согласованные count/time window.
 `Authorization: Bearer <collector-token>` проверяется по hash зарегистрированного enabled collector;
 collector UUID должен совпадать с envelope. User credentials не принимаются.
@@ -93,8 +94,16 @@ object/volume state или alias history. Delete сохраняет послед
 
 По умолчанию ingest body ограничен 16 MiB в API и development Nginx; validation errors не повторяют
 input values. `MAX_INGEST_BYTES` настраивает API (при изменении нужно согласовать proxy limit).
-Collector provisioning/user sessions, оставшиеся ingest domains, read API и queue продолжают
-реализацию Wave 0B/0D. Live collectors не подключены.
+ACL сохраняет порядок ACE; известная object identity требует одновременно volume и file ID.
+Security evidence может храниться без корреляции; связь с change event проверяется в пределах source.
+Backup, snapshot consistency, verification и restore test — отдельные metadata evidence;
+отсутствие verification/restore не заменяется successful backup. Ingest не создаёт health findings.
+
+Public OpenAPI: `packages/contracts/openapi/storage-console-v1.json`.
+После изменения routes/contracts выполните `python -m packages.contracts.export_openapi`;
+`--check` проверяет совпадение с runtime и выполняется в CI.
+Collector provisioning/user sessions, read API и queue продолжают реализацию Wave 0B/0D.
+Live collectors не подключены.
 
 ## Наблюдаемость и внешние gates
 

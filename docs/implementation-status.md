@@ -49,7 +49,19 @@
 - Independent review: alias reassignment и late claim после alias release воспроизведены RED→GREEN.
 - [Schema/contracts CI](https://github.com/BorisDruzak/storage-console/actions/runs/37147154415): success;
   backend/frontend/Compose/secrets PASS, Sonar skipped.
-- Оставшиеся ingest domains, read API, generated OpenAPI и concurrent worker queue пока не реализованы.
+- Все девять ingest domains реализованы: telemetry/events/ACL/recovery/hygiene/diagnostic-bundles
+  используют ту же transactional receipt/auth/source boundary.
+- Uncorrelated security evidence сохраняется в collector_events; explicit event link проверяет source.
+  Collector confidence не становится автоматической attribution/health finding.
+- ACL сохраняет ACE ordinal; recovery отдельно сохраняет backup/snapshot/verification/restore metadata,
+  job и snapshot observation ordering проверяются независимо.
+- Migration 0003 сохраняет существующие recovery rows и неизвестный legacy ACE order (NULL).
+  Legacy observation timestamps backfilled из event time, без утверждения актуальной freshness.
+- Public OpenAPI соответствует runtime: `python -m packages.contracts.export_openapi --check` PASS.
+  CI проверяет drift. Python 3.13/PostgreSQL: 40 tests PASS; Ruff/mypy PASS, migration cycle PASS.
+- Fresh Compose domain smoke: PostgreSQL/API/worker/Web healthy, `/ready` 200,
+  Alembic check и worker health PASS; Gitleaks public source scan PASS.
+- Read API и concurrent worker queue пока не реализованы.
 - Partitioning/retention и operational domain processing остаются последующим этапам спецификации.
 
 ## Далее

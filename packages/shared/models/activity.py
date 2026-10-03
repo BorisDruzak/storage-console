@@ -44,3 +44,19 @@ event_evidence_links = Table(
     Column("source_event_id", String(255)),
     timestamp("occurred_at"),
 )
+
+collector_events = Table(
+    "collector_events",
+    metadata,
+    identity(),
+    reference("source_node_id", "source_nodes.id"),
+    reference("change_event_id", "change_events.id", nullable=True),
+    Column("source_event_id", String(255), nullable=False),
+    Column("evidence_type", String(32), nullable=False),
+    timestamp("occurred_at"),
+    Column("actor_identity", String(255)),
+    Column("client_identity", String(255)),
+    Column("confidence", Float, nullable=False),
+    CheckConstraint("confidence BETWEEN 0 AND 1", name="ck_collector_event_confidence"),
+    Index("ix_collector_events_source_time", "source_node_id", "occurred_at"),
+)

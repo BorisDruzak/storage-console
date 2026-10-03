@@ -1,4 +1,14 @@
-from sqlalchemy import BigInteger, Boolean, Column, String, Table, Text, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Integer,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+)
 
 from .base import identity, metadata, reference, timestamp
 
@@ -57,12 +67,15 @@ acl_aces = Table(
     metadata,
     identity(),
     reference("snapshot_id", "acl_snapshots.id"),
+    Column("ordinal", Integer, nullable=True),
     reference("principal_id", "principals.id", nullable=True),
     Column("unresolved_sid", String(255)),
     Column("ace_type", String(16), nullable=False),
     Column("access_mask", BigInteger, nullable=False),
     Column("inherited", Boolean, nullable=False),
     Column("inheritance_flags", String(64)),
+    CheckConstraint("ordinal >= 0", name="ck_ace_ordinal"),
+    UniqueConstraint("snapshot_id", "ordinal", name="uq_ace_ordinal"),
 )
 acl_findings = Table(
     "acl_findings",

@@ -297,3 +297,319 @@ def test_mount_reassignment_closes_old_binding_and_ignores_late_observation(inge
             )
             == 0
         )
+
+
+@pytest.mark.parametrize(
+    "route,table,record",
+    [
+        (
+            "telemetry",
+            "metric_samples_1m",
+            dict(metric_name="capacity.free", value=50, unit="bytes"),
+        ),
+        (
+            "events",
+            "collector_events",
+            dict(
+                source_event_id="synthetic-4663",
+                evidence_type="WINDOWS_4663",
+                actor_identity="synthetic-actor",
+                confidence=0.7,
+            ),
+        ),
+        (
+            "acl",
+            "acl_snapshots",
+            dict(
+                scope_identity="Dept",
+                dacl_fingerprint="a" * 64,
+                owner_identity="synthetic-owner",
+                inheritance_enabled=True,
+                aces=[
+                    dict(
+                        principal_identity="synthetic-principal",
+                        ace_type="ALLOW",
+                        access_mask=1,
+                        inherited=True,
+                    )
+                ],
+            ),
+        ),
+        (
+            "recovery",
+            "vss_snapshots",
+            dict(kind="vss", volume_identity="v", snapshot_identity="snapshot", state="AVAILABLE"),
+        ),
+        (
+            "hygiene",
+            "hygiene_snapshots",
+            dict(
+                scope_identity="Dept",
+                quality="PARTIAL",
+                file_count=1,
+                directory_count=1,
+                total_bytes=10,
+                zero_byte_count=0,
+            ),
+        ),
+        (
+            "diagnostic-bundles",
+            "diagnostic_bundles",
+            dict(trigger_type="LATENCY", sha256="b" * 64, status="METADATA_ONLY"),
+        ),
+    ],
+)
+def test_domain_ingest_persists_metadata_and_replays_once(ingest_setup, route, table, record):
+    client, engine, collector, token, source = ingest_setup
+    at = datetime.now(UTC)
+    headers = {"Authorization": "Bearer " + token}
+    assert (
+        client.post(
+            "/api/v1/ingest/inventory",
+            headers=headers,
+            json=batch(
+                collector,
+                [dict(kind="volume", unique_identity="v", filesystem="NTFS")],
+                "volume",
+                at,
+            ),
+        ).status_code
+        == 202
+    )
+    record = dict(record)
+    if route == "recovery":
+        record["created_at"] = at.isoformat()
+    if route == "diagnostic-bundles":
+        record.update(first_event_at=at.isoformat(), last_event_at=at.isoformat())
+    payload = batch(collector, [record], route, at)
+    response = client.post("/api/v1/ingest/" + route, headers=headers, json=payload)
+    assert response.status_code == 202, response.text
+    assert (
+        client.post("/api/v1/ingest/" + route, headers=headers, json=payload).json()["duplicate"]
+        is True
+    )
+    with engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(metadata.tables[table])) == 1
+        assert (
+            connection.scalar(select(func.count()).select_from(metadata.tables["health_findings"]))
+            == 0
+        )
+        if route == "events":
+            row = connection.execute(select(metadata.tables[table])).mappings().one()
+            assert row["source_node_id"] == source
+            assert row["actor_identity"] == "synthetic-actor"
+            assert row["confidence"] == 0.7
+        if route == "acl":
+            assert (
+                connection.scalar(select(func.count()).select_from(metadata.tables["acl_aces"]))
+                == 1
+            )
+
+
+def test_event_link_requires_same_source_and_rejection_is_atomic(ingest_setup):
+    from packages.shared.models.activity import (
+        change_events,
+        collector_events,
+        event_evidence_links,
+    )
+
+    client, engine, collector, token, source = ingest_setup
+    headers = {"Authorization": "Bearer " + token}
+    other, foreign, own = uuid4(), uuid4(), uuid4()
+    at = datetime.now(UTC)
+    with engine.begin() as connection:
+        connection.execute(
+            insert(source_nodes).values(
+                id=other,
+                source_type="FILESERVER",
+                hostname="synthetic-other",
+                instance_id=str(other),
+            )
+        )
+        for identity, node in [(foreign, other), (own, source)]:
+            connection.execute(
+                insert(change_events).values(
+                    id=identity,
+                    source_node_id=node,
+                    volume_identity="unresolved",
+                    file_id="42",
+                    event_type="WRITE",
+                    occurred_at=at,
+                )
+            )
+    records = [
+        dict(source_event_id="one", evidence_type="WINDOWS_4663", confidence=0.5),
+        dict(
+            source_event_id="two",
+            evidence_type="WINDOWS_4660",
+            confidence=0.8,
+            change_event_id=str(foreign),
+        ),
+    ]
+    assert (
+        client.post(
+            "/api/v1/ingest/events", headers=headers, json=batch(collector, records)
+        ).status_code
+        == 409
+    )
+    with engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(collector_events)) == 0
+        assert connection.scalar(select(func.count()).select_from(ingest_batches)) == 0
+    records[1]["change_event_id"] = str(own)
+    assert (
+        client.post(
+            "/api/v1/ingest/events", headers=headers, json=batch(collector, records)
+        ).status_code
+        == 202
+    )
+    with engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(collector_events)) == 2
+        assert connection.scalar(select(func.count()).select_from(event_evidence_links)) == 1
+        assert (
+            connection.scalar(
+                select(func.count()).select_from(metadata.tables["event_attributions"])
+            )
+            == 0
+        )
+
+
+def test_backup_keeps_verification_restore_and_newer_job_state(ingest_setup):
+    from packages.shared.models.recovery import (
+        backup_jobs,
+        backup_snapshots,
+        backup_verifications,
+        restore_tests,
+    )
+
+    client, engine, collector, token, _ = ingest_setup
+    headers = {"Authorization": "Bearer " + token}
+    at = datetime.now(UTC)
+    start = (at - timedelta(seconds=60)).isoformat()
+    record = dict(
+        kind="backup",
+        job_identity="job",
+        workload_identity="workload",
+        state="COMPLETE",
+        started_at=start,
+        finished_at=(at - timedelta(seconds=20)).isoformat(),
+        snapshot_identity="snapshot",
+        snapshot_created_at=(at - timedelta(seconds=40)).isoformat(),
+        consistency="VSS_QUIESCED",
+        verification_state="COMPLETE",
+        verified_at=at.isoformat(),
+        restore_test_state="FAILED",
+        tested_at=at.isoformat(),
+        measured_rto_seconds=12,
+    )
+    payload = batch(collector, [record], "complete", at)
+    assert client.post("/api/v1/ingest/recovery", json=payload, headers=headers).status_code == 202
+    assert client.post("/api/v1/ingest/recovery", json=payload, headers=headers).json()["duplicate"]
+    late = dict(
+        kind="backup",
+        job_identity="job",
+        workload_identity="workload",
+        state="RUNNING",
+        started_at=start,
+    )
+    assert (
+        client.post(
+            "/api/v1/ingest/recovery",
+            json=batch(collector, [late], "late", at - timedelta(seconds=10)),
+            headers=headers,
+        ).status_code
+        == 202
+    )
+    with engine.connect() as connection:
+        assert connection.execute(select(backup_jobs)).one().state == "COMPLETE"
+        assert connection.execute(select(backup_snapshots)).one().consistency == "VSS_QUIESCED"
+        assert connection.execute(select(backup_verifications)).one().state == "COMPLETE"
+        restore = connection.execute(select(restore_tests)).one()
+        assert restore.state == "FAILED"
+        assert restore.measured_rto_seconds == 12
+
+
+def test_hygiene_child_metadata_is_preserved(ingest_setup):
+    client, engine, collector, token, _ = ingest_setup
+    at = datetime.now(UTC)
+    record = dict(
+        scope_identity="Dept",
+        quality="PARTIAL",
+        file_count=5,
+        directory_count=1,
+        total_bytes=100,
+        zero_byte_count=2,
+        long_paths=[dict(relative_path="synthetic-long-path", path_length=240, bucket="240+")],
+        large_files=[dict(relative_path="large", size_bytes=100, last_write_at=at.isoformat())],
+        temp_artifacts=[dict(classification="STALE", file_count=2, total_bytes=20)],
+    )
+    assert (
+        client.post(
+            "/api/v1/ingest/hygiene",
+            headers={"Authorization": "Bearer " + token},
+            json=batch(collector, [record], at=at),
+        ).status_code
+        == 202
+    )
+    with engine.connect() as connection:
+        stats = connection.execute(select(metadata.tables["scope_stats"])).one()
+        assert stats.zero_byte_count == 2
+        for table in ["long_path_samples", "large_file_samples", "temp_artifact_stats"]:
+            assert connection.scalar(select(func.count()).select_from(metadata.tables[table])) == 1
+
+
+def test_acl_preserves_ace_order(ingest_setup):
+    client, engine, collector, token, _ = ingest_setup
+    record = dict(
+        scope_identity="Dept",
+        dacl_fingerprint="c" * 64,
+        inheritance_enabled=True,
+        aces=[
+            dict(principal_identity="same-principal", ace_type=kind, access_mask=1, inherited=False)
+            for kind in ["DENY", "ALLOW"]
+        ],
+    )
+    assert (
+        client.post(
+            "/api/v1/ingest/acl",
+            headers={"Authorization": "Bearer " + token},
+            json=batch(collector, [record]),
+        ).status_code
+        == 202
+    )
+    aces = metadata.tables["acl_aces"]
+    with engine.connect() as connection:
+        rows = connection.execute(select(aces).order_by(aces.c.ordinal)).all()
+        assert [row.ace_type for row in rows] == ["DENY", "ALLOW"]
+        assert [row.ordinal for row in rows] == [0, 1]
+
+
+def test_snapshot_ordering_is_independent_of_other_snapshots_in_job(ingest_setup):
+    client, engine, collector, token, _ = ingest_setup
+    at = datetime.now(UTC)
+    records = [("a", "UNKNOWN", 20), ("b", "UNKNOWN", 10), ("a", "VSS_QUIESCED", 15)]
+    for index, (identity, consistency, lag) in enumerate(records):
+        record = dict(
+            kind="backup",
+            job_identity="same-job",
+            workload_identity="vm",
+            state="COMPLETE",
+            started_at=(at - timedelta(seconds=100)).isoformat(),
+            finished_at=(at - timedelta(seconds=60)).isoformat(),
+            snapshot_identity=identity,
+            snapshot_created_at=(at - timedelta(seconds=80)).isoformat(),
+            consistency=consistency,
+        )
+        assert (
+            client.post(
+                "/api/v1/ingest/recovery",
+                headers={"Authorization": "Bearer " + token},
+                json=batch(collector, [record], str(index), at - timedelta(seconds=lag)),
+            ).status_code
+            == 202
+        )
+    snapshots = metadata.tables["backup_snapshots"]
+    with engine.connect() as connection:
+        row = connection.execute(
+            select(snapshots).where(snapshots.c.snapshot_identity == "a")
+        ).one()
+        assert row.consistency == "VSS_QUIESCED"

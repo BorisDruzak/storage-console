@@ -9,6 +9,7 @@ vss_snapshots = Table(
     reference("volume_id", "volumes.id"),
     Column("snapshot_identity", String(255), nullable=False),
     timestamp("created_at"),
+    timestamp("observed_at"),
     Column("state", String(32), nullable=False),
     UniqueConstraint("volume_id", "snapshot_identity", name="uq_vss_identity"),
 )
@@ -37,6 +38,7 @@ backup_jobs = Table(
     Column("state", String(32), nullable=False),
     timestamp("started_at"),
     timestamp("finished_at", nullable=True),
+    timestamp("observed_at"),
     Column("error_code", String(64)),
     UniqueConstraint("source_node_id", "job_identity", name="uq_backup_job_identity"),
 )
@@ -47,6 +49,7 @@ backup_snapshots = Table(
     reference("backup_job_id", "backup_jobs.id"),
     Column("snapshot_identity", String(255), nullable=False),
     timestamp("created_at"),
+    timestamp("observed_at"),
     Column("consistency", String(32), nullable=False),
     Column("storage_reference", Text),
     UniqueConstraint("backup_job_id", "snapshot_identity", name="uq_backup_snapshot_identity"),

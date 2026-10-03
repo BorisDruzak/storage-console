@@ -30,6 +30,7 @@ jobs:
       - run: pip install -r requirements.lock
       - run: ruff check .
       - run: mypy
+      - run: python -m packages.contracts.export_openapi --check
       - run: alembic upgrade head
       - run: alembic check
       - run: pytest --cov=apps --cov=packages --cov-report=xml

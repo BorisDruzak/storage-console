@@ -4,10 +4,12 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
+from packages.contracts.acl import ACLRecord
 from packages.contracts.changes import ChangeRecord
 from packages.contracts.common import BatchEnvelope
 from packages.contracts.heartbeat import HeartbeatRecord
 from packages.contracts.inventory import FileObjectRecord, VolumeRecord
+from packages.contracts.recovery import BackupRecord
 from packages.contracts.telemetry import TelemetryRecord
 
 
@@ -128,4 +130,37 @@ def test_contract_values_fit_postgresql_columns():
             file_id="42",
             event_type="WRITE",
             reason_mask="x" * 65,
+        )
+
+
+def test_recovery_rejects_contradictory_or_orphaned_evidence():
+    at = datetime(2026, 1, 1, tzinfo=UTC)
+    base = dict(
+        occurred_at=at,
+        job_identity="job",
+        workload_identity="vm",
+        state="COMPLETE",
+        started_at=at - timedelta(seconds=60),
+        finished_at=at,
+    )
+    invalid = [
+        dict(finished_at=at - timedelta(seconds=61)),
+        dict(verification_state="COMPLETE", verified_at=at),
+        dict(measured_rto_seconds=20),
+        dict(snapshot_identity="snapshot"),
+    ]
+    for fields in invalid:
+        with pytest.raises(ValidationError):
+            BackupRecord(**dict(base, **fields))
+
+
+def test_acl_object_identity_is_a_complete_pair():
+    with pytest.raises(ValidationError):
+        ACLRecord(
+            occurred_at=datetime.now(UTC),
+            scope_identity="Dept",
+            file_id="42",
+            dacl_fingerprint="a" * 64,
+            inheritance_enabled=True,
+            aces=[],
         )
