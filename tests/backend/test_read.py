@@ -36,6 +36,9 @@ def test_unseen_empty_and_missing_data_are_explicit_unknown(ingest_setup):
     overview = client.get("/api/v1/overview")
     assert overview.status_code == 200
     assert overview.json()["counts"]["volumes"] == 0
+    assert overview.json()["overall_state"] == "UNKNOWN"
+    assert overview.json()["freshness"]["state"] == "UNKNOWN"
+    assert overview.json()["freshness"]["unknown_source_count"] == 1
     assert len(overview.json()["domains"]) == 10
     assert all(domain["state"] == "UNKNOWN" for domain in overview.json()["domains"])
     fresh = client.get(f"/api/v1/sources/{source}/freshness").json()
@@ -131,6 +134,7 @@ def test_domain_health_reads_fresh_policy_findings_and_demotes_stale_evidence(in
         )
 
     assert capacity()["state"] == "HEALTHY"
+    assert client.get("/api/v1/overview").json()["overall_state"] == "UNKNOWN"
     with engine.begin() as connection:
         connection.execute(
             update(health_signals)
@@ -307,3 +311,74 @@ def test_fresh_collector_does_not_mask_another_enabled_collector(ingest_setup, m
     assert data["state"] == expected
     assert data["collector_count"] == 2
     assert data["bottleneck_collector_id"] == str(other)
+
+
+def test_overview_freshness_includes_sources_outside_first_page(ingest_setup):
+    client, engine, collector, token, _ = ingest_setup
+    upload(client, collector, token, datetime.now(UTC))
+    with engine.begin() as connection:
+        for index in range(55):
+            connection.execute(
+                insert(source_nodes).values(
+                    source_type="PBS",
+                    hostname=f"synthetic-extra-{index}",
+                    instance_id=str(uuid4()),
+                )
+            )
+    summary = client.get("/api/v1/overview").json()["freshness"]
+    assert summary["source_count"] == 56
+    assert summary["current_source_count"] == 1
+    assert summary["unknown_source_count"] == 55
+    assert summary["stale_source_count"] == 0
+    assert summary["state"] == "UNKNOWN"
+
+
+@pytest.mark.parametrize(
+    "age,state", [(0, "HEALTHY"), (90, "OBSERVE"), (150, "WARNING"), (600, "CRITICAL")]
+)
+def test_overview_source_freshness_is_independent_from_operational_health(ingest_setup, age, state):
+    client, _, collector, token, _ = ingest_setup
+    upload(client, collector, token, datetime.now(UTC) - timedelta(seconds=age))
+    data = client.get("/api/v1/overview").json()
+    assert data["overall_state"] == "UNKNOWN"
+    assert data["freshness"]["state"] == state
+    assert data["freshness"]["stale_source_count"] == int(age > 0)
+
+
+def test_overall_critical_does_not_hide_unknown_domains(ingest_setup):
+    client, engine, collector, token, source = ingest_setup
+    upload(client, collector, token, datetime.now(UTC))
+    signal, policy = uuid4(), uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            insert(health_policies).values(
+                id=policy,
+                name="synthetic",
+                domain="CAPACITY",
+                policy_type="CAPACITY",
+                parameters={},
+            )
+        )
+        connection.execute(
+            insert(health_signals).values(
+                id=signal,
+                source_node_id=source,
+                domain="CAPACITY",
+                signal_type="FREE_SPACE",
+                measurement={},
+                occurred_at=datetime.now(UTC),
+            )
+        )
+        connection.execute(
+            insert(health_findings).values(
+                signal_id=signal,
+                policy_id=policy,
+                state="CRITICAL",
+                cause_class="POLICY",
+                fingerprint="c" * 64,
+                evaluated_at=datetime.now(UTC),
+            )
+        )
+    data = client.get("/api/v1/overview").json()
+    assert data["overall_state"] == "CRITICAL"
+    assert any(domain["state"] == "UNKNOWN" for domain in data["domains"])

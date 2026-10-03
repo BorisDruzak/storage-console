@@ -71,8 +71,20 @@ class Counts(Contract):
     filesystem_objects: NonNegative
 
 
+class FreshnessSummary(Contract):
+    state: HealthState
+    source_count: NonNegative
+    current_source_count: NonNegative
+    stale_source_count: NonNegative
+    unknown_source_count: NonNegative
+    last_received_at: AwareDatetime | None
+    oldest_event_at: AwareDatetime | None
+
+
 class Overview(Domains):
     counts: Counts
+    overall_state: HealthState
+    freshness: FreshnessSummary
 
 
 class Volume(Contract):

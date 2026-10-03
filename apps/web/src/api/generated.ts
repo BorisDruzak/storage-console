@@ -194,6 +194,26 @@ export interface components {
             /** Unknown Collector Count */
             unknown_collector_count: number;
         };
+        /** FreshnessSummary */
+        FreshnessSummary: {
+            /** Current Source Count */
+            current_source_count: number;
+            /** Last Received At */
+            last_received_at: string | null;
+            /** Oldest Event At */
+            oldest_event_at: string | null;
+            /** Source Count */
+            source_count: number;
+            /** Stale Source Count */
+            stale_source_count: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "HEALTHY" | "OBSERVE" | "WARNING" | "CRITICAL" | "UNKNOWN" | "NOT_APPLICABLE";
+            /** Unknown Source Count */
+            unknown_source_count: number;
+        };
         /** Overview */
         Overview: {
             counts: components["schemas"]["Counts"];
@@ -204,6 +224,12 @@ export interface components {
              * Format: date-time
              */
             evaluated_at: string;
+            freshness: components["schemas"]["FreshnessSummary"];
+            /**
+             * Overall State
+             * @enum {string}
+             */
+            overall_state: "HEALTHY" | "OBSERVE" | "WARNING" | "CRITICAL" | "UNKNOWN" | "NOT_APPLICABLE";
         };
         /** Page[Share] */
         Page_Share_: {

@@ -69,7 +69,14 @@
     "evaluated": "Данные на {{at}}",
     "unknownCoverage": "Нет актуальных данных: {{unknown}} из {{total}}",
     "warnings": "Предупреждения: {{count}}",
-    "critical": "Критические состояния: {{count}}"
+    "critical": "Критические состояния: {{count}}",
+    "overall": "Общее состояние",
+    "unknownDomains": "Нет данных по разделам: {{count}} из {{total}}",
+    "currentSources": "Актуальные источники: {{count}} из {{total}}",
+    "staleSources": "Устаревшие источники: {{count}}",
+    "unknownSources": "Без актуальных данных: {{count}}",
+    "lastReceived": "Последний приём",
+    "oldestEvent": "Самое раннее известное событие"
   },
   "domains": {
     "TELEMETRY": "Телеметрия",

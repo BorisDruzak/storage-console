@@ -24,7 +24,7 @@ from packages.shared.models.core import (
     volumes,
 )
 
-from .overview import domain_health
+from .overview import domain_health, freshness_summary, overall_state
 from .sources import database_time, freshness, require_source, snapshot, source, source_data
 from .storage import share, volume
 
@@ -46,6 +46,7 @@ def router(engine: Engine) -> APIRouter:
                 table.name: connection.scalar(select(func.count()).select_from(table)) or 0
                 for table in (source_nodes, volumes, shares, filesystem_objects)
             }
+            domains = domain_health(connection)
             return Overview(
                 counts=Counts(
                     sources=counts["source_nodes"],
@@ -53,7 +54,9 @@ def router(engine: Engine) -> APIRouter:
                     shares=counts["shares"],
                     filesystem_objects=counts["filesystem_objects"],
                 ),
-                domains=domain_health(connection),
+                domains=domains,
+                overall_state=overall_state(domains),
+                freshness=freshness_summary(connection),
                 evaluated_at=database_time(connection),
             )
 

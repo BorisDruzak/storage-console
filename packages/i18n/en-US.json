@@ -69,7 +69,14 @@
     "evaluated": "Evidence at {{at}}",
     "unknownCoverage": "No current evidence: {{unknown}} of {{total}}",
     "warnings": "Warnings: {{count}}",
-    "critical": "Critical findings: {{count}}"
+    "critical": "Critical findings: {{count}}",
+    "overall": "Overall health",
+    "unknownDomains": "Domains without evidence: {{count}} of {{total}}",
+    "currentSources": "Current sources: {{count}} of {{total}}",
+    "staleSources": "Stale sources: {{count}}",
+    "unknownSources": "Without current evidence: {{count}}",
+    "lastReceived": "Latest receipt",
+    "oldestEvent": "Earliest known event"
   },
   "domains": {
     "TELEMETRY": "Telemetry",

@@ -30,7 +30,7 @@ test('failed readiness displays error with a retry action', async () => {
   vi.unstubAllGlobals();
 });
 
-const emptyOverview = { evaluated_at: '2026-10-04T00:00:00Z', counts: { sources: 0, volumes: 0, shares: 0, filesystem_objects: 0 }, domains: [] };
+const emptyOverview = { overall_state: 'UNKNOWN', freshness: {state:'UNKNOWN',source_count:0,current_source_count:0,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null}, evaluated_at: '2026-10-04T00:00:00Z', counts: { sources: 0, volumes: 0, shares: 0, filesystem_objects: 0 }, domains: [] };
 const emptyPage = { items: [], total: 0, limit: 50, offset: 0 };
 function mockApi() {
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(url === '/ready' ? {status:'ok'} : url.includes('/overview') ? emptyOverview : emptyPage)))));
@@ -88,10 +88,10 @@ test('deep links restore sources and bounded offset from URL', async () => {
 });
 
 test('overview renders persisted critical domain and unknown coverage', async () => {
-  const data = { ...emptyOverview, domains: [{ domain: 'CAPACITY', state: 'CRITICAL', source_count: 2, covered_source_count: 1, unknown_source_count: 1 }] };
+  const data = { ...emptyOverview, overall_state: 'CRITICAL', domains: [{ domain: 'CAPACITY', state: 'CRITICAL', source_count: 2, covered_source_count: 1, unknown_source_count: 1 }] };
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(url === '/ready' ? {status:'ok'} : data)))));
   await show();
-  expect(await screen.findByText('Критично')).toBeInTheDocument();
+  expect(await screen.findAllByText('Критично')).toHaveLength(2);
   expect(screen.getByRole('heading', { name: 'Ёмкость' })).toBeInTheDocument();
   expect(screen.getByText('Нет актуальных данных: 1 из 2')).toBeInTheDocument();
 });
@@ -102,4 +102,13 @@ test('read errors remain errors while readiness is available', async () => {
   expect(await screen.findByText('API доступен')).toBeInTheDocument();
   expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить данные');
   expect(screen.queryByText('Исправно')).not.toBeInTheDocument();
+});
+
+test('overall health and freshness remain separate with incomplete evidence', async () => {
+  const data = { ...emptyOverview, overall_state: 'UNKNOWN', freshness: {state:'HEALTHY',source_count:1,current_source_count:1,stale_source_count:0,unknown_source_count:0,last_received_at:'2026-10-04T00:00:00Z',oldest_event_at:'2026-10-04T00:00:00Z'} };
+  vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(JSON.stringify(url === '/ready' ? {status:'ok'} : data)))));
+  await show();
+  expect(await screen.findByRole('heading',{name:'Общее состояние'})).toBeInTheDocument();
+  expect(screen.getByRole('heading',{name:'Свежесть данных'})).toBeInTheDocument();
+  expect(screen.getByText('Актуальные источники: 1 из 1')).toBeInTheDocument();
 });

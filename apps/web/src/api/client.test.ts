@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const overview = {
+  overall_state: 'UNKNOWN', freshness: {state:'UNKNOWN',source_count:0,current_source_count:0,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null},
   evaluated_at: '2026-10-04T00:00:00Z', domains: [],
   counts: { sources: 0, volumes: 0, shares: 0, filesystem_objects: 0 },
 };

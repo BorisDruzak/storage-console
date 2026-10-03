@@ -1501,6 +1501,82 @@
         "title": "Freshness",
         "type": "object"
       },
+      "FreshnessSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "current_source_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Current Source Count",
+            "type": "integer"
+          },
+          "last_received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Received At"
+          },
+          "oldest_event_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Event At"
+          },
+          "source_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Source Count",
+            "type": "integer"
+          },
+          "stale_source_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Stale Source Count",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "HEALTHY",
+              "OBSERVE",
+              "WARNING",
+              "CRITICAL",
+              "UNKNOWN",
+              "NOT_APPLICABLE"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "unknown_source_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Unknown Source Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "state",
+          "source_count",
+          "current_source_count",
+          "stale_source_count",
+          "unknown_source_count",
+          "last_received_at",
+          "oldest_event_at"
+        ],
+        "title": "FreshnessSummary",
+        "type": "object"
+      },
       "HeartbeatRecord": {
         "additionalProperties": false,
         "properties": {
@@ -1697,12 +1773,29 @@
             "format": "date-time",
             "title": "Evaluated At",
             "type": "string"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/FreshnessSummary"
+          },
+          "overall_state": {
+            "enum": [
+              "HEALTHY",
+              "OBSERVE",
+              "WARNING",
+              "CRITICAL",
+              "UNKNOWN",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Overall State",
+            "type": "string"
           }
         },
         "required": [
           "domains",
           "evaluated_at",
-          "counts"
+          "counts",
+          "overall_state",
+          "freshness"
         ],
         "title": "Overview",
         "type": "object"

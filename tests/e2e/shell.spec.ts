@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/ready', route => route.fulfill({contentType:'application/json',body:'{"status":"ok"}'}));
-  await page.route('**/api/v1/**', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(route.request().url().includes('/overview') ? { evaluated_at: '2026-10-04T00:00:00Z', counts: {sources:0,volumes:0,shares:0,filesystem_objects:0}, domains: [] } : {items:[],total:0,limit:50,offset:0}) }));
+  await page.route('**/api/v1/**', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(route.request().url().includes('/overview') ? { overall_state: 'UNKNOWN', freshness: {state:'UNKNOWN',source_count:0,current_source_count:0,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null}, evaluated_at: '2026-10-04T00:00:00Z', counts: {sources:0,volumes:0,shares:0,filesystem_objects:0}, domains: [] } : {items:[],total:0,limit:50,offset:0}) }));
 });
 
 test('Russian shell retains unknown storage health across navigation', async ({ page }) => {

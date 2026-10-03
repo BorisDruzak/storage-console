@@ -4,7 +4,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.engine import Connection
 
 from packages.contracts.common import HealthState
-from packages.contracts.read import DOMAINS, DomainHealth
+from packages.contracts.read import DOMAINS, DomainHealth, FreshnessSummary
 from packages.shared.models.core import source_nodes
 from packages.shared.models.health import health_findings, health_policies, health_signals
 
@@ -12,6 +12,48 @@ from .sources import source_data
 
 STATES = ("NOT_APPLICABLE", "HEALTHY", "OBSERVE", "UNKNOWN", "WARNING", "CRITICAL")
 UNKNOWN = STATES.index("UNKNOWN") + 1
+
+
+def overall_state(domains: list[DomainHealth]) -> HealthState:
+    return cast(
+        HealthState, max((item.state for item in domains), key=STATES.index, default="UNKNOWN")
+    )
+
+
+def freshness_summary(connection: Connection) -> FreshnessSummary:
+    sources = source_data()
+    rows = (
+        connection.execute(
+            select(sources.c.freshness_state, func.count().label("count")).group_by(
+                sources.c.freshness_state
+            )
+        )
+        .mappings()
+        .all()
+    )
+    counts = {row["freshness_state"]: row["count"] for row in rows}
+    total = sum(counts.values())
+    unknown = counts.get("UNKNOWN", 0)
+    state = "UNKNOWN" if not total or unknown else max(counts, key=STATES.index)
+    times = (
+        connection.execute(
+            select(
+                func.max(sources.c.last_success_at).label("received"),
+                func.min(sources.c.last_event_at).label("event"),
+            )
+        )
+        .mappings()
+        .one()
+    )
+    return FreshnessSummary(
+        state=cast(HealthState, state),
+        source_count=total,
+        current_source_count=counts.get("HEALTHY", 0),
+        stale_source_count=sum(counts.get(key, 0) for key in ("OBSERVE", "WARNING", "CRITICAL")),
+        unknown_source_count=unknown,
+        last_received_at=times["received"],
+        oldest_event_at=times["event"],
+    )
 
 
 def domain_health(connection: Connection) -> list[DomainHealth]:
