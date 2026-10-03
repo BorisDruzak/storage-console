@@ -82,6 +82,12 @@
 
 ## Далее
 
+Wave0C Task1: typed GET client и runtime response validation из published OpenAPI реализованы.
+11 transport tests (15 frontend tests total), cancellation/timeout/safe errors,
+bounded pages/source filters, query deduplication, Cyrillic/UNC preservation PASS.
+Generated types/schema drift и negative control PASS; npm ci/lint/types/build/audit PASS.
+Live page wiring и complete domain UI ещё впереди; foundation shell пока сохраняется.
+
 Wave 0B backend/contracts/domain DB/queue реализованы; external Sonar gate не подтверждён.
 Wave 0C полный shell/pages/typed domain API и Wave 0D production deployment/runbook не завершены.
 Wave 1–8 collectors и operational/discovery modules не реализованы.

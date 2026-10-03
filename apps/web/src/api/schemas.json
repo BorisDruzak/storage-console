@@ -1,0 +1,617 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ApiError": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "detail"
+      ],
+      "title": "ApiError",
+      "type": "object"
+    },
+    "Counts": {
+      "additionalProperties": false,
+      "properties": {
+        "filesystem_objects": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Filesystem Objects",
+          "type": "integer"
+        },
+        "shares": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Shares",
+          "type": "integer"
+        },
+        "sources": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Sources",
+          "type": "integer"
+        },
+        "volumes": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Volumes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sources",
+        "volumes",
+        "shares",
+        "filesystem_objects"
+      ],
+      "title": "Counts",
+      "type": "object"
+    },
+    "DomainHealth": {
+      "additionalProperties": false,
+      "properties": {
+        "covered_source_count": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Covered Source Count",
+          "type": "integer"
+        },
+        "domain": {
+          "title": "Domain",
+          "type": "string"
+        },
+        "source_count": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Source Count",
+          "type": "integer"
+        },
+        "state": {
+          "enum": [
+            "HEALTHY",
+            "OBSERVE",
+            "WARNING",
+            "CRITICAL",
+            "UNKNOWN",
+            "NOT_APPLICABLE"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "unknown_source_count": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Unknown Source Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "domain",
+        "state",
+        "source_count",
+        "covered_source_count",
+        "unknown_source_count"
+      ],
+      "title": "DomainHealth",
+      "type": "object"
+    },
+    "Domains": {
+      "additionalProperties": false,
+      "properties": {
+        "domains": {
+          "items": {
+            "$ref": "#/$defs/DomainHealth"
+          },
+          "title": "Domains",
+          "type": "array"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domains",
+        "evaluated_at"
+      ],
+      "title": "Domains",
+      "type": "object"
+    },
+    "Freshness": {
+      "additionalProperties": false,
+      "properties": {
+        "age_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Age Seconds"
+        },
+        "bottleneck_collector_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Bottleneck Collector Id"
+        },
+        "collector_count": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Collector Count",
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cursor"
+        },
+        "expected_cadence_seconds": {
+          "title": "Expected Cadence Seconds",
+          "type": "integer"
+        },
+        "lag_seconds": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Lag Seconds"
+        },
+        "last_collector_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Collector At"
+        },
+        "last_event_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Event At"
+        },
+        "last_success_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Success At"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "HEALTHY",
+            "OBSERVE",
+            "WARNING",
+            "CRITICAL",
+            "UNKNOWN",
+            "NOT_APPLICABLE"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "unknown_collector_count": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Unknown Collector Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "state",
+        "reason",
+        "expected_cadence_seconds",
+        "last_success_at",
+        "last_event_at",
+        "last_collector_at",
+        "age_seconds",
+        "cursor",
+        "lag_seconds",
+        "collector_count",
+        "unknown_collector_count",
+        "bottleneck_collector_id"
+      ],
+      "title": "Freshness",
+      "type": "object"
+    },
+    "Overview": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/Counts"
+        },
+        "domains": {
+          "items": {
+            "$ref": "#/$defs/DomainHealth"
+          },
+          "title": "Domains",
+          "type": "array"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domains",
+        "evaluated_at",
+        "counts"
+      ],
+      "title": "Overview",
+      "type": "object"
+    },
+    "Page_Share_": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Share"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        },
+        "total": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "title": "Page[Share]",
+      "type": "object"
+    },
+    "Page_Source_": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Source"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        },
+        "total": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "title": "Page[Source]",
+      "type": "object"
+    },
+    "Page_Volume_": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Volume"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        },
+        "total": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "title": "Page[Volume]",
+      "type": "object"
+    },
+    "Share": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "protocol": {
+          "title": "Protocol",
+          "type": "string"
+        },
+        "quality": {
+          "enum": [
+            "COMPLETE",
+            "PARTIAL",
+            "STALE",
+            "ESTIMATED",
+            "UNAVAILABLE"
+          ],
+          "title": "Quality",
+          "type": "string"
+        },
+        "relative_path": {
+          "title": "Relative Path",
+          "type": "string"
+        },
+        "source_node_id": {
+          "format": "uuid",
+          "title": "Source Node Id",
+          "type": "string"
+        },
+        "volume_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Volume Id"
+        }
+      },
+      "required": [
+        "id",
+        "source_node_id",
+        "volume_id",
+        "name",
+        "relative_path",
+        "protocol",
+        "last_seen_at",
+        "quality"
+      ],
+      "title": "Share",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "fqdn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fqdn"
+        },
+        "freshness": {
+          "$ref": "#/$defs/Freshness"
+        },
+        "hostname": {
+          "title": "Hostname",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "instance_id": {
+          "title": "Instance Id",
+          "type": "string"
+        },
+        "source_type": {
+          "enum": [
+            "FILESERVER",
+            "PVE",
+            "PBS"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_type",
+        "hostname",
+        "fqdn",
+        "instance_id",
+        "created_at",
+        "freshness"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "Volume": {
+      "additionalProperties": false,
+      "properties": {
+        "filesystem": {
+          "title": "Filesystem",
+          "type": "string"
+        },
+        "first_seen_at": {
+          "format": "date-time",
+          "title": "First Seen At",
+          "type": "string"
+        },
+        "free_bytes": {
+          "anyOf": [
+            {
+              "maximum": 9223372036854776000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Free Bytes"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Label"
+        },
+        "last_seen_at": {
+          "format": "date-time",
+          "title": "Last Seen At",
+          "type": "string"
+        },
+        "mount_aliases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Mount Aliases",
+          "type": "array"
+        },
+        "quality": {
+          "enum": [
+            "COMPLETE",
+            "PARTIAL",
+            "STALE",
+            "ESTIMATED",
+            "UNAVAILABLE"
+          ],
+          "title": "Quality",
+          "type": "string"
+        },
+        "source_node_id": {
+          "format": "uuid",
+          "title": "Source Node Id",
+          "type": "string"
+        },
+        "total_bytes": {
+          "anyOf": [
+            {
+              "maximum": 9223372036854776000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Total Bytes"
+        },
+        "unique_identity": {
+          "title": "Unique Identity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_node_id",
+        "unique_identity",
+        "filesystem",
+        "label",
+        "total_bytes",
+        "free_bytes",
+        "first_seen_at",
+        "last_seen_at",
+        "mount_aliases",
+        "quality"
+      ],
+      "title": "Volume",
+      "type": "object"
+    }
+  }
+}

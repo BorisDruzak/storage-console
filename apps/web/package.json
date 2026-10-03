@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "api:generate": "node scripts/generate-api.mjs",
+    "api:check": "node scripts/generate-api.mjs --check",
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run --coverage",
@@ -13,6 +15,8 @@
   "dependencies": {
     "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-table": "^8.21.0",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "i18next": "^25.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -29,6 +33,7 @@
     "eslint": "^9.20.0",
     "eslint-plugin-i18next": "^6.1.0",
     "jsdom": "^26.0.0",
+    "openapi-typescript": "7.13.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.24.0",
     "vite": "^6.1.0",

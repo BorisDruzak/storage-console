@@ -10,5 +10,5 @@ export default tseslint.config(
       'jsx-attributes': { exclude: ['className', 'style', 'type', 'key', 'id', 'role', 'aria-current'] },
     }],
   } },
-  { files: ['src/*.test.{ts,tsx}'], rules: { 'i18next/no-literal-string': 'off' } },
+  { files: ['src/**/*.test.{ts,tsx}'], rules: { 'i18next/no-literal-string': 'off' } },
 );
