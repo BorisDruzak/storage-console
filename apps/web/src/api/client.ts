@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 import type { components } from './generated';
 import validators from './validators.generated.mjs';
+import { recordEvidence } from './evidence';
 
 type Models = components['schemas'];
 type ResponseName = 'Overview' | 'Domains' | 'Source' | 'Freshness' | 'Page_Source_' | 'Page_Volume_' | 'Page_Share_';
@@ -23,19 +24,26 @@ function decode<N extends ResponseName>(name: N, value: unknown): Models[N] {
 }
 
 async function get<N extends ResponseName>(path: string, name: N, signal?: AbortSignal): Promise<Models[N]> {
+  const startedAt=performance.now();
   const timeout = AbortSignal.timeout(10000);
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   try {
     const response = await fetch(`/api/v1${path}`, {
-      method: 'GET', signal: combined, credentials: 'same-origin', headers: { Accept: 'application/json' },
+      method: 'GET', signal: combined, cache:'no-store', credentials: 'same-origin', headers: { Accept: 'application/json' },
     });
     if (!response.ok) throw new ApiError(response.status === 404 ? 'NOT_FOUND' :
       response.status === 401 || response.status === 403 ? 'AUTH_REQUIRED' : 'API_UNAVAILABLE');
+    const lifetime=response.headers.get('X-Evidence-Valid-For-Ms');
+    if (lifetime===null || !/^(0|[1-9][0-9]{0,4})$/.test(lifetime) || Number(lifetime)>35000) throw new ApiError('INVALID_RESPONSE');
     const text = await response.text();
     if (text.length > 2 * 1024 * 1024) throw new ApiError('INVALID_RESPONSE');
     let value: unknown;
     try { value = JSON.parse(text); } catch { throw new ApiError('INVALID_RESPONSE'); }
-    return decode(name, value);
+    const result=decode(name, value);
+    // Monotonic request start includes network, server and JSON decode elapsed
+    // time. Server/client wall-clock differences cannot extend evidence lifetime.
+    recordEvidence(result,startedAt,Number(lifetime));
+    return result;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (signal?.aborted) throw new ApiError('CANCELLED');
@@ -67,19 +75,20 @@ export const api = {
 };
 
 export const queries = {
-  overview: () => queryOptions({ queryKey: ['overview'], queryFn: ({ signal }) => api.overview(signal), staleTime: 15000, refetchInterval: 30000 }),
-  domains: () => queryOptions({ queryKey: ['domains'], queryFn: ({ signal }) => api.domains(signal), staleTime: 15000, refetchInterval: 30000 }),
+  // Every response carries a new monotonic validity deadline, even for identical JSON.
+  overview: () => queryOptions({ queryKey: ['overview'], queryFn: ({ signal }) => api.overview(signal), structuralSharing: false, staleTime: 15000, refetchInterval: 30000 }),
+  domains: () => queryOptions({ queryKey: ['domains'], queryFn: ({ signal }) => api.domains(signal), structuralSharing: false, staleTime: 15000, refetchInterval: 30000 }),
   sources: (options: PageOptions = {}) => {
     const filters = { ...options };
-    return queryOptions({ queryKey: ['sources', filters], queryFn: ({ signal }) => api.sources(filters, signal), staleTime: 15000, refetchInterval: 30000 });
+    return queryOptions({ queryKey: ['sources', filters], queryFn: ({ signal }) => api.sources(filters, signal), structuralSharing: false, staleTime: 15000, refetchInterval: 30000 });
   },
-  source: (id: string) => queryOptions({ queryKey: ['source', id], queryFn: ({ signal }) => api.source(id, signal), staleTime: 15000, refetchInterval: 30000 }),
+  source: (id: string) => queryOptions({ queryKey: ['source', id], queryFn: ({ signal }) => api.source(id, signal), structuralSharing: false, staleTime: 15000, refetchInterval: 30000 }),
   volumes: (options: StoragePageOptions = {}) => {
     const filters = { ...options };
-    return queryOptions({ queryKey: ['volumes', filters], queryFn: ({ signal }) => api.volumes(filters, signal), staleTime: 15000, refetchInterval: 30000 });
+    return queryOptions({ queryKey: ['volumes', filters], queryFn: ({ signal }) => api.volumes(filters, signal), structuralSharing: false, staleTime: 15000, refetchInterval: 30000 });
   },
   shares: (options: StoragePageOptions = {}) => {
     const filters = { ...options };
-    return queryOptions({ queryKey: ['shares', filters], queryFn: ({ signal }) => api.shares(filters, signal), staleTime: 15000, refetchInterval: 30000 });
+    return queryOptions({ queryKey: ['shares', filters], queryFn: ({ signal }) => api.shares(filters, signal), structuralSharing: false, staleTime: 15000, refetchInterval: 30000 });
   },
 };

@@ -48,7 +48,8 @@
     "refreshing": "Refreshing…",
     "filteredEmpty": "No records match the selected filters",
     "showFullValue": "Full value",
-    "skip": "Skip to content"
+    "skip": "Skip to content",
+    "expired": "Evidence expired. Refresh to see current state."
   },
   "auth": {
     "signIn": "Sign in",

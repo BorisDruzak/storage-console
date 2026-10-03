@@ -2488,7 +2488,23 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              },
+              "X-Evidence-Valid-For-Ms": {
+                "description": "Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time.",
+                "schema": {
+                  "maximum": 35000.0,
+                  "minimum": 0.0,
+                  "type": "integer"
+                }
+              }
+            }
           },
           "404": {
             "content": {
@@ -3313,7 +3329,23 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              },
+              "X-Evidence-Valid-For-Ms": {
+                "description": "Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time.",
+                "schema": {
+                  "maximum": 35000.0,
+                  "minimum": 0.0,
+                  "type": "integer"
+                }
+              }
+            }
           },
           "404": {
             "content": {
@@ -3407,7 +3439,23 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              },
+              "X-Evidence-Valid-For-Ms": {
+                "description": "Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time.",
+                "schema": {
+                  "maximum": 35000,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              }
+            }
           },
           "404": {
             "content": {
@@ -3484,7 +3532,23 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              },
+              "X-Evidence-Valid-For-Ms": {
+                "description": "Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time.",
+                "schema": {
+                  "maximum": 35000,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              }
+            }
           },
           "404": {
             "content": {
@@ -3547,7 +3611,23 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              },
+              "X-Evidence-Valid-For-Ms": {
+                "description": "Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time.",
+                "schema": {
+                  "maximum": 35000,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              }
+            }
           },
           "404": {
             "content": {
@@ -3610,7 +3690,23 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              },
+              "X-Evidence-Valid-For-Ms": {
+                "description": "Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time.",
+                "schema": {
+                  "maximum": 35000,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              }
+            }
           },
           "404": {
             "content": {
@@ -3704,7 +3800,23 @@
                 }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              },
+              "X-Evidence-Valid-For-Ms": {
+                "description": "Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time.",
+                "schema": {
+                  "maximum": 35000,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              }
+            }
           },
           "404": {
             "content": {

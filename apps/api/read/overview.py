@@ -2,6 +2,8 @@ from typing import cast
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.engine import Connection
+from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.selectable import CTE, Subquery
 
 from packages.contracts.common import HealthState
 from packages.contracts.read import DOMAINS, DomainHealth, FreshnessSummary
@@ -56,9 +58,8 @@ def freshness_summary(connection: Connection) -> FreshnessSummary:
     )
 
 
-def domain_health(connection: Connection) -> list[DomainHealth]:
-    sources = source_data()
-    latest = (
+def latest_findings() -> Subquery:
+    return (
         select(
             health_findings.c.state,
             health_findings.c.evaluated_at,
@@ -82,7 +83,10 @@ def domain_health(connection: Connection) -> list[DomainHealth]:
         .join(health_policies, health_policies.c.id == health_findings.c.policy_id)
         .subquery()
     )
-    invalid = or_(
+
+
+def invalid_finding(latest: Subquery, sources: CTE) -> ColumnElement[bool]:
+    return or_(
         sources.c.freshness_state != "HEALTHY",
         latest.c.domain != latest.c.policy_domain,
         latest.c.occurred_at > func.now(),
@@ -92,6 +96,12 @@ def domain_health(connection: Connection) -> list[DomainHealth]:
         func.extract("epoch", func.now() - latest.c.evaluated_at)
         > sources.c.expected_cadence_seconds,
     )
+
+
+def domain_health(connection: Connection) -> list[DomainHealth]:
+    sources = source_data()
+    latest = latest_findings()
+    invalid = invalid_finding(latest, sources)
     rank = case(
         (invalid, UNKNOWN),
         else_=case(
@@ -141,3 +151,18 @@ def domain_health(connection: Connection) -> list[DomainHealth]:
             )
         )
     return result
+
+
+def domain_validity(connection: Connection) -> float | None:
+    sources = source_data()
+    latest = latest_findings()
+    remaining = sources.c.expected_cadence_seconds - func.greatest(
+        func.extract("epoch", func.now() - latest.c.occurred_at),
+        func.extract("epoch", func.now() - latest.c.evaluated_at),
+    )
+    value = connection.scalar(
+        select(func.min(remaining))
+        .select_from(latest.join(sources, sources.c.id == latest.c.source_node_id))
+        .where(latest.c.position == 1, invalid_finding(latest, sources).is_(False))
+    )
+    return float(value) if value is not None else None

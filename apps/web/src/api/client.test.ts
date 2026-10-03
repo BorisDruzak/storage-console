@@ -1,3 +1,4 @@
+import { ReadResponse } from '../../test-fixtures/http';
 import { afterEach, expect, test, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 
@@ -9,8 +10,8 @@ const overview = {
 };
 
 test('valid overview and bounded filtered pages use GET and preserve data', async () => {
-  const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(overview)))
-    .mockResolvedValueOnce(new Response(JSON.stringify({ items: [], total: 0, limit: 2, offset: 4 })));
+  const fetcher = vi.fn().mockResolvedValueOnce(new ReadResponse(JSON.stringify(overview)))
+    .mockResolvedValueOnce(new ReadResponse(JSON.stringify({ items: [], total: 0, limit: 2, offset: 4 })));
   vi.stubGlobal('fetch', fetcher);
   const { api } = await import('./client');
   expect(await api.overview()).toEqual(overview);
@@ -25,14 +26,14 @@ test.each([
   { ...overview, evaluated_at: 'not-a-date' },
   { ...overview, domains: [{ domain: 'CAPACITY', state: 'GREEN', source_count: 0, covered_source_count: 0, unknown_source_count: 0 }] },
 ])('malformed successful responses fail safely', async value => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(value))));
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new ReadResponse(JSON.stringify(value))));
   const { api } = await import('./client');
   await expect(api.overview()).rejects.toMatchObject({ code: 'INVALID_RESPONSE' });
 });
 
 test('server payload and invalid JSON never become error messages', async () => {
-  const fetcher = vi.fn().mockResolvedValueOnce(new Response('private details', { status: 503 }))
-    .mockResolvedValueOnce(new Response('private invalid JSON'));
+  const fetcher = vi.fn().mockResolvedValueOnce(new ReadResponse('private details', { status: 503 }))
+    .mockResolvedValueOnce(new ReadResponse('private invalid JSON'));
   vi.stubGlobal('fetch', fetcher);
   const { api } = await import('./client');
   await expect(api.overview()).rejects.toMatchObject({ message: 'API_UNAVAILABLE', code: 'API_UNAVAILABLE' });
@@ -50,12 +51,26 @@ test('query cancellation passes an abort signal and returns a safe code', async 
 });
 
 test('identical query keys deduplicate concurrent fetches', async () => {
-  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify(overview)));
+  const fetcher = vi.fn().mockResolvedValue(new ReadResponse(JSON.stringify(overview)));
   vi.stubGlobal('fetch', fetcher);
   const { queries } = await import('./client');
   const client = new QueryClient();
   await Promise.all([client.fetchQuery(queries.overview()), client.fetchQuery(queries.overview())]);
   expect(fetcher).toHaveBeenCalledTimes(1);
+  client.clear();
+});
+
+test('identical refetch bodies retain the new response evidence deadline', async () => {
+  const { queries } = await import('./client');
+  const { evidenceDeadline } = await import('./evidence');
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(() => Promise.resolve(new ReadResponse(JSON.stringify(overview)))));
+  const client = new QueryClient();
+  const first = await client.fetchQuery(queries.overview());
+  await client.invalidateQueries({queryKey:['overview']});
+  await client.fetchQuery(queries.overview());
+  const second = client.getQueryData(['overview']);
+  expect(second).not.toBe(first);
+  expect(evidenceDeadline(second)).not.toBeNull();
   client.clear();
 });
 
@@ -83,7 +98,7 @@ test('Cyrillic paths and UNC aliases are preserved by schema validation', async 
     total_bytes: null, free_bytes: null, first_seen_at: '2026-10-04T00:00:00Z', last_seen_at: '2026-10-04T00:00:00Z',
     mount_aliases: ['\\\\synthetic\\Общие отчёты'], quality: 'PARTIAL',
   };
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [volume], total: 1, limit: 50, offset: 0 }))));
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new ReadResponse(JSON.stringify({ items: [volume], total: 1, limit: 50, offset: 0 }))));
   const { api } = await import('./client');
   expect((await api.volumes()).items[0]).toEqual(volume);
 });
@@ -97,4 +112,10 @@ test('timeout has its own safe code', async () => {
   })));
   const { api } = await import('./client');
   await expect(api.overview()).rejects.toMatchObject({ code: 'TIMEOUT' });
+});
+
+
+test.each([null,'bad','35001','-1'])('invalid or missing evidence lifetime fails closed: %s',ttl=>{
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(overview),{headers:ttl===null?{}:{'X-Evidence-Valid-For-Ms':ttl}})));
+  return import('./client').then(({api})=>expect(api.overview()).rejects.toMatchObject({code:'INVALID_RESPONSE'}));
 });

@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
 
@@ -27,6 +27,7 @@ from packages.shared.models.core import (
 from .overview import domain_health, freshness_summary, overall_state
 from .sources import database_time, freshness, require_source, snapshot, source, source_data
 from .storage import share, volume
+from .validity import overview_validity, rows_validity, storage_validity
 
 Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0, le=1000000)]
@@ -36,17 +37,32 @@ def router(engine: Engine) -> APIRouter:
     result = APIRouter(
         prefix="/api/v1",
         tags=["read"],
-        responses={code: {"model": ApiError} for code in (404, 422, 503)},
+        responses={
+            **{code: {"model": ApiError} for code in (404, 422, 503)},
+            200: {
+                "headers": {
+                    "X-Evidence-Valid-For-Ms": {
+                        "description": (
+                            "Relative evidence lifetime from snapshot time; "
+                            "clients subtract complete request elapsed time."
+                        ),
+                        "schema": {"type": "integer", "minimum": 0, "maximum": 35000},
+                    },
+                    "Cache-Control": {"schema": {"type": "string", "const": "no-store"}},
+                }
+            },
+        },
     )
 
     @result.get("/overview")
-    def overview() -> Overview:
+    def overview(response: Response) -> Overview:
         with snapshot(engine) as connection:
             counts = {
                 table.name: connection.scalar(select(func.count()).select_from(table)) or 0
                 for table in (source_nodes, volumes, shares, filesystem_objects)
             }
             domains = domain_health(connection)
+            overview_validity(connection, response)
             return Overview(
                 counts=Counts(
                     sources=counts["source_nodes"],
@@ -61,14 +77,15 @@ def router(engine: Engine) -> APIRouter:
             )
 
     @result.get("/health/domains")
-    def health_domains() -> Domains:
+    def health_domains(response: Response) -> Domains:
         with snapshot(engine) as connection:
+            overview_validity(connection, response)
             return Domains(
                 domains=domain_health(connection), evaluated_at=database_time(connection)
             )
 
     @result.get("/sources")
-    def sources(limit: Limit = 50, offset: Offset = 0) -> Page[Source]:
+    def sources(response: Response, limit: Limit = 50, offset: Offset = 0) -> Page[Source]:
         with snapshot(engine) as connection:
             data = source_data()
             rows = (
@@ -79,23 +96,28 @@ def router(engine: Engine) -> APIRouter:
                 .all()
             )
             total = connection.scalar(select(func.count()).select_from(source_nodes)) or 0
+            rows_validity(response, rows)
             return Page[Source](
                 items=[source(row) for row in rows], total=total, limit=limit, offset=offset
             )
 
     @result.get("/sources/{source_id}")
-    def source_detail(source_id: UUID) -> Source:
+    def source_detail(source_id: UUID, response: Response) -> Source:
         with snapshot(engine) as connection:
-            return source(require_source(connection, source_id))
+            row = require_source(connection, source_id)
+            rows_validity(response, [row])
+            return source(row)
 
     @result.get("/sources/{source_id}/freshness")
-    def source_freshness(source_id: UUID) -> Freshness:
+    def source_freshness(source_id: UUID, response: Response) -> Freshness:
         with snapshot(engine) as connection:
-            return freshness(require_source(connection, source_id))
+            row = require_source(connection, source_id)
+            rows_validity(response, [row])
+            return freshness(row)
 
     @result.get("/volumes")
     def volume_list(
-        limit: Limit = 50, offset: Offset = 0, source_id: UUID | None = None
+        response: Response, limit: Limit = 50, offset: Offset = 0, source_id: UUID | None = None
     ) -> Page[Volume]:
         with snapshot(engine) as connection:
             query = select(volumes, source_nodes.c.expected_cadence_seconds).join(source_nodes)
@@ -125,6 +147,7 @@ def router(engine: Engine) -> APIRouter:
                     .order_by(volume_aliases.c.volume_id, volume_aliases.c.alias)
                 ):
                     aliases.setdefault(volume_id, []).append(alias)
+            storage_validity(response, rows, now)
             return Page[Volume](
                 items=[volume(row, now, aliases.get(row["id"], [])) for row in rows],
                 total=connection.scalar(count) or 0,
@@ -134,7 +157,7 @@ def router(engine: Engine) -> APIRouter:
 
     @result.get("/shares")
     def share_list(
-        limit: Limit = 50, offset: Offset = 0, source_id: UUID | None = None
+        response: Response, limit: Limit = 50, offset: Offset = 0, source_id: UUID | None = None
     ) -> Page[Share]:
         with snapshot(engine) as connection:
             query = select(shares, source_nodes.c.expected_cadence_seconds).join(source_nodes)
@@ -151,6 +174,7 @@ def router(engine: Engine) -> APIRouter:
                 .all()
             )
             now = database_time(connection)
+            storage_validity(response, rows, now)
             return Page[Share](
                 items=[share(row, now) for row in rows],
                 total=connection.scalar(count) or 0,

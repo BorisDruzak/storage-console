@@ -78,12 +78,12 @@ def source_data() -> CTE:
         raw.c.last_event_at > func.now(),
         raw.c.last_collector_at > func.now(),
     )
-    age = func.greatest(
+    time_age = func.greatest(
         func.extract("epoch", func.now() - raw.c.last_success_at),
         func.extract("epoch", func.now() - raw.c.last_event_at),
         func.extract("epoch", func.now() - raw.c.last_collector_at),
-        func.coalesce(raw.c.lag_seconds, 0),
     )
+    age = func.greatest(time_age, func.coalesce(raw.c.lag_seconds, 0))
     # Incomplete collector coverage cannot establish source freshness.
     ranked = select(
         raw,
@@ -97,8 +97,20 @@ def source_data() -> CTE:
         ).label("rank"),
         case((missing | future, None), else_=age).label("age_seconds"),
     ).cte("collector_freshness")
+    # Fixed reported lag does not grow with elapsed time. Every enabled collector
+    # can cross a boundary, including one masked by the current bottleneck.
+    next_change = case(
+        (ranked.c.rank == 1, 1), (ranked.c.rank == 2, 2), (ranked.c.rank == 3, 4)
+    ) * ranked.c.expected_cadence_seconds - func.greatest(
+        func.extract("epoch", func.now() - ranked.c.last_success_at),
+        func.extract("epoch", func.now() - ranked.c.last_event_at),
+        func.extract("epoch", func.now() - ranked.c.last_collector_at),
+    )
     worst = select(
         ranked,
+        func.min(next_change)
+        .over(partition_by=ranked.c.source_node_id)
+        .label("next_change_seconds"),
         func.count().over(partition_by=ranked.c.source_node_id).label("collector_count"),
         func.count()
         .filter(ranked.c.rank >= 8)
@@ -123,6 +135,7 @@ def source_data() -> CTE:
             worst.c.cursor,
             worst.c.lag_seconds,
             worst.c.age_seconds,
+            worst.c.next_change_seconds,
             worst.c.collector_id.label("bottleneck_collector_id"),
             func.coalesce(worst.c.collector_count, 0).label("collector_count"),
             func.coalesce(worst.c.unknown_collector_count, 0).label("unknown_collector_count"),

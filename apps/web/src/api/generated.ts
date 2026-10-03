@@ -381,6 +381,9 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
+                    /** @description Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time. */
+                    "X-Evidence-Valid-For-Ms"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -428,6 +431,9 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
+                    /** @description Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time. */
+                    "X-Evidence-Valid-For-Ms"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -479,6 +485,9 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
+                    /** @description Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time. */
+                    "X-Evidence-Valid-For-Ms"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -529,6 +538,9 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
+                    /** @description Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time. */
+                    "X-Evidence-Valid-For-Ms"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -578,6 +590,9 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
+                    /** @description Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time. */
+                    "X-Evidence-Valid-For-Ms"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -627,6 +642,9 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
+                    /** @description Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time. */
+                    "X-Evidence-Valid-For-Ms"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -678,6 +696,9 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
+                    /** @description Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time. */
+                    "X-Evidence-Valid-For-Ms"?: number;
                     [name: string]: unknown;
                 };
                 content: {

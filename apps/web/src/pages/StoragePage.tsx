@@ -19,7 +19,7 @@ function SourceFilter({ source, tab }: { source: string; tab: string }) {
   return <form onSubmit={event => { event.preventDefault(); window.location.hash = link('health', { tab, ...(draft.trim() ? { source_id: draft.trim() } : {}) }); }}><label>{t('common.sourceFilter')}<input value={draft} onChange={event => setDraft(event.target.value)} /></label><button type="submit">{t('common.apply')}</button></form>;
 }
 function Volumes({ shares }: { shares: boolean }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const route = useRoute();
   const filters = { limit: 50, offset: route.offset, source_id: route.params.get('source_id') || undefined };
   const volumes = useQuery({ ...queries.volumes(filters), enabled: !shares, retry: false });
@@ -30,7 +30,7 @@ function Volumes({ shares }: { shares: boolean }) {
       <th scope="col">{t('storage.name')}</th><th scope="col">{t(shares ? 'storage.path' : 'storage.aliases')}</th>
       {!shares ? <><th scope="col">{t('storage.total')}</th><th scope="col">{t('storage.free')}</th></> : null}
       <th scope="col">{t('storage.quality')}</th>
-    </tr></thead><tbody>{shares ? shareData.data?.items.map(item => <tr key={item.id}><td>{item.name}</td><td><code>{item.relative_path}</code></td><td>{t(`quality.${item.quality}`)}</td></tr>) : volumes.data?.items.map(item => <tr key={item.id}><td>{item.label ?? item.unique_identity}<small><code>{item.unique_identity}</code></small></td><td><code>{item.mount_aliases.join(', ') || t('common.unavailable')}</code></td><td>{item.total_bytes?.toLocaleString() ?? t('common.unavailable')}</td><td>{item.free_bytes?.toLocaleString() ?? t('common.unavailable')}</td><td>{t(`quality.${item.quality}`)}</td></tr>)}</tbody></table></div> : <Empty />}
+    </tr></thead><tbody>{shares ? shareData.data?.items.map(item => <tr key={item.id}><td>{item.name}</td><td><code>{item.relative_path}</code></td><td>{t(`quality.${item.quality}`)}</td></tr>) : volumes.data?.items.map(item => <tr key={item.id}><td>{item.label ?? item.unique_identity}<small><code>{item.unique_identity}</code></small></td><td><code>{item.mount_aliases.join(', ') || t('common.unavailable')}</code></td><td>{item.total_bytes?.toLocaleString(i18n.language) ?? t('common.unavailable')}</td><td>{item.free_bytes?.toLocaleString(i18n.language) ?? t('common.unavailable')}</td><td>{t(`quality.${item.quality}`)}</td></tr>)}</tbody></table></div> : <Empty />}
     <Pager total={query.data.total} offset={route.offset} />
   </> : null}</ReadState>;
 }

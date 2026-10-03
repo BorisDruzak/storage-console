@@ -382,3 +382,104 @@ def test_overall_critical_does_not_hide_unknown_domains(ingest_setup):
     data = client.get("/api/v1/overview").json()
     assert data["overall_state"] == "CRITICAL"
     assert any(domain["state"] == "UNKNOWN" for domain in data["domains"])
+
+
+def test_all_read_responses_publish_bounded_validity_and_disable_http_cache(ingest_setup):
+    client, _, _, _, source = ingest_setup
+    paths = [
+        "/overview",
+        "/health/domains",
+        "/sources",
+        f"/sources/{source}",
+        f"/sources/{source}/freshness",
+        "/volumes",
+        "/shares",
+    ]
+    for path in paths:
+        response = client.get("/api/v1" + path)
+        assert response.status_code == 200
+        assert response.headers["Cache-Control"] == "no-store"
+        assert 0 <= int(response.headers["X-Evidence-Valid-For-Ms"]) <= 35000
+
+
+def test_read_validity_expires_before_source_freshness_changes(ingest_setup):
+    client, _, collector, token, source = ingest_setup
+    upload(client, collector, token, datetime.now(UTC) - timedelta(seconds=58))
+    for path in [
+        "/overview",
+        "/health/domains",
+        "/sources",
+        f"/sources/{source}",
+        f"/sources/{source}/freshness",
+    ]:
+        response = client.get("/api/v1" + path)
+        assert 0 < int(response.headers["X-Evidence-Valid-For-Ms"]) <= 2000
+
+
+def test_domain_validity_expires_before_policy_evidence_becomes_unknown(ingest_setup):
+    client, engine, collector, token, source = ingest_setup
+    upload(client, collector, token, datetime.now(UTC))
+    signal, policy = uuid4(), uuid4()
+    old = datetime.now(UTC) - timedelta(seconds=58)
+    with engine.begin() as connection:
+        connection.execute(
+            insert(health_policies).values(
+                id=policy,
+                name="synthetic",
+                domain="CAPACITY",
+                policy_type="CAPACITY",
+                parameters={},
+            )
+        )
+        connection.execute(
+            insert(health_signals).values(
+                id=signal,
+                source_node_id=source,
+                domain="CAPACITY",
+                signal_type="FREE_SPACE",
+                measurement={},
+                occurred_at=old,
+            )
+        )
+        connection.execute(
+            insert(health_findings).values(
+                signal_id=signal,
+                policy_id=policy,
+                state="HEALTHY",
+                cause_class="POLICY",
+                fingerprint="d" * 64,
+                evaluated_at=old,
+            )
+        )
+    for path in ["/overview", "/health/domains"]:
+        response = client.get("/api/v1" + path)
+        assert 0 < int(response.headers["X-Evidence-Valid-For-Ms"]) <= 2000
+
+
+def test_validity_accounts_for_collectors_masked_by_fixed_reported_lag(ingest_setup):
+    import hashlib
+
+    from packages.shared.models.core import collector_heartbeats
+
+    client, engine, collector, token, source = ingest_setup
+    other, other_token = uuid4(), uuid4().hex
+    with engine.begin() as connection:
+        connection.execute(
+            insert(collectors).values(
+                id=other,
+                source_node_id=source,
+                collector_type="SYNTHETIC",
+                token_hash=hashlib.sha256(("collector:" + other_token).encode()).hexdigest(),
+            )
+        )
+    upload(client, other, other_token, datetime.now(UTC) - timedelta(seconds=58))
+    upload(client, collector, token, datetime.now(UTC))
+    with engine.begin() as connection:
+        connection.execute(
+            update(collector_heartbeats)
+            .where(collector_heartbeats.c.collector_id == collector)
+            .values(lag_seconds=60)
+        )
+    response = client.get(f"/api/v1/sources/{source}")
+    assert response.json()["freshness"]["bottleneck_collector_id"] == str(collector)
+    assert 0 < int(response.headers["X-Evidence-Valid-For-Ms"]) <= 2000

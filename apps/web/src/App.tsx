@@ -2,6 +2,7 @@ import { useEffect,useRef,type ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { queries } from './api/client';
+import { useExpiredEvidence } from './api/evidence';
 import { timestamp } from './components/ReadState';
 import { sections, link, useRoute, type Section } from './navigation';
 import { OverviewPage } from './pages/OverviewPage';
@@ -37,6 +38,7 @@ export function App() {
   const Page=pages[section];
   const api = useQuery({ queryKey: ['readiness'], queryFn: readiness, refetchInterval: 30000, retry: false });
   const overview = useQuery({ ...queries.overview(), retry: false });
+  const overviewExpired=useExpiredEvidence(overview.data);
   return <div className="layout">
     <a className="skip-link" href="#main-content" onClick={event=>{event.preventDefault();heading.current?.focus();}}>{t('common.skip')}</a>
     <aside className="sidebar">
@@ -49,7 +51,7 @@ export function App() {
     </aside>
     <main>
       <header><span>{t('runtime.label')}</span><span role="status" className={api.isError ? 'runtime error' : 'runtime'}>{t(api.isPending ? 'common.loading' : api.isError ? 'runtime.unavailable' : 'runtime.available')}</span>{api.isError ? <button onClick={() => void api.refetch()}>{t('common.retry')}</button> : null}
-        <span>{overview.isError ? t('common.error') : overview.data ? t('overview.evaluated', { at: timestamp(overview.data.evaluated_at, i18n.language) }) : t('common.loading')}</span>
+        <span>{overview.isError ? t('common.error') : overviewExpired ? t('common.expired') : overview.data ? t('overview.evaluated', { at: timestamp(overview.data.evaluated_at, i18n.language) }) : t('common.loading')}</span>
       </header>
       <div className="content">
         <h1 id="main-content" ref={heading} tabIndex={-1}>{t(`navigation.${section}`)}</h1>
