@@ -1,9 +1,130 @@
 {
-  "app": {"name": "Storage Console", "subtitle": "Storage observability", "boundary": "Observe · Diagnose · Recommend", "foundation": "Foundation stage. Collectors are not connected; storage health is unknown."},
-  "navigation": {"overview": "Overview", "health": "Storage health", "activity": "Activity", "access": "Access and permissions", "recovery": "Recovery", "hygiene": "Data hygiene", "diagnostics": "Diagnostics", "discovery": "Process discovery", "sources": "Data sources", "policies": "Policies", "settings": "Settings", "audit": "Audit log", "label": "Main navigation"},
-  "health": {"HEALTHY": "Healthy", "OBSERVE": "Observe", "WARNING": "Warning", "CRITICAL": "Critical", "UNKNOWN": "No data", "NOT_APPLICABLE": "Not applicable", "STALE": "Stale data"},
-  "common": {"loading": "Loading…", "empty": "Data will appear after sources are connected", "error": "Unable to load data", "retry": "Retry", "refresh": "Refresh", "locale": "Language", "timeZone": "Time zone"},
-  "auth": {"signIn": "Sign in", "signOut": "Sign out", "notConfigured": "Authentication will be added in the next stage"},
-  "runtime": {"available": "API available", "unavailable": "API unavailable", "label": "API service"},
-  "overview": {"storage": "Storage health", "freshness": "Data freshness", "mode": "Observation mode", "noMutation": "Automatic infrastructure changes are disabled"}
+  "app": {
+    "name": "Storage Console",
+    "subtitle": "Storage observability",
+    "boundary": "Observe · Diagnose · Recommend",
+    "foundation": "Foundation stage. Collectors are not connected; storage health is unknown."
+  },
+  "navigation": {
+    "overview": "Overview",
+    "health": "Storage health",
+    "activity": "Activity",
+    "access": "Access and permissions",
+    "recovery": "Recovery",
+    "hygiene": "Data hygiene",
+    "diagnostics": "Diagnostics",
+    "discovery": "Process discovery",
+    "sources": "Data sources",
+    "policies": "Policies",
+    "settings": "Settings",
+    "audit": "Audit log",
+    "label": "Main navigation"
+  },
+  "health": {
+    "HEALTHY": "Healthy",
+    "OBSERVE": "Observe",
+    "WARNING": "Warning",
+    "CRITICAL": "Critical",
+    "UNKNOWN": "No data",
+    "NOT_APPLICABLE": "Not applicable",
+    "STALE": "Stale data"
+  },
+  "common": {
+    "loading": "Loading…",
+    "empty": "Data will appear after sources are connected",
+    "error": "Unable to load data",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "locale": "Language",
+    "timeZone": "Time zone",
+    "unavailable": "Unknown",
+    "unavailableEvidence": "No source evidence is available for this section yet",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Records {{start}}–{{end}} of {{total}}",
+    "allSources": "All sources",
+    "apply": "Apply",
+    "sourceFilter": "Source identifier",
+    "refreshing": "Refreshing…"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "notConfigured": "Authentication will be added in the next stage"
+  },
+  "runtime": {
+    "available": "API available",
+    "unavailable": "API unavailable",
+    "label": "API service"
+  },
+  "overview": {
+    "storage": "Storage health",
+    "freshness": "Data freshness",
+    "mode": "Observation mode",
+    "noMutation": "Automatic infrastructure changes are disabled",
+    "sources": "Sources",
+    "volumes": "Volumes",
+    "shares": "Shares",
+    "objects": "Filesystem objects",
+    "evaluated": "Evidence at {{at}}",
+    "unknownCoverage": "No current evidence: {{unknown}} of {{total}}",
+    "warnings": "Warnings: {{count}}",
+    "critical": "Critical findings: {{count}}"
+  },
+  "domains": {
+    "TELEMETRY": "Telemetry",
+    "CAPACITY": "Capacity",
+    "FILESYSTEM": "NTFS filesystem",
+    "SMB_DFS": "SMB and DFS",
+    "ACCESS": "Access",
+    "VSS": "Local VSS snapshots",
+    "RECOVERY": "Recovery",
+    "NETWORK": "Network",
+    "PVE_ZFS": "PVE and ZFS",
+    "HYGIENE": "Data hygiene"
+  },
+  "sourceTypes": {
+    "FILESERVER": "File server",
+    "PVE": "Virtualization",
+    "PBS": "Backup server"
+  },
+  "sources": {
+    "name": "Source",
+    "type": "Type",
+    "state": "Freshness",
+    "heartbeat": "Collector contact",
+    "event": "Latest event",
+    "lag": "Lag, seconds",
+    "cursor": "Cursor",
+    "version": "Version",
+    "schema": "Schema version",
+    "errors": "Errors",
+    "collectors": "Collectors: {{count}}",
+    "unknownCollectors": "Without current evidence: {{count}}",
+    "detail": "Source details"
+  },
+  "storage": {
+    "fileserver": "File servers",
+    "volumes": "Volumes",
+    "smb": "SMB shares",
+    "dfs": "DFS namespaces",
+    "fsrm": "FSRM quotas",
+    "vss": "VSS snapshots",
+    "pve": "PVE and ZFS",
+    "network": "Network",
+    "name": "Name",
+    "identity": "Persistent identity",
+    "path": "Path",
+    "aliases": "Mount aliases",
+    "total": "Total bytes",
+    "free": "Free bytes",
+    "quality": "Data quality"
+  },
+  "quality": {
+    "COMPLETE": "Complete",
+    "PARTIAL": "Partial",
+    "STALE": "Stale",
+    "ESTIMATED": "Estimated",
+    "UNAVAILABLE": "Unavailable"
+  }
 }

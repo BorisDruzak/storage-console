@@ -86,7 +86,12 @@ Wave0C Task1: typed GET client и runtime response validation из published Ope
 11 transport tests (15 frontend tests total), cancellation/timeout/safe errors,
 bounded pages/source filters, query deduplication, Cyrillic/UNC preservation PASS.
 Generated types/schema drift и negative control PASS; npm ci/lint/types/build/audit PASS.
-Live page wiring и complete domain UI ещё впереди; foundation shell пока сохраняется.
+Live overview domain cards/source list+detail/volumes/shares подключены к typed API.
+12 URL links, bounded paging, source filters и back restoration проверены; данные refetch каждые
+30 секунд, errors скрывают старый successful view. Unknown/stale отделены от health и API readiness.
+20 Vitest +4 Playwright PASS, actual Compose/CSP read API desktop+mobile и synthetic stale inventory
+проверены. Standalone validators исправляют запрещённую CSP runtime compilation; CSP сохранён.
+Полные overall/freshness summaries и остальные domain pages/locale-timezone UX остаются впереди.
 
 Wave 0B backend/contracts/domain DB/queue реализованы; external Sonar gate не подтверждён.
 Wave 0C полный shell/pages/typed domain API и Wave 0D production deployment/runbook не завершены.

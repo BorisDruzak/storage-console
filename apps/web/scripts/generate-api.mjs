@@ -1,5 +1,11 @@
 import fs from 'node:fs/promises';
 import openapiTS, { astToString } from 'openapi-typescript';
+import Ajv2020 from 'ajv/dist/2020.js';
+import addFormats from 'ajv-formats';
+import standalone from 'ajv/dist/standalone/index.js';
+import { build } from 'esbuild';
+import { fileURLToPath } from 'node:url';
+import { _ } from 'ajv/dist/compile/codegen/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const api = JSON.parse(await fs.readFile(new URL('packages/contracts/openapi/storage-console-v1.json', root), 'utf8'));
@@ -20,7 +26,15 @@ const validation = JSON.stringify({
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   $defs: JSON.parse(JSON.stringify(schemas).replaceAll('#/components/schemas/', '#/$defs/')),
 }, null, 2) + '\n';
-for (const [path, contents] of [['src/api/generated.ts', types], ['src/api/schemas.json', validation]]) {
+// Use this Ajv instance's Code class even when npm places formats under another copy.
+const ajv = new Ajv2020({ code: { source: true, formats: _`require("ajv-formats/dist/formats").fullFormats` }, strict: true });
+addFormats(ajv);
+ajv.addSchema({ ...JSON.parse(validation), $id: 'storage-console-read' });
+const responses = ['Overview', 'Domains', 'Source', 'Freshness', 'Page_Source_', 'Page_Volume_', 'Page_Share_'];
+const compiled = standalone(ajv, Object.fromEntries(responses.map(name => [name, `storage-console-read#/$defs/${name}`])));
+const bundled = await build({ stdin: { contents: compiled, resolveDir: fileURLToPath(new URL('../', import.meta.url)) }, bundle: true, platform: 'browser', format: 'esm', minify: true, write: false });
+const declarations = `declare const validators: Record<${responses.map(name => JSON.stringify(name)).join(' | ')}, (value: unknown) => boolean>;\nexport default validators;\n`;
+for (const [path, contents] of [['src/api/generated.ts', types], ['src/api/schemas.json', validation], ['src/api/validators.generated.mjs', bundled.outputFiles[0].text], ['src/api/validators.generated.d.mts', declarations]]) {
   const target = new URL(path, new URL('../', import.meta.url));
   if (process.argv.includes('--check')) {
     if (await fs.readFile(target, 'utf8') !== contents) throw new Error('API_CONTRACT_DRIFT');

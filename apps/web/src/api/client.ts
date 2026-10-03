@@ -1,8 +1,6 @@
-import Ajv2020 from 'ajv/dist/2020';
-import addFormats from 'ajv-formats';
 import { queryOptions } from '@tanstack/react-query';
 import type { components } from './generated';
-import schemas from './schemas.json';
+import validators from './validators.generated.mjs';
 
 type Models = components['schemas'];
 type ResponseName = 'Overview' | 'Domains' | 'Source' | 'Freshness' | 'Page_Source_' | 'Page_Volume_' | 'Page_Share_';
@@ -19,16 +17,8 @@ export class ApiError extends Error {
   constructor(public readonly code: ErrorCode) { super(code); }
 }
 
-const validator = new Ajv2020({ allErrors: false, strict: true });
-addFormats(validator);
-const validators = new Map<ResponseName, ReturnType<typeof validator.compile>>();
 function decode<N extends ResponseName>(name: N, value: unknown): Models[N] {
-  let validate = validators.get(name);
-  if (!validate) {
-    validate = validator.compile({ ...schemas, $ref: `#/$defs/${name}` });
-    validators.set(name, validate);
-  }
-  if (!validate(value)) throw new ApiError('INVALID_RESPONSE');
+  if (!validators[name](value)) throw new ApiError('INVALID_RESPONSE');
   return value as Models[N];
 }
 
@@ -78,18 +68,18 @@ export const api = {
 
 export const queries = {
   overview: () => queryOptions({ queryKey: ['overview'], queryFn: ({ signal }) => api.overview(signal), staleTime: 15000, refetchInterval: 30000 }),
-  domains: () => queryOptions({ queryKey: ['domains'], queryFn: ({ signal }) => api.domains(signal), staleTime: 15000 }),
+  domains: () => queryOptions({ queryKey: ['domains'], queryFn: ({ signal }) => api.domains(signal), staleTime: 15000, refetchInterval: 30000 }),
   sources: (options: PageOptions = {}) => {
     const filters = { ...options };
-    return queryOptions({ queryKey: ['sources', filters], queryFn: ({ signal }) => api.sources(filters, signal), staleTime: 15000 });
+    return queryOptions({ queryKey: ['sources', filters], queryFn: ({ signal }) => api.sources(filters, signal), staleTime: 15000, refetchInterval: 30000 });
   },
-  source: (id: string) => queryOptions({ queryKey: ['source', id], queryFn: ({ signal }) => api.source(id, signal), staleTime: 15000 }),
+  source: (id: string) => queryOptions({ queryKey: ['source', id], queryFn: ({ signal }) => api.source(id, signal), staleTime: 15000, refetchInterval: 30000 }),
   volumes: (options: StoragePageOptions = {}) => {
     const filters = { ...options };
-    return queryOptions({ queryKey: ['volumes', filters], queryFn: ({ signal }) => api.volumes(filters, signal), staleTime: 15000 });
+    return queryOptions({ queryKey: ['volumes', filters], queryFn: ({ signal }) => api.volumes(filters, signal), staleTime: 15000, refetchInterval: 30000 });
   },
   shares: (options: StoragePageOptions = {}) => {
     const filters = { ...options };
-    return queryOptions({ queryKey: ['shares', filters], queryFn: ({ signal }) => api.shares(filters, signal), staleTime: 15000 });
+    return queryOptions({ queryKey: ['shares', filters], queryFn: ({ signal }) => api.shares(filters, signal), staleTime: 15000, refetchInterval: 30000 });
   },
 };

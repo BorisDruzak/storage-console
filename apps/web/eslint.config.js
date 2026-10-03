@@ -2,7 +2,7 @@ import tseslint from 'typescript-eslint';
 import i18next from 'eslint-plugin-i18next';
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'coverage/**'] },
+  { ignores: ['dist/**', 'coverage/**', 'src/api/validators.generated.mjs'] },
   ...tseslint.configs.recommended,
   { files: ['src/**/*.{ts,tsx}'], plugins: { i18next }, rules: {
     'i18next/no-literal-string': ['error', {

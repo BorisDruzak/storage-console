@@ -65,6 +65,13 @@ jobs:
       - run: curl --fail http://127.0.0.1:8080/ready
       - run: docker compose run --rm migrate alembic check
       - run: docker compose exec -T worker python -m apps.worker.health
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm}
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8080
       - if: always()
         run: docker compose ps && docker compose logs --tail=30
 
