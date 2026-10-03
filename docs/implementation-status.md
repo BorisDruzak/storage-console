@@ -41,7 +41,15 @@
 - Python 3.13 + disposable PostgreSQL: 18 tests PASS; upgrade/check/downgrade/upgrade/check PASS.
 - Ruff и strict mypy PASS. Independent review: исправлены storage bounds и сохранение volume identity
   в change events до разрешения object FK.
-- Ingest/read API, generated OpenAPI и concurrent worker queue пока не реализованы.
+- Ingest heartbeat/inventory/changes: collector-only hashed token, source scope, atomic receipts/audit,
+  concurrent duplicate replay и 409 при changed payload; canonical aliases/path history/delete.
+- Request body limit 16 MiB; validation errors не возвращают входные значения.
+- Дополнительный Python 3.13/PostgreSQL suite: 25 tests PASS, Ruff/mypy PASS.
+- Compose smoke отдельного development project: fresh volume/migrations/API/worker/Web healthy.
+- Independent review: alias reassignment и late claim после alias release воспроизведены RED→GREEN.
+- [Schema/contracts CI](https://github.com/BorisDruzak/storage-console/actions/runs/37147154415): success;
+  backend/frontend/Compose/secrets PASS, Sonar skipped.
+- Оставшиеся ingest domains, read API, generated OpenAPI и concurrent worker queue пока не реализованы.
 - Partitioning/retention и operational domain processing остаются последующим этапам спецификации.
 
 ## Далее

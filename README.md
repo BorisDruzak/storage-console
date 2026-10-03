@@ -77,6 +77,25 @@ npm run test:e2e
 Для PostgreSQL integration test нужны Alembic migration и `TEST_DATABASE_URL` **одноразовой тестовой БД**. Тест изменяет worker heartbeat; не направлять его на рабочую БД.
 В CI migrations проверяются upgrade/check/downgrade/upgrade. ESLint запрещает literal JSX strings, TypeScript проверяет translation keys, Vitest проверяет полноту двух catalogs.
 
+## Collector ingest — текущая реализация Wave 0B
+
+Доступны `POST /api/v1/ingest/heartbeat`, `/inventory`, `/changes`.
+Typed batch envelope version 1 содержит records и согласованные count/time window.
+`Authorization: Bearer <collector-token>` проверяется по hash зарегистрированного enabled collector;
+collector UUID должен совпадать с envelope. User credentials не принимаются.
+Все записи привязаны к source этого collector, source UUID в payload запрещён.
+
+Один batch выполняется в одной PostgreSQL транзакции вместе с receipt и audit entry.
+Одинаковый batch возвращает 202 с `duplicate=true`; изменённое содержимое с тем же ID — 409.
+Неизвестный volume — 409 с rollback всего batch. Inventory записывается в порядке records:
+volume должен быть известен до share/object. Запоздалые observations не перезаписывают более новую
+object/volume state или alias history. Delete сохраняет последний известный путь.
+
+По умолчанию ingest body ограничен 16 MiB в API и development Nginx; validation errors не повторяют
+input values. `MAX_INGEST_BYTES` настраивает API (при изменении нужно согласовать proxy limit).
+Collector provisioning/user sessions, оставшиеся ingest domains, read API и queue продолжают
+реализацию Wave 0B/0D. Live collectors не подключены.
+
 ## Наблюдаемость и внешние gates
 
 API/worker пишут JSON logs с UTC timestamp и allowlisted event names. Exception/config details не выводятся.

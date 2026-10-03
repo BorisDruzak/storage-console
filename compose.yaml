@@ -8,6 +8,7 @@ x-runtime: &runtime
     APP_ENV: development
     SENTRY_DSN: ${SENTRY_DSN:-}
     APP_RELEASE: ${APP_RELEASE:-0.1.0}
+    MAX_INGEST_BYTES: ${MAX_INGEST_BYTES:-16777216}
   init: true
   read_only: true
   tmpfs: [/tmp]

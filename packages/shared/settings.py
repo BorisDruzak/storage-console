@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_release: str = '0.1.0'
     worker_interval_seconds: int = Field(default=5, ge=1)
     worker_stale_seconds: int = Field(default=30, ge=2)
+    max_ingest_bytes: int = Field(default=16 * 1024 * 1024, ge=1024, le=64 * 1024 * 1024)
 
     @model_validator(mode='after')
     def validate_worker_window(self) -> 'Settings':
