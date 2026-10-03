@@ -1,0 +1,121 @@
+name: storage-control-plane
+x-runtime: &runtime
+  image: ${API_IMAGE:?Set release-specific API_IMAGE}
+  build:
+    context: ../..
+    target: runtime
+  environment: &environment
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-storage_console}:${POSTGRES_PASSWORD:?Set hex POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-storage_console}
+    APP_ENV: production
+    APP_RELEASE: ${APP_RELEASE:?Set exact Git revision}
+    SENTRY_DSN: ${SENTRY_DSN:-}
+    MAX_INGEST_BYTES: 16777216
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  volumes:
+    - type: bind
+      source: ${STATE_DIR:?Set persistent STATE_DIR}/diagnostics
+      target: /data/diagnostics
+      bind: {create_host_path: false}
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: '3'}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-storage_console}
+      POSTGRES_USER: ${POSTGRES_USER:-storage_console}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - type: bind
+        source: ${STATE_DIR:?Set persistent STATE_DIR}/postgres
+        target: /var/lib/postgresql/data
+        bind: {create_host_path: false}
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+
+  migrate:
+    <<: *runtime
+    command: [alembic, upgrade, head]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    <<: *runtime
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    <<: *runtime
+    command: [python, -m, apps.worker.main]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -m, apps.worker.health]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    image: ${WEB_IMAGE:?Set matching release-specific WEB_IMAGE}
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      target: production
+    environment:
+      STORAGE_HOSTNAME: ${STORAGE_HOSTNAME:?Set production DNS hostname}
+      NGINX_ENVSUBST_FILTER: ^STORAGE_HOSTNAME$$
+    ports:
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
+      - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443"
+    volumes:
+      - type: bind
+        source: ${TLS_CERT_FILE:?Set TLS_CERT_FILE}
+        target: /etc/storage-console/tls/fullchain.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${TLS_KEY_FILE:?Set TLS_KEY_FILE}
+        target: /etc/storage-console/tls/privkey.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${AUTH_FILE:?Set operator AUTH_FILE}
+        target: /etc/storage-console/auth/users.htpasswd
+        read_only: true
+        bind: {create_host_path: false}
+    read_only: true
+    tmpfs: [/tmp, /var/cache/nginx, /var/run, /etc/nginx/conf.d]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8081/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
