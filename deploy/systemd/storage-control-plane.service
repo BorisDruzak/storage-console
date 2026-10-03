@@ -1,0 +1,18 @@
+[Unit]
+Description=Storage Control Plane
+Requires=docker.service
+After=docker.service network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/storage-control-plane
+ExecStart=/opt/storage-control-plane/deploy/scripts/deploy.sh /etc/storage-control-plane/production.env
+ExecStop=/opt/storage-control-plane/deploy/scripts/stop.sh /etc/storage-control-plane/production.env
+TimeoutStartSec=1800
+TimeoutStopSec=90
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

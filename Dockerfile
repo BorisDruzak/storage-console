@@ -9,6 +9,8 @@ COPY packages packages
 COPY migrations migrations
 COPY alembic.ini ./
 RUN useradd --uid 10001 --create-home app
+ARG APP_RELEASE=0.1.0
+LABEL org.opencontainers.image.revision=$APP_RELEASE
 USER app
 CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
 

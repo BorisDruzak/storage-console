@@ -30,6 +30,8 @@ jobs:
       - run: pip install -r requirements.lock
       - run: ruff check .
       - run: mypy
+      - run: mypy deploy/scripts --strict
+      - run: docker run --rm -v "$PWD:/mnt:ro" -w /mnt koalaman/shellcheck:v0.11.0 -x deploy/scripts/*.sh
       - run: python -m packages.contracts.export_openapi --check
       - run: pytest tests/deployment -q
       - run: alembic upgrade head
