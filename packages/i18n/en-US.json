@@ -47,7 +47,8 @@
     "sourceFilter": "Source identifier",
     "refreshing": "Refreshing…",
     "filteredEmpty": "No records match the selected filters",
-    "showFullValue": "Full value"
+    "showFullValue": "Full value",
+    "skip": "Skip to content"
   },
   "auth": {
     "signIn": "Sign in",
@@ -300,5 +301,15 @@
     "SUCCESS": "Succeeded",
     "FAILURE": "Failed",
     "UNKNOWN": "Outcome unknown"
+  },
+  "settings": {
+    "scope": "Display preferences are saved only in this browser.",
+    "russian": "Русский",
+    "english": "English",
+    "save": "Save preferences",
+    "timezoneHelp": "IANA timezone, for example UTC or Asia/Yekaterinburg.",
+    "saved": "Preferences saved",
+    "temporary": "Preferences applied until the page closes: browser storage is unavailable.",
+    "invalid": "Enter a valid timezone"
   }
 }

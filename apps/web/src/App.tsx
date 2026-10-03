@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import { useEffect,useRef,type ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { queries } from './api/client';
@@ -10,10 +10,13 @@ import { StoragePage } from './pages/StoragePage';
 import { ActivityPage } from './pages/ActivityPage';
 import { RecoveryPage } from './pages/RecoveryPage';
 import { AccessPage, HygienePage, DiagnosticsPage, DiscoveryPage, PoliciesPage, AuditPage } from './pages/ReadDomains';
+import { SettingsPage } from './pages/SettingsPage';
+import { usePreferences } from './preferences';
 
 const pages:Partial<Record<Section,ComponentType>>={
   overview:OverviewPage,sources:SourcesPage,health:StoragePage,activity:ActivityPage,recovery:RecoveryPage,
   access:AccessPage,hygiene:HygienePage,diagnostics:DiagnosticsPage,discovery:DiscoveryPage,policies:PoliciesPage,audit:AuditPage,
+  settings:SettingsPage,
 };
 
 async function readiness({ signal }: { signal: AbortSignal }): Promise<boolean> {
@@ -27,10 +30,15 @@ async function readiness({ signal }: { signal: AbortSignal }): Promise<boolean> 
 export function App() {
   const { t, i18n } = useTranslation();
   const { section } = useRoute();
+  const preferences=usePreferences();const heading=useRef<HTMLHeadingElement>(null);
+  useEffect(()=>{heading.current?.focus();},[section]);
+  useEffect(()=>{void i18n.changeLanguage(preferences.locale);},[preferences.locale,i18n]);
+  useEffect(()=>{document.documentElement.lang=i18n.language;document.title=t('app.name');},[i18n.language,t]);
   const Page=pages[section];
   const api = useQuery({ queryKey: ['readiness'], queryFn: readiness, refetchInterval: 30000, retry: false });
   const overview = useQuery({ ...queries.overview(), retry: false });
   return <div className="layout">
+    <a className="skip-link" href="#main-content" onClick={event=>{event.preventDefault();heading.current?.focus();}}>{t('common.skip')}</a>
     <aside className="sidebar">
       <div className="brand">{t('app.name')}</div>
       <p className="subtitle">{t('app.subtitle')}</p>
@@ -44,7 +52,7 @@ export function App() {
         <span>{overview.isError ? t('common.error') : overview.data ? t('overview.evaluated', { at: timestamp(overview.data.evaluated_at, i18n.language) }) : t('common.loading')}</span>
       </header>
       <div className="content">
-        <h1 tabIndex={-1}>{t(`navigation.${section}`)}</h1>
+        <h1 id="main-content" ref={heading} tabIndex={-1}>{t(`navigation.${section}`)}</h1>
         {Page?<Page />:<p>{t('common.unavailableEvidence')}</p>}
       </div>
     </main>

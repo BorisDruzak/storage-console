@@ -136,3 +136,34 @@ test('remaining domain fixtures render raw identities and translated conclusions
   }
   expect(errors).toEqual([]);
 });
+
+test('settings persist locale/timezone, restore invalid storage and support keyboard navigation',async({page},testInfo)=>{
+  await page.goto('/#settings');
+  await page.getByLabel('Часовой пояс').fill('invalid-zone');
+  await page.getByRole('button',{name:'Сохранить настройки'}).click();
+  await expect(page.getByRole('alert')).toHaveText('Укажите корректный часовой пояс');
+  await page.getByLabel('Часовой пояс').fill('Asia/Yekaterinburg');
+  await page.getByLabel('Язык',{exact:true}).selectOption('en-US');
+  await page.getByRole('button',{name:'Сохранить настройки'}).click();
+  await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang','en-US');
+  await page.reload();
+  await expect(page.getByLabel('Time zone')).toHaveValue('Asia/Yekaterinburg');
+  await expect(page.getByRole('heading',{name:'Settings'})).toBeFocused();
+  await page.getByRole('link',{name:'Overview',exact:true}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading',{name:'Overview',exact:true})).toBeFocused();
+  await expect(page.getByText(/Evidence at/)).toContainText('05:00:00');
+  await page.evaluate(()=>{localStorage.setItem('storage-console.preferences.v1','{"locale":"bad","timeZone":"bad"}');});
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang','ru-RU');
+  await page.getByRole('link',{name:'Перейти к содержимому'}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading',{name:'Обзор',exact:true})).toBeFocused();
+  for(const [width,height] of [[1280,900],[390,844]]){
+    await page.setViewportSize({width,height});await page.goto('/#settings');
+    await expect(page.getByLabel('Часовой пояс')).toHaveValue('UTC');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await page.screenshot({path:testInfo.outputPath(`settings-${width}.png`),fullPage:true});
+  }
+});
