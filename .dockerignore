@@ -1,0 +1,13 @@
+.git
+.local
+.venv
+node_modules
+**/node_modules
+**/dist
+**/__pycache__
+**/coverage
+.env
+.env.*
+!.env.example
+test-results
+playwright-report

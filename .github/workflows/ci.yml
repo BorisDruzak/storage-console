@@ -1,0 +1,96 @@
+name: Quality gates
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: storage_console_test
+          POSTGRES_USER: storage_console_test
+          POSTGRES_PASSWORD: disposable-ci-password
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U storage_console_test" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://storage_console_test:disposable-ci-password@127.0.0.1:5432/storage_console_test
+      TEST_DATABASE_URL: postgresql+psycopg://storage_console_test:disposable-ci-password@127.0.0.1:5432/storage_console_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13', cache: pip}
+      - run: pip install -r requirements.lock
+      - run: ruff check .
+      - run: mypy
+      - run: alembic upgrade head
+      - run: alembic check
+      - run: pytest --cov=apps --cov=packages --cov-report=xml
+      - run: alembic downgrade base && alembic upgrade head
+      - uses: actions/upload-artifact@v4
+        with: {name: backend-coverage, path: coverage.xml}
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm}
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --audit-level=moderate
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        with: {name: frontend-coverage, path: apps/web/coverage/lcov.info}
+
+  compose-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose up --build --wait --wait-timeout 180
+      - run: curl --fail http://127.0.0.1:8080/ready
+      - run: docker compose run --rm migrate alembic check
+      - run: docker compose exec -T worker python -m apps.worker.health
+      - if: always()
+        run: docker compose ps && docker compose logs --tail=30
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Scan committed history
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 git /repo --redact --exit-code 1
+
+  sonar:
+    if: vars.SONAR_HOST_URL != ''
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with: {name: backend-coverage}
+      - uses: actions/download-artifact@v4
+        with: {name: frontend-coverage, path: apps/web/coverage}
+      - uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+      - uses: SonarSource/sonarqube-quality-gate-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}

@@ -1,0 +1,72 @@
+name: storage-console-dev
+x-runtime: &runtime
+  build:
+    context: .
+    target: runtime
+  environment: &environment
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-storage_console}:${POSTGRES_PASSWORD:?Copy .env.example to .env and set a password}@postgres:5432/${POSTGRES_DB:-storage_console}
+    APP_ENV: development
+    SENTRY_DSN: ${SENTRY_DSN:-}
+    APP_RELEASE: ${APP_RELEASE:-0.1.0}
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-storage_console}
+      POSTGRES_USER: ${POSTGRES_USER:-storage_console}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *runtime
+    command: [alembic, upgrade, head]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    <<: *runtime
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    <<: *runtime
+    command: [python, -m, apps.worker.main]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -m, apps.worker.health]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports: ["127.0.0.1:${WEB_PORT:-8080}:80"]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

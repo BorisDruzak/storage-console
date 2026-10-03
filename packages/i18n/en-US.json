@@ -1,0 +1,9 @@
+{
+  "app": {"name": "Storage Console", "subtitle": "Storage observability", "boundary": "Observe · Diagnose · Recommend", "foundation": "Foundation stage. Collectors are not connected; storage health is unknown."},
+  "navigation": {"overview": "Overview", "health": "Storage health", "activity": "Activity", "access": "Access and permissions", "recovery": "Recovery", "hygiene": "Data hygiene", "diagnostics": "Diagnostics", "discovery": "Process discovery", "sources": "Data sources", "policies": "Policies", "settings": "Settings", "audit": "Audit log", "label": "Main navigation"},
+  "health": {"HEALTHY": "Healthy", "OBSERVE": "Observe", "WARNING": "Warning", "CRITICAL": "Critical", "UNKNOWN": "No data", "NOT_APPLICABLE": "Not applicable", "STALE": "Stale data"},
+  "common": {"loading": "Loading…", "empty": "Data will appear after sources are connected", "error": "Unable to load data", "retry": "Retry", "refresh": "Refresh", "locale": "Language", "timeZone": "Time zone"},
+  "auth": {"signIn": "Sign in", "signOut": "Sign out", "notConfigured": "Authentication will be added in the next stage"},
+  "runtime": {"available": "API available", "unavailable": "API unavailable", "label": "API service"},
+  "overview": {"storage": "Storage health", "freshness": "Data freshness", "mode": "Observation mode", "noMutation": "Automatic infrastructure changes are disabled"}
+}
