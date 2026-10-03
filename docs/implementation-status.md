@@ -1,6 +1,6 @@
 # Статус реализации
 
-## Wave 0A — in progress
+## Wave 0A — foundation опубликован; внешний Sonar gate не проверен
 
 - [x] Monorepo directories: API, Web, worker, collectors, contracts, i18n, shared, migrations, deploy, tests.
 - [x] Backend settings, JSON logs, health/readiness, optional Sentry hooks.
@@ -9,14 +9,18 @@
 - [x] Frontend/backend tests и локальные lint/types/build.
 - [x] Compose/Nginx и GitHub Actions definitions.
 - [x] Чистый source snapshot + новая БД: PostgreSQL/API/Web/worker healthy; повторный startup сохраняет volume.
+- [x] Fresh Git clone опубликованного `main` + отдельный Compose project/новый volume: все сервисы healthy.
 - [x] Migration upgrade/check/downgrade/upgrade на disposable PostgreSQL.
 - [x] Playwright smoke против собранного stack: 2/2; desktop/mobile screenshot QA, без page errors и горизонтального overflow.
-- [ ] CI green после publication.
+- [x] CI green после publication: backend, frontend, Compose smoke, secrets.
 - [x] Gitleaks v8.24.3: публичный source snapshot чистый; runtime .env исключён из Git.
 - [ ] SonarQube Quality Gate: внешняя настройка пока отсутствует.
 
 ### Проверки 2026-10-03
 
+- Commit: `97743e76405d9385d5f932d4b6ec9e3071b4072e`, `feat(foundation): add Compose runtime and Russian console shell`.
+- [GitHub Actions run](https://github.com/BorisDruzak/storage-console/actions/runs/37145656343): success. Sonar job skipped — не считать Sonar gate успешным.
+- Python 3.13 + PostgreSQL: 8/8 tests PASS; Vitest: 4/4; Playwright: 2/2; i18n lint negative-control test: PASS.
 - PostgreSQL runtime: migration service exit 0; named volume сохраняется.
 - Остановка worker: спустя freshness window health check возвращает failure.
 - Остановка БД: `/ready` возвращает 503; после восстановления — 200.
