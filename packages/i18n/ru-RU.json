@@ -184,5 +184,121 @@
     "GUEST_AGENT": "С участием гостевого агента",
     "VSS_QUIESCED": "С согласованием через VSS",
     "UNKNOWN": "Согласованность не определена"
+  },
+  "access": {
+    "path": "Путь",
+    "expected": "Ожидаемые права",
+    "actual": "Фактические права",
+    "drift": "Соответствие",
+    "owner": "Владелец",
+    "chain": "Цепочка групп",
+    "exceptions": "Исключения",
+    "none": "Нет записей",
+    "noExpiry": "Без срока окончания",
+    "noExceptions": "Исключений нет"
+  },
+  "drift": {
+    "MATCH": "Соответствует",
+    "DRIFT": "Расхождение",
+    "UNKNOWN": "Соответствие не определено"
+  },
+  "hygiene": {
+    "all": "Все категории",
+    "category": "Категория",
+    "path": "Путь",
+    "value": "Измерение",
+    "classification": "Классификация",
+    "boundary": "Возраст, размер и похожие имена сами по себе не являются основанием для удаления."
+  },
+  "hygieneCategories": {
+    "LONG_PATH": "Длинные пути",
+    "AGE": "Возраст файлов",
+    "FILE_TYPE": "Типы файлов",
+    "TEMP_LOCK": "Временные и блокирующие файлы",
+    "LARGE": "Большие файлы",
+    "ZERO_BYTE": "Пустые файлы",
+    "DUPLICATE": "Кандидаты в дубликаты",
+    "RARE_EXTENSION": "Редкие расширения"
+  },
+  "classification": {
+    "ACTIVE": "Активный",
+    "RECENT": "Недавний",
+    "STALE": "Устаревший",
+    "CANDIDATE": "Кандидат",
+    "HASH_PENDING": "Ожидается проверка содержимого",
+    "CONFIRMED": "Подтверждено",
+    "DIFFERENT_CONTENT": "Содержимое различается",
+    "EXCLUDED": "Исключено",
+    "UNKNOWN": "Классификация не определена"
+  },
+  "units": {
+    "BYTES": "{{value}} байт",
+    "DAYS": "{{value}} дн.",
+    "CHARS": "{{value}} символов",
+    "COUNT": "{{value}} записей"
+  },
+  "diagnosticPhases": {
+    "PRE_TRIGGER": "До события",
+    "TRIGGER": "Событие",
+    "POST_TRIGGER": "После события"
+  },
+  "diagnosticTriggers": {
+    "SLOW_OPERATION": "Медленная операция",
+    "ACCESS_DENIED": "Отказ в доступе",
+    "MANUAL": "Наблюдение по запросу",
+    "UNKNOWN": "Причина не определена"
+  },
+  "diagnosticMetrics": {
+    "LATENCY": "Задержка, мс",
+    "THROUGHPUT": "Скорость, байт/с",
+    "ERRORS": "Количество ошибок"
+  },
+  "discovery": {
+    "series": "Повторяющаяся серия",
+    "family": "Семейство схемы",
+    "path": "Путь",
+    "digitization": "Кандидат на оцифровку",
+    "workflow": "Состояние процесса",
+    "confidence": "Достоверность",
+    "candidate": "Кандидат",
+    "notCandidate": "Не кандидат",
+    "boundary": "Наблюдение основано на метаданных. Анализ содержимого требует отдельного задания с определённой областью и целью."
+  },
+  "workflow": {
+    "OBSERVED": "Наблюдается",
+    "CANDIDATE": "Кандидат",
+    "REVIEWED": "Проверено",
+    "APPROVED": "Одобрено",
+    "REJECTED": "Отклонено",
+    "UNKNOWN": "Состояние не определено"
+  },
+  "policies": {
+    "name": "Политика",
+    "domain": "Раздел",
+    "scope": "Область",
+    "thresholds": "Пороговые значения",
+    "exceptions": "Число исключений",
+    "updated": "Последнее изменение",
+    "seconds": "Секунды",
+    "bytes": "Байты"
+  },
+  "audit": {
+    "time": "Время",
+    "actor": "Инициатор",
+    "action": "Действие",
+    "target": "Объект",
+    "outcome": "Результат"
+  },
+  "auditActions": {
+    "INGEST_BATCH_PROCESSED": "Приём данных",
+    "INGEST_POSTPROCESSED": "Обработка принятых данных",
+    "COLLECTOR_REGISTERED": "Регистрация коллектора",
+    "POLICY_CHANGED": "Изменение политики",
+    "OTHER": "Другое действие"
+  },
+  "auditOutcomes": {
+    "SUCCESS": "Успешно",
+    "FAILURE": "Ошибка",
+    "UNKNOWN": "Результат не определён"
   }
 }

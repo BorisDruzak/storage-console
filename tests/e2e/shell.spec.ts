@@ -97,3 +97,42 @@ test('stale domain fixture suppresses current confidence and platform health',as
   await expect(page.getByText('Исправно',{exact:true})).toHaveCount(0);
   await expect(page.getByText('Не защищена',{exact:true})).toHaveCount(0);
 });
+
+test('remaining domain navigation exposes distinct Russian shells and preserves filters',async({page})=>{
+  const views=[['access','Доступ и права','Ожидаемые права'],['hygiene','Гигиена данных','Классификация'],
+    ['discovery','Поиск процессов','Семейство схемы'],['policies','Политики','Пороговые значения'],['audit','Журнал действий','Инициатор']];
+  for(const [section,title,column] of views){
+    await page.goto('/#'+section);
+    await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();
+    await expect(page.getByRole('columnheader',{name:column,exact:true})).toBeVisible();
+    await expect(page.getByText('Для этого раздела ещё нет данных источников')).toBeVisible();
+  }
+  await page.goto('/#diagnostics');
+  for(const phase of ['До события','Событие','После события']) await expect(page.getByRole('region',{name:phase,exact:true})).toBeVisible();
+  await page.goto('/#hygiene?category=LONG_PATH');
+  await page.getByLabel('Идентификатор источника').fill('synthetic-source');
+  await page.getByRole('button',{name:'Применить'}).click();
+  await expect(page).toHaveURL(/category=LONG_PATH/);
+  await expect(page).toHaveURL(/source_id=synthetic-source/);
+  await page.goBack();
+  await expect(page.getByLabel('Идентификатор источника')).toHaveValue('');
+});
+
+test('remaining domain fixtures render raw identities and translated conclusions on desktop and mobile',async({page},testInfo)=>{
+  test.skip(!!process.env.PLAYWRIGHT_BASE_URL,'Synthetic fixture entry is excluded from production dist');
+  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+  const views=[['access','Расхождение'],['hygiene','Кандидат'],['discovery','Одобрено'],['policies','synthetic-policy'],['audit','Приём данных']];
+  for(const [width,height] of [[1280,900],[390,844]]){
+    await page.setViewportSize({width,height});
+    for(const [section,value] of views){
+      await page.goto('/test-fixtures/domains.html#'+section);
+      await expect(page.locator('tbody').getByText(value,{exact:true})).toBeVisible();
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+      await page.screenshot({path:testInfo.outputPath(`${section}-${width}.png`),fullPage:true});
+    }
+    await page.goto('/test-fixtures/domains.html#diagnostics');
+    await expect(page.getByRole('region',{name:'Событие',exact:true}).getByText('50',{exact:true})).toBeVisible();
+    await page.screenshot({path:testInfo.outputPath(`diagnostics-${width}.png`),fullPage:true});
+  }
+  expect(errors).toEqual([]);
+});

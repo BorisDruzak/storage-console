@@ -184,5 +184,121 @@
     "GUEST_AGENT": "Guest agent assisted",
     "VSS_QUIESCED": "VSS quiesced",
     "UNKNOWN": "Consistency unknown"
+  },
+  "access": {
+    "path": "Path",
+    "expected": "Expected permissions",
+    "actual": "Actual permissions",
+    "drift": "Compliance",
+    "owner": "Owner",
+    "chain": "Group chain",
+    "exceptions": "Exceptions",
+    "none": "No entries",
+    "noExpiry": "No expiration",
+    "noExceptions": "No exceptions"
+  },
+  "drift": {
+    "MATCH": "Matches",
+    "DRIFT": "Drift",
+    "UNKNOWN": "Compliance unknown"
+  },
+  "hygiene": {
+    "all": "All categories",
+    "category": "Category",
+    "path": "Path",
+    "value": "Measurement",
+    "classification": "Classification",
+    "boundary": "Age, size and similar names alone are not grounds for deletion."
+  },
+  "hygieneCategories": {
+    "LONG_PATH": "Long paths",
+    "AGE": "File age",
+    "FILE_TYPE": "File types",
+    "TEMP_LOCK": "Temporary and lock files",
+    "LARGE": "Large files",
+    "ZERO_BYTE": "Zero-byte files",
+    "DUPLICATE": "Duplicate candidates",
+    "RARE_EXTENSION": "Rare extensions"
+  },
+  "classification": {
+    "ACTIVE": "Active",
+    "RECENT": "Recent",
+    "STALE": "Stale",
+    "CANDIDATE": "Candidate",
+    "HASH_PENDING": "Content verification pending",
+    "CONFIRMED": "Confirmed",
+    "DIFFERENT_CONTENT": "Different content",
+    "EXCLUDED": "Excluded",
+    "UNKNOWN": "Classification unknown"
+  },
+  "units": {
+    "BYTES": "{{value}} bytes",
+    "DAYS": "{{value}} days",
+    "CHARS": "{{value}} characters",
+    "COUNT": "{{value}} records"
+  },
+  "diagnosticPhases": {
+    "PRE_TRIGGER": "Before event",
+    "TRIGGER": "Event",
+    "POST_TRIGGER": "After event"
+  },
+  "diagnosticTriggers": {
+    "SLOW_OPERATION": "Slow operation",
+    "ACCESS_DENIED": "Access denied",
+    "MANUAL": "Requested observation",
+    "UNKNOWN": "Trigger unknown"
+  },
+  "diagnosticMetrics": {
+    "LATENCY": "Latency, ms",
+    "THROUGHPUT": "Throughput, bytes/s",
+    "ERRORS": "Error count"
+  },
+  "discovery": {
+    "series": "Recurring series",
+    "family": "Schema family",
+    "path": "Path",
+    "digitization": "Digitization candidate",
+    "workflow": "Workflow state",
+    "confidence": "Confidence",
+    "candidate": "Candidate",
+    "notCandidate": "Not a candidate",
+    "boundary": "Observation uses metadata. Content inspection requires a separate job with explicit scope and purpose."
+  },
+  "workflow": {
+    "OBSERVED": "Observed",
+    "CANDIDATE": "Candidate",
+    "REVIEWED": "Reviewed",
+    "APPROVED": "Approved",
+    "REJECTED": "Rejected",
+    "UNKNOWN": "Workflow unknown"
+  },
+  "policies": {
+    "name": "Policy",
+    "domain": "Domain",
+    "scope": "Scope",
+    "thresholds": "Thresholds",
+    "exceptions": "Exception count",
+    "updated": "Last change",
+    "seconds": "Seconds",
+    "bytes": "Bytes"
+  },
+  "audit": {
+    "time": "Time",
+    "actor": "Actor",
+    "action": "Action",
+    "target": "Target",
+    "outcome": "Outcome"
+  },
+  "auditActions": {
+    "INGEST_BATCH_PROCESSED": "Data ingestion",
+    "INGEST_POSTPROCESSED": "Ingested data processing",
+    "COLLECTOR_REGISTERED": "Collector registration",
+    "POLICY_CHANGED": "Policy change",
+    "OTHER": "Other action"
+  },
+  "auditOutcomes": {
+    "SUCCESS": "Succeeded",
+    "FAILURE": "Failed",
+    "UNKNOWN": "Outcome unknown"
   }
 }

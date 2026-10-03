@@ -8,7 +8,7 @@ export function useDomainFilters(): DomainFilters {
   const event=eventTypes.find(item=>item===params.get('event_type'));
   return {source_id:params.get('source_id') || undefined,event_type:event};
 }
-export function DomainFilter({section,events=false}: {section:Section;events?:boolean}) {
+export function DomainFilter({section,events=false,retainedValues={}}: {section:Section;events?:boolean;retainedValues?:Record<string,string>}) {
   const {t}=useTranslation();
   const filters=useDomainFilters();
   const [source,setSource]=useState(filters.source_id ?? '');
@@ -23,6 +23,7 @@ export function DomainFilter({section,events=false}: {section:Section;events?:bo
     return ()=>window.removeEventListener('hashchange',restore);
   },[]);
   return <form onSubmit={e=>{e.preventDefault();window.location.hash=link(section,{
+    ...retainedValues,
     ...(source.trim()?{source_id:source.trim()}:{}),...(events&&event?{event_type:event}:{}),
   });}}>
     <label>{t('common.sourceFilter')}<input value={source} onChange={e=>setSource(e.target.value)} /></label>

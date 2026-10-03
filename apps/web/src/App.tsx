@@ -1,13 +1,20 @@
+import type { ComponentType } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { queries } from './api/client';
 import { timestamp } from './components/ReadState';
-import { sections, link, useRoute } from './navigation';
+import { sections, link, useRoute, type Section } from './navigation';
 import { OverviewPage } from './pages/OverviewPage';
 import { SourcesPage } from './pages/SourcesPage';
 import { StoragePage } from './pages/StoragePage';
 import { ActivityPage } from './pages/ActivityPage';
 import { RecoveryPage } from './pages/RecoveryPage';
+import { AccessPage, HygienePage, DiagnosticsPage, DiscoveryPage, PoliciesPage, AuditPage } from './pages/ReadDomains';
+
+const pages:Partial<Record<Section,ComponentType>>={
+  overview:OverviewPage,sources:SourcesPage,health:StoragePage,activity:ActivityPage,recovery:RecoveryPage,
+  access:AccessPage,hygiene:HygienePage,diagnostics:DiagnosticsPage,discovery:DiscoveryPage,policies:PoliciesPage,audit:AuditPage,
+};
 
 async function readiness({ signal }: { signal: AbortSignal }): Promise<boolean> {
   const response = await fetch('/ready', { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]) });
@@ -20,6 +27,7 @@ async function readiness({ signal }: { signal: AbortSignal }): Promise<boolean> 
 export function App() {
   const { t, i18n } = useTranslation();
   const { section } = useRoute();
+  const Page=pages[section];
   const api = useQuery({ queryKey: ['readiness'], queryFn: readiness, refetchInterval: 30000, retry: false });
   const overview = useQuery({ ...queries.overview(), retry: false });
   return <div className="layout">
@@ -37,7 +45,7 @@ export function App() {
       </header>
       <div className="content">
         <h1 tabIndex={-1}>{t(`navigation.${section}`)}</h1>
-        {section === 'overview' ? <OverviewPage /> : section === 'sources' ? <SourcesPage /> : section === 'health' ? <StoragePage /> : section === 'activity' ? <ActivityPage /> : section === 'recovery' ? <RecoveryPage /> : <p>{t('common.unavailableEvidence')}</p>}
+        {Page?<Page />:<p>{t('common.unavailableEvidence')}</p>}
       </div>
     </main>
   </div>;

@@ -5,7 +5,7 @@ import type { HealthState } from '../api/client';
 export type DomainRead<T> = { availability: 'unavailable' } | {
   availability: 'available'; quality: 'CURRENT' | 'STALE'; evaluated_at: string; items: T[];
 };
-export interface DomainFilters { source_id?: string; event_type?: EventType }
+export interface DomainFilters { source_id?: string; event_type?: EventType; category?: HygieneCategory }
 export type DomainLoader<T> = (filters: DomainFilters, signal: AbortSignal) => Promise<DomainRead<T>>;
 export const eventTypes = ['CREATE', 'WRITE', 'RENAME', 'DELETE', 'METADATA_CHANGE', 'SECURITY_CHANGE'] as const;
 export type EventType = typeof eventTypes[number];
@@ -25,7 +25,47 @@ export interface RecoveryWorkload {
   protection: 'PROTECTED' | 'UNPROTECTED' | 'UNKNOWN';
   steps: Partial<Record<RecoveryStep, RecoveryEvidence>>;
 }
+export interface AccessRecord {
+  id:string; path:string; expected:string[] | null; actual:string[] | null; owner:string | null;
+  group_chain:string[] | null; drift:'MATCH' | 'DRIFT' | 'UNKNOWN';
+  exceptions:{reason:string;expires_at:string | null}[];
+}
+export const hygieneCategories=['LONG_PATH','AGE','FILE_TYPE','TEMP_LOCK','LARGE','ZERO_BYTE','DUPLICATE','RARE_EXTENSION'] as const;
+export type HygieneCategory=typeof hygieneCategories[number];
+export interface HygieneRecord {
+  id:string; path:string; category:HygieneCategory; value:number | null;
+  unit:'BYTES' | 'DAYS' | 'CHARS' | 'COUNT';
+  classification:'ACTIVE' | 'RECENT' | 'STALE' | 'CANDIDATE' | 'HASH_PENDING' | 'CONFIRMED' | 'DIFFERENT_CONTENT' | 'EXCLUDED' | 'UNKNOWN';
+}
+export const diagnosticPhases=['PRE_TRIGGER','TRIGGER','POST_TRIGGER'] as const;
+export interface DiagnosticRecord {
+  id:string; phase:typeof diagnosticPhases[number]; occurred_at:string;
+  trigger:'SLOW_OPERATION' | 'ACCESS_DENIED' | 'MANUAL' | 'UNKNOWN';
+  metric:'LATENCY' | 'THROUGHPUT' | 'ERRORS'; value:number | null;
+}
+export interface DiscoveryRecord {
+  id:string; series_name:string; schema_family:string | null; path:string;
+  digitization_candidate:boolean | null;
+  workflow_state:'OBSERVED' | 'CANDIDATE' | 'REVIEWED' | 'APPROVED' | 'REJECTED' | 'UNKNOWN';
+  confidence:number | null;
+}
+export interface PolicyRecord {
+  id:string; name:string;
+  domain:'TELEMETRY' | 'CAPACITY' | 'FILESYSTEM' | 'SMB_DFS' | 'ACCESS' | 'VSS' | 'RECOVERY' | 'NETWORK' | 'PVE_ZFS' | 'HYGIENE'; scope:string | null;
+  threshold_seconds:number | null; threshold_bytes:number | null; exception_count:number; updated_at:string | null;
+}
+export interface AuditRecord {
+  id:string; occurred_at:string; actor:string | null; target:string | null;
+  action:'INGEST_BATCH_PROCESSED' | 'INGEST_POSTPROCESSED' | 'COLLECTOR_REGISTERED' | 'POLICY_CHANGED' | 'OTHER';
+  outcome:'SUCCESS' | 'FAILURE' | 'UNKNOWN';
+}
 const unavailable = async (): Promise<{availability:'unavailable'}> => ({availability:'unavailable'});
-export const domainReaders: { activity: DomainLoader<ActivityEvent>; recovery: DomainLoader<RecoveryWorkload> } = {
-  activity: unavailable, recovery: unavailable,
+export const domainReaders: {
+  activity:DomainLoader<ActivityEvent>; recovery:DomainLoader<RecoveryWorkload>;
+  access:DomainLoader<AccessRecord>; hygiene:DomainLoader<HygieneRecord>;
+  diagnostics:DomainLoader<DiagnosticRecord>; discovery:DomainLoader<DiscoveryRecord>;
+  policies:DomainLoader<PolicyRecord>; audit:DomainLoader<AuditRecord>;
+} = {
+  activity:unavailable, recovery:unavailable, access:unavailable, hygiene:unavailable,
+  diagnostics:unavailable, discovery:unavailable, policies:unavailable, audit:unavailable,
 };
