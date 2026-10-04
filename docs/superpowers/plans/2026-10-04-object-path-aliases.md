@@ -97,15 +97,46 @@ Interface: native FileObjectRecord carries actual StandardInfo.NumberOfLinks.
   one identity, stable active intervals, independent alias preservation. GREEN.
 - [x] Run full backend/deployment/migrations/types/lint/OpenAPI/frontend, installed
   packaging, public-source secrets checks. Document exact evidence and pending gates.
-- [ ] One fresh whole-component review, re-grade, one RED/GREEN fix pass for important
+- [x] One fresh whole-component review, re-grade, one RED/GREEN fix pass for important
   defects, no second review. Inspect and commit coherent capture/fix changes.
-- [ ] Publish authorized main; verify exact remote SHA, clean status and all required
+- [x] Publish authorized main; verify exact remote SHA, clean status and all required
   exact-source CI jobs. Record acceptance without treating this as full Wave 1.
 
-Task3 current pre-review proof: Linux499 passed/20 native-only skips, deployment46,
+Task3 final proof: Linux508 passed/20 native-only skips, deployment46,
 migration round trips/check, mypy84+7, Ruff/OpenAPI passed. Actual Windows53 passed/
 1 unsupported-platform skip and five strict-HTTPS/PostgreSQL cases passed. Native
 link-count dates precede metadata query/publication; real concurrent link creation
 was demonstrated RED before the fix. Frontend117/API/types/lint/build, installed
-wheel/worker/provider imports and public-source secrets scan passed. One whole
-component review and exact main publication/CI remain; no live service was installed.
+wheel/worker/provider imports and public-source secrets scan passed.
+
+One fresh whole-component review found two Important and no Critical/Minor.
+Late path/whole/sole removals now split a current interval from the retained newer
+positive timestamp, preserving both the removal boundary and the active alias.
+Three real PostgreSQL cases failed before the fix and passed afterward. The same
+legacy backfill defect had two RED cases; all nine migration cases now pass.
+New path-only DELETE events carry an internal marker; downgrade refuses them,
+including before first inventory, instead of silently reinterpreting them as legacy
+whole-object deletion on re-upgrade. First-inventory hydration also honours that
+marker: a pre-upgrade pending DELETE retains whole-object semantics; a new path-only
+DELETE preserves other aliases. Actual legacy pending-case RED and paired contrast
+GREEN prove the distinction. Two real PostgreSQL cases were RED before
+the guard and GREEN afterward; old qualified/unqualified deletion round trips pass.
+One fix pass and a green full suite completed acceptance; no second review.
+
+Published source `57043e9fe19cf26cc0ef447652c027d2f79a2ddf`;
+[exact CI](https://github.com/BorisDruzak/storage-console/actions/runs/37201358871) terminal SUCCESS,
+backend/frontend/compose-smoke/production-smoke/secrets PASS. Sonar SKIPPED remains
+an external gate. Current products match the accepted public source archive.
+Windows Service/DACL, USN continuity, large-tree throughput and live pilot remain
+mandatory later stages; no live service or production migration was performed.
+
+Published commits:
+
+| Commit | Change | Files |
+| --- | --- | --- |
+| `e1ce22d8768a820122197f19f95222e2b44ee65a` | docs(ingest): specify simultaneous object path transitions | This plan and its binding spec |
+| `d1fcc68f631d0b1c5f8f8b5db4e4f976055e483a` | feat(contracts): add compatible file link count | Inventory DTO, OpenAPI, golden contracts/outbox tests |
+| `7e62d507eb34b2745a757ea8cdfecb6f43109ffb` | feat(ingest): preserve simultaneous object path evidence | Migration0005, core/activity models, ingest core/errors/paths, three alias test modules, spec/plan |
+| `63feebe5c249adb53283cbbe2f66900692477bd5` | feat(collectors): capture native hard link path evidence | Native provider, Windows README, three Windows test modules, spec/plan |
+| `e9725d2813ce427cec99c1afe652107f12ff5355` | fix(ingest): preserve deletion evidence in history and rollback | Migration0005, activity model, ingest core/paths, alias ingest/migration tests, spec |
+| `57043e9fe19cf26cc0ef447652c027d2f79a2ddf` | fix(ingest): retain legacy deletion semantics during hydration | Ingest core, alias migration tests, binding spec |

@@ -61,11 +61,16 @@ migrations/types/Ruff/OpenAPI прошёл. Один независимый об
 terminal SUCCESS, все пять обязательных jobs PASS. Sonar SKIPPED остаётся внешним gate.
 
 [Поддержка path aliases](../../docs/superpowers/plans/2026-10-04-object-path-aliases.md):
-Linux499 backend (20 native-only SKIP)/46 deployment, migrations/types84+7/Ruff/OpenAPI
+Linux508 backend (20 native-only SKIP)/46 deployment, migrations/types84+7/Ruff/OpenAPI
 прошли; Windows53 native/provider/producer tests и пять реальных HTTPS/PostgreSQL
 cases прошли, включая repeated hard links/unlink-one и delayed link-count race.
 Frontend117/APIcheck/types/lint/build, installed wheel/worker и public secrets scan
-прошли. Независимый обзор и exact-source publication CI пока ожидаются.
+прошли. Один независимый обзор выявил два Important; история через позднее удаление
+и небезопасный downgrade исправлены с PostgreSQL RED→GREEN и финальным полным прогоном.
+Исходный код `57043e9fe19cf26cc0ef447652c027d2f79a2ddf` опубликован;
+[exact CI](https://github.com/BorisDruzak/storage-console/actions/runs/37201358871) SUCCESS, пять обязательных jobs PASS.
+Sonar SKIPPED остаётся внешним gate. Downgrade после новых path-only DELETE или
+при нескольких активных aliases требует совместимого плана rollback.
 
 Windows Service/state DACL, USN continuity, SMB/DFS/FSRM/VSS/ACL/telemetry,
 500k-object performance и live pilot остаются отдельными обязательными этапами.

@@ -82,8 +82,35 @@ terminal SUCCESS: backend/frontend/compose/production/secrets PASS; Sonar SKIPPE
 Production browser acceptance explicitly proves invalid-cookie protected API401,
 then retains both tabs/session-rejection orders/shell cleanup/TLS/backup/restore gates.
 План: [Windows inventory](superpowers/plans/2026-10-04-windows-inventory.md).
-Simultaneous hard-link paths/ingest, Windows Service/state DACL, USN/операционные providers,500k-object performance,
+Поддержка simultaneous paths принята отдельным компонентом ниже. Windows Service/state DACL,
+USN/операционные providers,500k-object performance,
 backpressure orchestration и живой pilot остаются открытыми.
+
+## Wave 1 — simultaneous paths приняты; установленный runtime остаётся в работе
+
+Один volume/FileId сохраняет несколько наблюдённых hard-link paths. Неизменные сканы
+не создают новые интервалы; rename/delete одного alias сохраняет остальные.
+Реальный link_count=1 является датированным sole-path доказательством; отсутствие
+пути в scan не доказывает удаление. Старые пакеты сохраняют сериализацию/digest;
+новый collector активируется после backend/schema0005. Длинные пути остаются Text,
+точная проверка hash collision и source locks сохраняют atomicity.
+
+Linux3.13/PostgreSQL16: backend508/20 native-only SKIP, deployment46, миграции/check,
+mypy84+7/Ruff/OpenAPI PASS. Windows53/1 platform SKIP и пять настоящих HTTPS/PG cases
+PASS: повторные hard-link scans/unlink-one, retained replay, rename/error freshness,
+создание ссылки между metadata query и поздней публикацией старого count.
+Frontend117/API/types/lint/build, installed wheel/worker/provider imports и secrets PASS.
+Один независимый обзор выявил два Important; разрыв истории при позднем удалении
+и небезопасный rollback подтверждены RED→GREEN, включая legacy migration rows.
+Downgrade после нового path-only DELETE или при нескольких active aliases отклоняется;
+нужен совместимый rollback или проверенный pre-upgrade backup.
+
+Published source `57043e9fe19cf26cc0ef447652c027d2f79a2ddf`;
+[exact CI](https://github.com/BorisDruzak/storage-console/actions/runs/37201358871) SUCCESS,
+пять обязательных jobs PASS, Sonar SKIPPED. План:
+[object path aliases](superpowers/plans/2026-10-04-object-path-aliases.md).
+Windows Service/DACL, USN, large-tree performance/backpressure и live pilot остаются
+обязательными; основной runtime этим source acceptance не обновлялся.
 
 ## Пользовательская авторизация — source acceptance и CI подтверждены
 
