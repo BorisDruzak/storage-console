@@ -114,6 +114,35 @@ test('timeout has its own safe code', async () => {
   await expect(api.overview()).rejects.toMatchObject({ code: 'TIMEOUT' });
 });
 
+test('a late unauthorized response to a cancelled read cannot expire a new session', async () => {
+  const controller = new AbortController();
+  let finish!: (response: Response) => void;
+  const expired = vi.fn();
+  window.addEventListener('storage-session-expired', expired);
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { finish = resolve; })));
+  try {
+    const { api } = await import('./client');
+    const read = api.overview(controller.signal);
+    const rejected = expect(read).rejects.toMatchObject({ code: 'CANCELLED' });
+    controller.abort();
+    finish(new Response('', { status: 401 }));
+    await rejected;
+    expect(expired).not.toHaveBeenCalled();
+  } finally { window.removeEventListener('storage-session-expired', expired); }
+});
+
+test('a cancelled read cannot publish evidence after its response body finishes', async () => {
+  const controller = new AbortController();
+  const response = new ReadResponse(JSON.stringify(overview));
+  vi.spyOn(response, 'text').mockImplementation(async () => {
+    controller.abort();
+    return JSON.stringify(overview);
+  });
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+  const { api } = await import('./client');
+  await expect(api.overview(controller.signal)).rejects.toMatchObject({ code: 'CANCELLED' });
+});
+
 
 test.each([null,'bad','35001','-1'])('invalid or missing evidence lifetime fails closed: %s',ttl=>{
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(overview),{headers:ttl===null?{}:{'X-Evidence-Valid-For-Ms':ttl}})));

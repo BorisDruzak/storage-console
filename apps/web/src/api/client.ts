@@ -27,16 +27,24 @@ async function get<N extends ResponseName>(path: string, name: N, signal?: Abort
   const startedAt=performance.now();
   const timeout = AbortSignal.timeout(10000);
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  const cancelled = () => {
+    if (signal?.aborted) throw new ApiError('CANCELLED');
+    if (timeout.aborted) throw new ApiError('TIMEOUT');
+  };
   try {
+    cancelled();
     const response = await fetch(`/api/v1${path}`, {
       method: 'GET', signal: combined, cache:'no-store', credentials: 'same-origin', headers: { Accept: 'application/json' },
     });
+    // A completed response may race cache cancellation or a new login.
+    cancelled();
     if (response.status === 401) window.dispatchEvent(new Event('storage-session-expired'));
     if (!response.ok) throw new ApiError(response.status === 404 ? 'NOT_FOUND' :
       response.status === 401 || response.status === 403 ? 'AUTH_REQUIRED' : 'API_UNAVAILABLE');
     const lifetime=response.headers.get('X-Evidence-Valid-For-Ms');
     if (lifetime===null || !/^(0|[1-9][0-9]{0,4})$/.test(lifetime) || Number(lifetime)>35000) throw new ApiError('INVALID_RESPONSE');
     const text = await response.text();
+    cancelled();
     if (text.length > 2 * 1024 * 1024) throw new ApiError('INVALID_RESPONSE');
     let value: unknown;
     try { value = JSON.parse(text); } catch { throw new ApiError('INVALID_RESPONSE'); }
@@ -46,9 +54,8 @@ async function get<N extends ResponseName>(path: string, name: N, signal?: Abort
     recordEvidence(result,startedAt,Number(lifetime));
     return result;
   } catch (error) {
+    cancelled();
     if (error instanceof ApiError) throw error;
-    if (signal?.aborted) throw new ApiError('CANCELLED');
-    if (timeout.aborted) throw new ApiError('TIMEOUT');
     throw new ApiError('API_UNAVAILABLE');
   }
 }
