@@ -84,7 +84,7 @@ Windows README/task index/status/this plan.
   metadata/heartbeat accepted with retained replay and one batch effect.
 - [x] Final Linux3.13 full/backend/deployment/migrations/types/Ruff/OpenAPI, Windows
   native acceptance, secrets/package checks; one fresh whole-component review.
-- [ ] Important/Critical fixes in one RED→GREEN pass; main publication/exact terminal CI;
+- [x] Important/Critical fixes in one RED→GREEN pass; main publication/exact terminal CI;
   record remaining Service/DACL/USN/providers/performance/live pilot gates honestly.
 
 Task3 current evidence: actual Windows HTTPS/PostgreSQL2 cases passed; lost local ACK
@@ -107,4 +107,17 @@ reproduced false HEALTHY, then passed UNKNOWN/COLLECTION_ERROR and recovery.
 Final Linux3.13/PG16 458 passed/17 native-only skips, deployment46, migrations/type
 checks82+7/Ruff/OpenAPI passed; native Windows50 passed/1 platform skip and actual
 HTTPS/PostgreSQL4 cases passed. Installed wheel/worker/provider imports and public
-source Gitleaks1.44MB passed. Main publication/exact terminal CI remain pending.
+source Gitleaks1.44MB passed.
+
+Source fixes `41997758b2c7b9d438a069dac364bdb2e67c3d64`; required browser acceptance
+race fixed separately in `0e4cefac8515fb45b234922e7caea8bc9ee59c38` without weakening
+any gate. The old negative test could miss a protected read when correct auth
+restoration had already unmounted the shell; explicit real browser API401 makes
+that proof deterministic. Actual native production topology/strictTLS/auth/source/
+both session-rejection orders/cross-tab/mobile/backup/restore passed afterward.
+Published main source `0e4cefac8515fb45b234922e7caea8bc9ee59c38`:
+[CI37191597943](https://github.com/BorisDruzak/storage-console/actions/runs/37191597943)
+terminal SUCCESS, all five required jobs/steps passed; Sonar SKIPPED.
+This accepts the bounded callable metadata/heartbeat component. Full inventory
+still requires simultaneous hard-link aliases; Service/DACL, USN/providers,
+500k-object interrupted throughput/backpressure and live pilot remain unaccepted.

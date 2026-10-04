@@ -22,9 +22,10 @@ Wave 0B и Wave 0C могут частично выполняться парал
       HTTPS/PostgreSQL crash/retry/rotation приёмка, финальный обзор и CI пройдены.
       Живые collectors не установлены.
   - [Windows heartbeat/inventory](../superpowers/plans/2026-10-04-windows-inventory.md)
-    — native metadata и bounded producer реализованы; реальный Windows HTTPS/PG
-      replay/rename проверен. Финальная приёмка компонента выполняется; Windows
-      Service/DACL, large-tree backpressure/performance и live pilot следуют отдельно.
+    — native metadata и bounded producer приняты: Windows HTTPS/PG4 cases,
+      финальный независимый обзор/RED→GREEN fixes и exact CI прошли. Полная поддержка
+      одновременных hard-link paths, Windows Service/DACL, large-tree backpressure/
+      performance и live pilot остаются обязательными задачами.
 - Wave 2 — USN change stream
 - Wave 3 — attribution
 - Wave 4 — operational health

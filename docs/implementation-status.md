@@ -57,7 +57,7 @@ frontend API/types PASS. Независимый полный обзор заве
 [интерфейсы и эксплуатационные ограничения](../collectors/common/README.md).
 Windows Service/ACL, USN и live Windows/PVE/PBS collectors/pilot остаются открытыми.
 
-## Wave 1 — Windows heartbeat/inventory; финальная приёмка в работе
+## Wave 1 — Windows metadata/heartbeat component принят; runtime остаётся в работе
 
 Native Win32 provider: local scope validation, volume GUID/128-bit FileId, metadata-only
 handles, complete mount aliases, Unicode/long paths, bounded streaming traversal.
@@ -68,15 +68,21 @@ fingerprint, отдельным heartbeat stream и явной остановк�
 Restart начинает новый scan и сохраняет старые FIFO batches; durable enumeration
 cursor/snapshot/deletion proof отсутствуют.
 
-Windows temporary-tree/provider/producer47 PASS/1 platform SKIP.
-Реальный HTTPS/PostgreSQL fake-provider replay и
-native Windows rename прошли; FileId/object identity сохранились, повтор ACK не
-добавил эффект. Финальный Linux full457/backend (13 native-only SKIP)+46 deployment,
-migrations/types/Ruff/OpenAPI прошли. Независимый полный обзор и итоговая публикация/
-CI ещё выполняются.
-Installed wheel/worker/provider imports и Gitleaks1.41MB PASS.
+Windows temporary-tree/provider/producer50 PASS/1 platform SKIP; реальный
+Windows HTTPS/PostgreSQL4 cases PASS. Retained replay/rename сохраняют FileId/object
+identity; repeated partial hard-link scans не создают ложную историю путей.
+Один свежий обзор выявил три Important: actual FSCTL scope escape, hard-link path
+replacement и error-heartbeat false HEALTHY. Исправления проверены RED→GREEN:
+handle-relative open/enumeration, MULTIPLE_LINKS partial и UNKNOWN/COLLECTION_ERROR.
+Linux full458/backend (17 native-only SKIP)+46 deployment/migrations/types82+7/
+Ruff/OpenAPI PASS; installed wheel/worker/provider imports и Gitleaks1.44MB PASS.
+Published source `0e4cefac8515fb45b234922e7caea8bc9ee59c38`,
+[exact CI](https://github.com/BorisDruzak/storage-console/actions/runs/37191597943)
+terminal SUCCESS: backend/frontend/compose/production/secrets PASS; Sonar SKIPPED.
+Production browser acceptance explicitly proves invalid-cookie protected API401,
+then retains both tabs/session-rejection orders/shell cleanup/TLS/backup/restore gates.
 План: [Windows inventory](superpowers/plans/2026-10-04-windows-inventory.md).
-Windows Service/state DACL, USN/операционные providers,500k-object performance,
+Simultaneous hard-link paths/ingest, Windows Service/state DACL, USN/операционные providers,500k-object performance,
 backpressure orchestration и живой pilot остаются открытыми.
 
 ## Пользовательская авторизация — source acceptance и CI подтверждены

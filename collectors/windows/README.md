@@ -50,7 +50,9 @@ Enumeration cursor не durable; scan не является snapshot или dele
 native temporary-tree tests и четыре Windows HTTPS/PostgreSQL replay/rename/error/
 hard-link partial cases прошли; Linux458/backend (17 native-only SKIP)+46 deployment/
 migrations/types/Ruff/OpenAPI прошёл. Один независимый обзор выявил три Important;
-исправления проверены RED→GREEN. Публикация и exact CI ещё выполняются.
+исправления проверены RED→GREEN. Source `0e4cefac8515fb45b234922e7caea8bc9ee59c38`
+опубликован; [exact CI](https://github.com/BorisDruzak/storage-console/actions/runs/37191597943)
+terminal SUCCESS, все пять обязательных jobs PASS. Sonar SKIPPED остаётся внешним gate.
 
 Windows Service/state DACL, USN continuity, SMB/DFS/FSRM/VSS/ACL/telemetry,
 500k-object performance и live pilot остаются отдельными обязательными этапами.
