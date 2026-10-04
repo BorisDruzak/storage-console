@@ -160,6 +160,10 @@ try {
     await page.locator('input[name="password"]').fill(password);
     await page.getByRole('button', { name: 'Войти', exact: true }).click();
     await expect(page.locator('.session-bar')).toContainText(username);
+    // Establish both authenticated tabs before revoking their shared cookie.
+    // The second tab restores asynchronously after the login notification.
+    phase = 'rejected-session-second-tab-restored';
+    await expect(other.locator('.session-bar')).toContainText(username);
     const current = (await context.cookies()).find(cookie => cookie.name === '__Host-storage_session');
     phase = current ? 'rejected-session-cookie-flags' : 'rejected-session-cookie-missing';
     assert.ok(current?.secure && current.httpOnly);
@@ -179,8 +183,14 @@ try {
     await page.evaluate(() => { window.location.hash = '#health'; });
     phase = 'rejected-session-primary-gate';
     await expect(page.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
-    phase = 'rejected-session-other-gate';
-    await expect(other.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
+    phase = 'rejected-session-other-gate-' + (rejectBeforeNavigation ? 'before' : 'during');
+    try {
+      await expect(other.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
+    } catch (error) {
+      // Only a count is diagnostic; never log page content or form values.
+      phase += '-shell-' + await other.locator('.session-bar').count();
+      throw error;
+    }
     assert.ok(await rejectedRead);
     assert.equal(await page.locator('.session-bar').count(), 0);
   }
