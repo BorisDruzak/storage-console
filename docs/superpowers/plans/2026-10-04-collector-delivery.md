@@ -34,7 +34,7 @@ delivery coordinator; existing API/contracts remain authoritative.
 5. Collector identity/schema changes and platform permissions: reject unsafe reuse and
    distinguish verified Linux permissions from later Windows service ACL acceptance.
 
-## Task1 — Transactional local state
+## Task 1 — Transactional local state
 
 Files: create `collectors/__init__.py`, `collectors/common/{__init__,outbox}.py`,
 `tests/backend/test_collector_outbox.py`; update package discovery/mypy in `pyproject.toml`.
@@ -43,17 +43,26 @@ checkpoint)->durable batch identity; checkpoint(stream)->revision/value; claim(n
 orNone; acknowledge(claim); retry(claim,code,next_attempt); quarantine(claim,code); status().
 Claim is immutable body/domain/batch ID/lease ID; no credentials. Safe OutboxError has fixed code.
 
-- [ ] RED domain/identity/schema/UTF/body/checkpoint validation, private state initialization,
+- [x] RED domain/identity/schema/UTF/body/checkpoint validation, private state initialization,
   immutable identity/future schema and bounded capacity tests.
-- [ ] RED atomic enqueue/CAS/failure rollback, repeated commit acknowledgement, changed payload,
+- [x] RED atomic enqueue/CAS/failure rollback, repeated commit acknowledgement, changed payload,
   receipt retention/forgotten transition conflict and concurrent producers.
-- [ ] Implement explicit SQLite transactions/schema/limits and fixed value-free errors.
-- [ ] RED claim/lease expiry/stale ACK, same-stream FIFO/quarantine blocking and independent
+- [x] Implement explicit SQLite transactions/schema/limits and fixed value-free errors.
+- [x] RED claim/lease expiry/stale ACK, same-stream FIFO/quarantine blocking and independent
   streams; implement transactional lifecycle without network under lock.
-- [ ] Run focused/full tests, Linux3.13 and Windows subprocess crash/restart tests, Ruff/mypy,
+- [x] Run focused/full tests, Linux3.13 and Windows subprocess crash/restart tests, Ruff/mypy,
   package/import checks; inspect complete diff and commit `feat(collectors): add durable outbox`.
 
-## Task2 — Strict transport and delivery policy
+Task 1 verification: Linux Python3.13/PostgreSQL16 full backend327 tests and
+46 deployment tests passed; final outbox39 cases passed on Linux; mypy75 source files plus6 deployment files, Ruff,
+OpenAPI check and base/head/check migration round trips passed. Windows outbox35
+cases passed, with4 POSIX-only permission cases skipped. Real subprocess exits
+before checkpoint commit and after commit prove rollback/replay on both platforms.
+Installed wheel/import and public-source Gitleaks checks passed. These checks
+accept local state only; transport, real delivery integration and whole-component
+review remain Tasks2/3. Windows service ACL installation is a later runtime gate.
+
+## Task 2 — Strict transport and delivery policy
 
 Files: create `collectors/common/{transport,delivery}.py`,
 `tests/backend/test_collector_transport.py`, `tests/backend/test_collector_delivery.py`.
@@ -70,7 +79,7 @@ uses injected clock/randomness/transport; explicit refresh_credentials resumes40
 - [ ] Focused/full tests/Ruff/mypy/package checks; commit
   `feat(collectors): deliver retained batches over verified HTTPS`.
 
-## Task3 — Real API acceptance and review
+## Task 3 — Real API acceptance and review
 
 Files: create `tests/backend/test_collector_delivery_integration.py` and a focused native
 TLS/disposable delivery acceptance helper under `tests/deployment`; update collector READMEs,
