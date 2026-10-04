@@ -72,9 +72,14 @@ try {
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page.locator('.session-bar')).toContainText(username);
   const current = (await context.cookies()).find(cookie => cookie.name === '__Host-storage_session');
+  phase = 'rejected-session-cookie';
+  assert.ok(current?.secure && current.httpOnly);
   await context.addCookies([{ ...current, value: 'a'.repeat(43) }]);
+  phase = 'rejected-session-navigation';
   await page.getByRole('link', { name: 'Состояние хранилища', exact: true }).click();
+  phase = 'rejected-session-primary-gate';
   await expect(page.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
+  phase = 'rejected-session-other-gate';
   await expect(other.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
   assert.equal(await page.locator('.session-bar').count(), 0);
   phase = 'mobile-and-runtime-errors';
