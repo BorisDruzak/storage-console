@@ -1,5 +1,6 @@
 import ctypes
 import os
+import struct
 import subprocess
 
 import pytest
@@ -126,18 +127,33 @@ def test_final_path_alias_replacement_is_rejected_before_enumeration(tmp_path, m
 
 
 def test_native_opens_never_request_data_or_delete_sharing(tmp_path, monkeypatch):
+    (tmp_path / "leaf.txt").write_bytes(b"synthetic")
     api = _Api()
     real = api.functions["CreateFileW"]
-    calls = []
+    real_relative = api.functions["NtCreateFile"]
+    calls, relative_calls = [], []
 
     def opened(*args):
         calls.append(args[1:])
         return real(*args)
 
+    def relative(*args):
+        relative_calls.append((args[1], args[6], args[8]))
+        return real_relative(*args)
+
     monkeypatch.setitem(api.functions, "CreateFileW", opened)
+    monkeypatch.setitem(api.functions, "NtCreateFile", relative)
     values = list(NativeInventory(api=api).scan(Scope((str(tmp_path),))))
     assert not any(v.error_code for v in values)
-    assert calls and all(args == (0x80, 0x3, None, 3, 0x02200000, None) for args in calls)
+    # Path open is only the local volume root: bit 1 is directory listing.
+    assert calls and all(args == (0x81, 0x3, None, 3, 0x02200000, None) for args in calls)
+    assert relative_calls and any(options & 0x40 for _, _, options in relative_calls)
+    for access, sharing, options in relative_calls:
+        assert sharing == 3 and options & 0x200000
+        if options & 0x40:  # FILE_NON_DIRECTORY_FILE: never read file data.
+            assert access == 0x100080
+        else:
+            assert options & 1 and access == 0x100081  # Directory listing only.
 
 
 def test_streaming_depth_limit_and_long_paths(tmp_path):
@@ -158,16 +174,17 @@ def test_streaming_depth_limit_and_long_paths(tmp_path):
     )
 
 
-def test_hard_links_share_identity_but_preserve_each_observed_path(tmp_path):
+def test_hard_links_are_partial_until_ingest_supports_simultaneous_paths(tmp_path):
     root = tmp_path / "root"
     root.mkdir()
     first = root / "first.txt"
     first.write_bytes(b"synthetic")
     os.link(first, root / "second.txt")
-    files = [v for v in records(root) if v.kind == "object" and v.object_type == "FILE"]
-    assert len(files) == 2
-    assert files[0].file_id == files[1].file_id
-    assert files[0].relative_path != files[1].relative_path
+    values = list(NativeInventory().scan(Scope((str(root),))))
+    assert [v.error_code for v in values if v.error_code] == ["MULTIPLE_LINKS", "MULTIPLE_LINKS"]
+    assert not any(
+        v.record and v.record.kind == "object" and v.record.object_type == "FILE" for v in values
+    )
 
 
 def test_child_metadata_failure_is_partial_and_every_handle_closes(tmp_path, monkeypatch):
@@ -176,6 +193,7 @@ def test_child_metadata_failure_is_partial_and_every_handle_closes(tmp_path, mon
     (root / "file.txt").write_bytes(b"synthetic")
     api = _Api()
     real_open, real_close, real_metadata = api.open, api.close, api.metadata
+    real_relative = api.open_relative
     opened, closed = [], []
 
     def open_handle(path):
@@ -193,9 +211,15 @@ def test_child_metadata_failure_is_partial_and_every_handle_closes(tmp_path, mon
             raise OSError("private-sensitive-path")
         return result
 
+    def relative(parent, name, *, directory=False):
+        handle = real_relative(parent, name, directory=directory)
+        opened.append(handle)
+        return handle
+
     monkeypatch.setattr(api, "open", open_handle)
     monkeypatch.setattr(api, "close", close_handle)
     monkeypatch.setattr(api, "metadata", metadata)
+    monkeypatch.setattr(api, "open_relative", relative)
     values = list(NativeInventory(api=api).scan(Scope((str(root),))))
     assert [v.error_code for v in values if v.error_code] == ["NATIVE_FAILED"]
     assert sorted(opened) == sorted(closed)
@@ -250,3 +274,110 @@ def test_every_capture_handle_uses_volume_guid_even_after_drive_alias_changes(
     values = list(NativeInventory(api=api).scan(Scope((str(tmp_path),))))
     assert not any(v.error_code for v in values)
     assert paths and all(path.startswith("\\\\?\\Volume{") for path in paths)
+
+
+def test_directory_enumeration_never_reopens_a_path(tmp_path, monkeypatch):
+    (tmp_path / "leaf.txt").write_bytes(b"synthetic")
+
+    def forbidden(path):
+        raise AssertionError("Path-based enumeration crosses the handle boundary")
+
+    monkeypatch.setattr(os, "scandir", forbidden)
+    values = list(NativeInventory().scan(Scope((str(tmp_path),))))
+    assert not any(v.error_code for v in values)
+    assert any(
+        v.record and v.record.kind == "object" and v.record.name == "leaf.txt" for v in values
+    )
+
+
+def set_junction(api, root, outside):
+    ioctl = api._dll.DeviceIoControl
+    ioctl.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(ctypes.c_uint32),
+        ctypes.c_void_p,
+    ]
+    ioctl.restype = ctypes.c_int
+    target, printable = (
+        ("\\??\\" + str(outside)).encode("utf-16-le"),
+        str(outside).encode("utf-16-le"),
+    )
+    names = target + b"\0\0" + printable + b"\0\0"
+    data = (
+        struct.pack(
+            "<IHHHHHH",
+            0xA0000003,
+            8 + len(names),
+            0,
+            0,
+            len(target),
+            len(target) + 2,
+            len(printable),
+        )
+        + names
+    )
+    handle = api.functions["CreateFileW"](str(root), 0x100, 3, None, 3, 0x02200000, None)
+    assert handle != ctypes.c_void_p(-1).value
+    try:
+        result, buffer = ctypes.c_uint32(), ctypes.create_string_buffer(data)
+        assert ioctl(handle, 0x900A4, buffer, len(data), None, 0, ctypes.byref(result), None)
+    finally:
+        api.close(handle)
+
+
+@pytest.mark.parametrize("stage", ["enumeration", "ancestor"])
+def test_actual_reparse_mutation_cannot_enumerate_or_open_outside(tmp_path, monkeypatch, stage):
+    anchor, outside = tmp_path / "anchor", tmp_path / "outside"
+    anchor.mkdir()
+    outside.mkdir()
+    leaf = anchor / "leaf"
+    if stage == "ancestor":
+        leaf.mkdir()
+        (outside / "leaf").mkdir()
+        marker = outside / "leaf" / "outside-marker.txt"
+    else:
+        marker = outside / "outside-marker.txt"
+    marker.write_bytes(b"synthetic")
+    api = _Api()
+    scan = NativeInventory(api=api).scan(Scope((str(leaf if stage == "ancestor" else anchor),)))
+    linked = False
+    real_metadata, real_scandir = api.metadata, os.scandir
+    outside_reads = []
+
+    def metadata(handle):
+        nonlocal linked
+        path = api.final_path(handle)
+        if "outside" in path:
+            outside_reads.append(path)
+        value = real_metadata(handle)
+        if stage == "ancestor" and not linked and path.endswith("\\anchor"):
+            leaf.rmdir()
+            set_junction(api, anchor, outside)
+            linked = True
+        return value
+
+    def scandir(path):
+        with real_scandir(path) as entries:
+            outside_reads.extend(entry.name for entry in entries)
+        return real_scandir(path)
+
+    monkeypatch.setattr(api, "metadata", metadata)
+    monkeypatch.setattr(os, "scandir", scandir)
+    try:
+        if stage == "enumeration":
+            next(scan)
+            set_junction(api, anchor, outside)
+            linked = True
+        values = list(scan)
+        assert linked
+        assert not outside_reads
+        assert any(value.error_code for value in values)
+    finally:
+        scan.close()
+        if linked:
+            anchor.rmdir()

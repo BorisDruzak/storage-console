@@ -112,6 +112,58 @@ def test_generated_inventory_and_heartbeat_real_https_replay(inventory_setup, tm
         assert row["version"] == "0.1.0" and row["cursor"] is None and row["lag_seconds"] is None
 
 
+def test_error_only_capture_heartbeat_is_unknown_until_successful_recovery(
+    inventory_setup, tmp_path
+):
+    setup = inventory_setup
+    box = Outbox(tmp_path / "state" / "outbox.db", setup.collector)
+    report = capture_inventory(
+        box, Scope(("C:\\synthetic",)), iter([Observation(error_code="ACCESS_DENIED")])
+    )
+    assert not report.completed and not report.records
+    capture_heartbeat(box, error_code=report.errors[0])
+    with serving_ingest(setup.client.app, tmp_path / "tls") as (origin, ca):
+        delivery = Delivery(box, Transport(origin, ca, setup.token, collector_id=setup.collector))
+        assert delivery.run_once().state == "accepted"
+        with setup.engine.connect() as connection:
+            from apps.api.read.sources import source_data
+
+            failed = connection.execute(select(source_data())).mappings().one()
+            assert failed["freshness_state"] == "UNKNOWN"
+            assert failed["freshness_reason"] == "COLLECTION_ERROR"
+            assert failed["unknown_collector_count"] == 1
+        capture_heartbeat(box)
+        assert delivery.run_once().state == "accepted"
+    with setup.engine.connect() as connection:
+        recovered = connection.execute(select(source_data())).mappings().one()
+        assert recovered["freshness_state"] == "HEALTHY"
+        assert recovered["freshness_reason"] == "CURRENT"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Actual native Windows capture")
+def test_multilink_scans_are_partial_without_manufactured_path_history(inventory_setup, tmp_path):
+    setup = inventory_setup
+    root = tmp_path / "capture"
+    root.mkdir()
+    first = root / "first.txt"
+    first.write_bytes(b"synthetic")
+    os.link(first, root / "second.txt")
+    scope = Scope((str(root),))
+    box = Outbox(tmp_path / "state" / "outbox.db", setup.collector)
+    with serving_ingest(setup.client.app, tmp_path / "tls") as (origin, ca):
+        delivery = Delivery(box, Transport(origin, ca, setup.token, collector_id=setup.collector))
+        for _ in range(2):
+            report = capture_inventory(box, scope, NativeInventory().scan(scope))
+            assert not report.completed and report.errors == ("MULTIPLE_LINKS",)
+            assert report.records == 2
+            capture_heartbeat(box, error_code=report.errors[0])
+            while box.status().pending_count:
+                assert delivery.run_once().state == "accepted"
+    # Volume and scoped directory only: neither unchanged alias is mislabeled
+    # as a replacement/ended path by the existing single-path ingest contract.
+    assert counts(setup.engine) == (4, 1, 1, 1, 2)
+
+
 @pytest.mark.skipif(os.name != "nt", reason="Actual native Windows capture")
 def test_native_capture_real_ingest_and_rename_preserve_object_identity(inventory_setup, tmp_path):
     setup = inventory_setup

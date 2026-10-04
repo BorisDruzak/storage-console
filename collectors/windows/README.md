@@ -20,7 +20,15 @@ Provider использует Unicode Win32 API, metadata-only access, volume GU
 FileId. Перед первым open проверяет local drive и переводит root в GUID path;
 mapped network drives отклоняются. Reparse points не обходятся. Ancestor handles
 удерживаются без DELETE sharing; это может временно мешать rename/delete директории
-во время scan. File contents, audit policy и privileges не меняются.
+во время scan. Это не запрещает reparse mutation: защита основана на NtCreateFile
+относительно parent handle и handle-based directory enumeration, без повторного
+разрешения pathname. File contents, audit policy и privileges не меняются.
+
+Файлы с несколькими hard links дают `MULTIPLE_LINKS` и partial capture: текущий
+ingest представляет один current path на FileId. Поддержка одновременных путей
+остаётся обязательной задачей; такие файлы пока не публикуются как ложные rename.
+Heartbeat с ошибкой сбора даёт source freshness `UNKNOWN/COLLECTION_ERROR`;
+следующий heartbeat без ошибки снимает этот признак.
 
 Scope:1..32 local roots, <=64 ancestor components, <=64 уровней обхода ниже root;
 пересекающиеся roots отклоняются. Fingerprint сохраняет регистр компонентов пути:
@@ -39,9 +47,10 @@ Enumeration cursor не durable; scan не является snapshot или dele
 Живой scheduler/Windows Service и interrupted large-tree throughput ещё не приняты.
 
 [План и проверки](../../docs/superpowers/plans/2026-10-04-windows-inventory.md):
-native temporary-tree tests и реальный Windows HTTPS/PostgreSQL replay/rename прошли;
-финальный Linux457/backend (13 native-only SKIP)+46 deployment/migrations/types/
-Ruff/OpenAPI прошёл; независимый обзор и публикация/CI ещё выполняются.
+native temporary-tree tests и четыре Windows HTTPS/PostgreSQL replay/rename/error/
+hard-link partial cases прошли; Linux458/backend (17 native-only SKIP)+46 deployment/
+migrations/types/Ruff/OpenAPI прошёл. Один независимый обзор выявил три Important;
+исправления проверены RED→GREEN. Публикация и exact CI ещё выполняются.
 
 Windows Service/state DACL, USN continuity, SMB/DFS/FSRM/VSS/ACL/telemetry,
 500k-object performance и live pilot остаются отдельными обязательными этапами.

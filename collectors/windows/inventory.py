@@ -25,6 +25,7 @@ CODES = frozenset(
         "DEPTH_LIMIT",
         "NATIVE_FAILED",
         "METADATA_INVALID",
+        "MULTIPLE_LINKS",
         "CAPACITY",
         "STOPPED",
         "STATE_MISMATCH",

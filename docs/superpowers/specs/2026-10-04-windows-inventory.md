@@ -24,18 +24,22 @@ Reject UNC/device prefixes, relative paths, dot components, alternate streams, c
 characters and overlapping roots. Configured paths and observations are private
 runtime data and never belong in public examples/logs/error messages.
 
-Open with FILE_READ_ATTRIBUTES only, OPEN_EXISTING,
-FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT and READ|WRITE sharing.
-Omit DELETE sharing to pin every ancestor while enumerating. Open each ancestor
-from the volume root, reject reparse/non-directory, and resolve each handle using
-GetFinalPathNameByHandleW/VOLUME_NAME_GUID. Continue using this stable volume GUID
-path, checking each child's actual parent/volume. Do not enumerate an alias whose
-parent changed. This deliberately may report sharing violations during concurrent
-rename, rather than follow a replacement outside the configured scope.
+Open the local volume root with FILE_READ_ATTRIBUTES|FILE_LIST_DIRECTORY,
+OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT and READ|WRITE
+sharing. Open each configured ancestor/child using NtCreateFile with RootDirectory
+set to the owned parent handle, a single name component, FILE_OPEN_REPARSE_POINT
+and synchronous metadata access. FILE_LIST_DIRECTORY is requested only for an
+expected directory, with FILE_DIRECTORY_FILE preventing a type race from granting
+file-data access; files use FILE_NON_DIRECTORY_FILE and attributes only.
+Omit DELETE sharing while handles are owned; this can interfere with rename/delete.
+Sharing restrictions do not prevent FSCTL_SET_REPARSE_POINT mutation. The read
+boundary depends on handle-relative opens and handle-based enumeration, rather than
+another pathname check. Validate reparse/type and each child's actual parent/volume
+using GetFinalPathNameByHandleW/VOLUME_NAME_GUID; never reopen that path to traverse.
 GetDriveTypeW rejects remote/unknown drives before metadata access;
 GetVolumeNameForVolumeMountPointW resolves the local volume GUID before the first
-CreateFileW. Opening only GUID paths prevents a drive-letter remap from becoming
-network access between validation and open.
+CreateFileW. Its only path-based open is this local volume root; descendants remain
+relative to owned handles. Drive-letter remapping cannot redirect later traversal.
 
 GetFileInformationByHandleEx FileIdInfo/BasicInfo/StandardInfo from the same handle:
 128-bit file ID, directory/type, size and attributes. GetVolumeInformationByHandleW
@@ -46,12 +50,18 @@ volume identity; file IDs are lowercase 32-hex strings. Relative paths are relat
 to the volume, so two configured roots cannot alias object paths. Parent file ID
 comes from the pinned parent. No synthetic path-derived IDs or filesystem fallback.
 
-Depth-first streaming scandir; <=64 directory levels, with no whole-directory sort
-or in-memory frontier. Reparse children, access denial, disappearance, sharing
+Depth-first GetFileInformationByHandleEx FileFullDirectoryInfo enumeration through
+the owned directory handle, with bounded 64KiB buffers and <=64 directory levels;
+no whole-directory sort or in-memory frontier. Reparse children, access denial, disappearance, sharing
 violation and excessive depth produce fixed issue codes. Root failure does not
-fabricate volume/object evidence. Close scandir and handles on exhaustion,
+fabricate volume/object evidence. Close handles on exhaustion,
 cancellation, consumer close and exceptions. Unsupported platforms fail explicitly
 without loading Windows libraries at import time.
+
+The existing ingest contract represents one current path per FileId. Native files
+with NumberOfLinks>1 therefore yield MULTIPLE_LINKS and incomplete capture without
+publishing misleading path replacements. Simultaneous hard-link paths remain a
+required subsequent contract/ingest capability, not accepted full inventory support.
 
 ## Producer durability and limits
 
@@ -74,6 +84,9 @@ any native enumeration. Windows directories can be case-sensitive; case-only con
 changes conservatively require an explicit state reset.
 Incomplete/issue scans never set completed=true. Heartbeat reports known fixed
 capture failures; cursor/lag remain absent until actual USN continuity exists.
+The latest error-bearing heartbeat makes source freshness UNKNOWN/COLLECTION_ERROR;
+a subsequent error-free heartbeat clears that failure. Transport arrival does not
+override a reported capture failure. No API shape or database migration is required.
 
 Windows state/service DACL installation remains mandatory before live deployment.
 No pilot host/root is guessed. Large-tree CPU/memory/throughput and interrupted
@@ -94,3 +107,5 @@ scan restart cost must be measured in pilot before production acceptance.
 References: [Win32 handle metadata](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex),
 [volume metadata](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationbyhandlew),
 [final handle path](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlew).
+Native relative opens: [NtCreateFile](https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntcreatefile);
+handle enumeration: [FILE_FULL_DIR_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_full_dir_info).

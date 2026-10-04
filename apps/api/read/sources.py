@@ -38,6 +38,7 @@ def source_data() -> CTE:
         collector_heartbeats.c.collector_id,
         collector_heartbeats.c.cursor,
         collector_heartbeats.c.lag_seconds,
+        collector_heartbeats.c.error_code,
         func.row_number()
         .over(
             partition_by=collector_heartbeats.c.collector_id,
@@ -58,6 +59,7 @@ def source_data() -> CTE:
             batches.c.last_event_at,
             heartbeat.c.cursor,
             heartbeat.c.lag_seconds,
+            heartbeat.c.error_code,
         )
         .join(source_nodes, source_nodes.c.id == collectors.c.source_node_id)
         .outerjoin(batches, batches.c.collector_id == collectors.c.id)
@@ -88,6 +90,7 @@ def source_data() -> CTE:
     ranked = select(
         raw,
         case(
+            (raw.c.error_code.is_not(None), 10),
             (future, 9),
             (missing, 8),
             (age <= raw.c.expected_cadence_seconds, 1),
@@ -95,7 +98,9 @@ def source_data() -> CTE:
             (age <= 4 * raw.c.expected_cadence_seconds, 3),
             else_=4,
         ).label("rank"),
-        case((missing | future, None), else_=age).label("age_seconds"),
+        case((missing | future | raw.c.error_code.is_not(None), None), else_=age).label(
+            "age_seconds"
+        ),
     ).cte("collector_freshness")
     # Fixed reported lag does not grow with elapsed time. Every enabled collector
     # can cross a boundary, including one masked by the current bottleneck.
@@ -148,6 +153,7 @@ def source_data() -> CTE:
             ).label("freshness_state"),
             case(
                 (worst.c.collector_id.is_(None), "NOT_CONFIGURED"),
+                (worst.c.rank == 10, "COLLECTION_ERROR"),
                 (worst.c.rank == 9, "FUTURE_TIMESTAMP"),
                 (worst.c.rank == 8, "NEVER_SEEN"),
                 (worst.c.rank == 1, "CURRENT"),

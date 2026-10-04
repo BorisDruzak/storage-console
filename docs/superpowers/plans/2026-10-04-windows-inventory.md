@@ -82,7 +82,7 @@ Windows README/task index/status/this plan.
 
 - [x] Real HTTPS/PostgreSQL fake-provider cross-platform and actual native Windows
   metadata/heartbeat accepted with retained replay and one batch effect.
-- [ ] Final Linux3.13 full/backend/deployment/migrations/types/Ruff/OpenAPI, Windows
+- [x] Final Linux3.13 full/backend/deployment/migrations/types/Ruff/OpenAPI, Windows
   native acceptance, secrets/package checks; one fresh whole-component review.
 - [ ] Important/Critical fixes in one RED→GREEN pass; main publication/exact terminal CI;
   record remaining Service/DACL/USN/providers/performance/live pilot gates honestly.
@@ -95,3 +95,16 @@ skips, deployment46 passed, migrations roundtrip/check/mypy82+7/Ruff/OpenAPI pas
 Windows provider/producer47 passed/1 platform skip. Mapped-drive regression failed
 before local-GUID pre-open resolution, then passed with no metadata open; every
 capture handle now uses GUID namespace. Whole-component review/fixes/exact CI remain.
+
+Post-review acceptance: one fresh reviewer found three Important, no Critical or
+deferred Minor. Actual FSCTL reparse mutation breached enumeration and ancestor-open
+scope before the old final-path checks; both native regressions failed against the
+previous committed module, then passed with handle-based enumeration and relative
+NtCreateFile opens. Multi-link files are explicitly partial MULTIPLE_LINKS until
+the required simultaneous-path ingest contract exists; two unchanged scans through
+real HTTPS/PostgreSQL no longer manufacture path history. Error-only heartbeat
+reproduced false HEALTHY, then passed UNKNOWN/COLLECTION_ERROR and recovery.
+Final Linux3.13/PG16 458 passed/17 native-only skips, deployment46, migrations/type
+checks82+7/Ruff/OpenAPI passed; native Windows50 passed/1 platform skip and actual
+HTTPS/PostgreSQL4 cases passed. Installed wheel/worker/provider imports and public
+source Gitleaks1.44MB passed. Main publication/exact terminal CI remain pending.
