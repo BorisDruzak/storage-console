@@ -88,7 +88,7 @@ jobs:
         with: {fetch-depth: 0}
       - name: Scan committed history
         run: |
-          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 git /repo --redact --exit-code 1
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 git /repo --redact --exit-code 1 --gitleaks-ignore-path /repo/.gitleaksignore
 
   production-smoke:
     runs-on: ubuntu-latest

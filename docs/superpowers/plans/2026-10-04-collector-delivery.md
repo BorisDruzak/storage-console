@@ -16,7 +16,7 @@ delivery coordinator; existing API/contracts remain authoritative.
 - Existing nine domains/version1 contracts; body16MiB, receipt32KiB, checkpoint16KiB.
 - Default retained capacity1024batches/512MiB, lease60seconds, network15seconds,
   retry base1second/max300seconds. No automatic loss of retained/quarantined work.
-- Credential/token never in SQLite, logs/exception messages/public Git; strict HTTPS only.
+- Keep credentials outside SQLite, logs, error messages and public Git; use verified HTTPS.
 - Main and inline publication authorized; no additional method approval loop.
 - Source/collector UUID immutable; no fabricated health/live runtime acceptance.
 - GitNexus lacks Storage Console; use source and tests. Context7 Python3.13 docs before APIs.
