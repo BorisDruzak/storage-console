@@ -40,12 +40,12 @@ SourceRegistration(identity/metadata/cadence/created_at); CreateCollector(collec
 CollectorView(id,source_node_id,collector_type,version,enabled,created_at,last_seen_at);
 CollectorCredential(CollectorView,token:SecretStr); RotateCollector(empty); SetCollectorEnabled(enabled).
 
-- [ ] Write failing tests for unsupported enums/extra fields, strict cadence1..86400 and bool,
+- [x] Write failing tests for unsupported enums/extra fields, strict cadence1..86400 and bool,
   bounded text/control/Unicode, UTC, no credential in views/repr/Python dumps and JSON-only token.
-- [ ] Run `.venv/Scripts/python -m pytest tests/backend/test_source_contracts.py -q` (RED).
-- [ ] Implement bounded typed contracts, JSON-only serializer and no coercion of enabled/cadence.
-- [ ] Run contract tests plus existing contracts (GREEN), Ruff/mypy and OpenAPI check.
-- [ ] Inspect complete diff/check; commit `feat(sources): define source management contracts`.
+- [x] Run `.venv/Scripts/python -m pytest tests/backend/test_source_contracts.py -q` (RED).
+- [x] Implement bounded typed contracts, JSON-only serializer and no coercion of enabled/cadence.
+- [x] Run contract tests plus existing contracts (GREEN), Ruff/mypy and OpenAPI check.
+- [x] Inspect complete diff/check; commit `feat(sources): define source management contracts`.
 
 ## Task2 — Registry and authenticated HTTP boundary
 
@@ -96,3 +96,5 @@ Consumes generated types and current session Actor, query invalidation/client401
 Approved full scope already permits these reversible source changes and main pushes. This
 plan elaborates Wave1; no new approval loop is needed. New collector runtime/outbox/Windows,
 PVE and PBS inventory will have separate subsystem plans after this management deliverable.
+
+Task1 RED missing-module collection → GREEN66 contract tests on Linux3.13 and localPython3.14. Ruff public apps/packages/tests PASS; Linux mypy68/pipcheck and frontend api:check PASS. JSON secret serializer verified against pinned Pydantic2.13.5; no new API route or source registry runtime yet.
