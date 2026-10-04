@@ -232,6 +232,43 @@ VERIFIED_RELEASE_SHA — проверенный полный SHA, а env APP_REL
 результаты CI заранее. После обновления подтвердите данные, actual images и Web.
 При незавершённой миграции не запускайте старый runtime без проверки совместимости.
 
+### Переход с foundation named volume на production bind storage
+
+Это отдельная maintenance-процедура для существующей foundation-инсталляции.
+До остановки подготовьте новый чистый checkout, production env/TLS/auth/DNS и пустой
+STATE_DIR/postgres по разделам1–6. Сохраните прежний checkout, его env и named volume.
+В production env сохраните прежние PROJECT_NAME, POSTGRES_USER и POSTGRES_DB:
+backup/restore намеренно запрещает смену проекта/БД. BACKUP_DIR должен быть вне checkout.
+Для новой пустой PostgreSQL-инсталляции можно выбрать новый пароль; восстановление
+public schema не переносит роли и их пароли. Это не смена пароля существующей роли.
+
+1. В прежнем checkout остановите только `web api worker` через прежний Compose/env/project.
+   PostgreSQL оставьте работающим. Исключите других писателей и автоматический restart
+   старого systemd unit. Не допускайте записей между финальным backup и переносом.
+2. Из нового checkout выполните `backup-postgres.sh` с подготовленным production env.
+   Фиксированный Compose wrapper адресует уже работающий PostgreSQL того же PROJECT_NAME;
+   эта команда не запускает/не заменяет контейнер. Проверьте manifest/проект/БД и сохраните
+   архив вне ВМ. APP_RELEASE в manifest — настроенный новый release; исходную Git/Alembic
+   revision фиксируйте отдельно в приватном протоколе переноса.
+3. Выполните `stop.sh` с production env. Постоянный старый named volume сохраняется.
+   Запустите только `postgres` по Python-команде раздела12: Compose заменит его контейнер
+   на production service с новым bind-каталогом. Перед restore проверьте фактический mount
+   и что это новая пустая БД, а не прежний named volume или чужая инсталляция.
+4. Восстановите финальный архив командой раздела12 с точным `--confirm PROJECT_NAME/POSTGRES_DB`.
+   Safety-backup пустой целевой public schema также сохраняется. Проверьте исходную
+   Alembic revision и ожидаемые данные до запуска миграций.
+5. Выполните production deploy и проверки раздела9. Миграции должны распознать исходную
+   revision и сохранить данные. Подключайте unit только к новому checkout/env.
+   Старый named volume не удаляйте до завершения приёмки и проверки внешней копии backup.
+
+Репетиция переноса выполняется в отдельном Compose-проекте/каталоге и на loopback-портах,
+без изменения основной БД. Копию source dump можно импортировать непосредственно в
+свежую изолированную БД инструментами PostgreSQL с явной проверкой обеих целей; это не
+основание изменять manifest или отключать project guards production restore CLI.
+Проверено восстановление foundation revision0001 в bind storage и миграция до0003
+с сохранением heartbeat-данных. Изолированный HTTPS probe с явным client resolver проверяет
+сертификат, но не закрывает gate настоящего DNS и клиентского браузерного доверия.
+
 ## 14. Журналы и диагностика
 
 ```bash
