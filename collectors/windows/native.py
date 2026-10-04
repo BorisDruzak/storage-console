@@ -101,6 +101,7 @@ class _Api:
         self._bind("GetFinalPathNameByHandleW", [p, w, d, d], d)
         self._bind("GetVolumeInformationByHandleW", [p, w, d, p, p, p, w, d], b)
         self._bind("GetDiskFreeSpaceExW", [w, p, p, p], b)
+        self._bind("GetVolumePathNamesForVolumeNameW", [w, w, d, p], b)
 
     def _bind(self, name: str, args: list[type[Any]], result: type[Any]) -> None:
         fn = cast(_Function, getattr(self._dll, name))
@@ -174,12 +175,27 @@ class _Api:
                 root, None, ctypes.byref(total), ctypes.byref(free)
             )
         )
+        aliases = ctypes.create_unicode_buffer(65536)
+        used = ctypes.c_uint32()
+        self._check(
+            self.functions["GetVolumePathNamesForVolumeNameW"](
+                root, aliases, len(aliases), ctypes.byref(used)
+            )
+        )
+        if not 2 <= used.value <= len(aliases):
+            raise CaptureError("METADATA_INVALID")
+        multi = "".join(aliases[: used.value])
+        if not multi.endswith("\0\0"):
+            raise CaptureError("METADATA_INVALID")
+        mounts = [value for value in multi.split("\0") if value]
+        if not 1 <= len(mounts) <= 128 or len(set(mounts)) != len(mounts):
+            raise CaptureError("METADATA_INVALID")
         return VolumeRecord(
             occurred_at=datetime.now(UTC),
             unique_identity=identity,
             filesystem=filesystem.value,
             label=label.value or None,
-            mount_aliases=[alias[:3]],
+            mount_aliases=mounts,
             total_bytes=total.value,
             free_bytes=free.value,
         )

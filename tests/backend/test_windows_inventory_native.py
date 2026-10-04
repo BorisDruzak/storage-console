@@ -201,3 +201,19 @@ def test_child_metadata_failure_is_partial_and_every_handle_closes(tmp_path, mon
     assert sorted(opened) == sorted(closed)
     assert any(v.record and v.record.kind == "volume" for v in values)
     assert "private" not in repr(values)
+
+
+def test_volume_reports_all_mount_aliases_not_only_current_scope_drive(tmp_path, monkeypatch):
+    api = _Api()
+    aliases = "C:\\\0D:\\\0\0"
+
+    def mounted(root, buffer, capacity, required):
+        assert root.startswith("\\\\?\\Volume{")
+        buffer.value = aliases
+        required._obj.value = len(aliases)
+        return 1
+
+    monkeypatch.setitem(api.functions, "GetVolumePathNamesForVolumeNameW", mounted)
+    with api.opened(str(tmp_path)) as handle:
+        volume = api.volume(handle, api.final_path(handle), str(tmp_path))
+    assert volume.mount_aliases == ["C:\\", "D:\\"]
