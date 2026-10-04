@@ -36,14 +36,21 @@ Interfaces: `CaptureError(code)` fixed-code; `Observation(record=None,error_code
 record repr hidden; `Scope(roots:tuple[str,...]).fingerprint`; `NativeInventory.scan(scope)`
 returns Iterator[Observation]. Native API private handle helpers support injected failures.
 
-- [ ] RED scope validation/privacy/platform and actual native temp-tree volume/object identity,
+- [x] RED scope validation/privacy/platform and actual native temp-tree volume/object identity,
   rename/parent/size, junction ancestor/child exclusion and cleanup tests.
-- [ ] Implement lazy WinDLL, explicit signatures/structures, same-handle metadata,
+- [x] Implement lazy WinDLL, explicit signatures/structures, same-handle metadata,
   pinned ancestor containment and bounded streaming traversal.
-- [ ] RED concurrent replacement, query failure, iterator close/depth/Unicode tests;
+- [x] RED concurrent replacement, query failure, iterator close/depth/Unicode tests;
   implement fixed issue handling, no raw OS messages/paths.
-- [ ] Windows native + portable cases, Linux import/types/Ruff; inspect complete diff;
+- [x] Windows native + portable cases, Linux import/types/Ruff; inspect complete diff;
   commit `feat(collectors): capture native Windows inventory metadata`.
+
+Task1 evidence: actual Windows26 passed/1 unsupported-platform skip; Linux3.13
+portable18 passed/9 native-only skips. Strict mypy3 source files and Ruff passed.
+Final-path alias replacement regression failed before the exact final-path guard,
+then passed. Actual junction exclusion, pinned ancestors, handle cleanup, hard-link
+identity, long/Unicode paths and depth-limit tests passed. These accept metadata
+capture only; durable producer, actual ingest and whole-component review follow.
 
 ## Task 2 — Bounded durable producer
 
