@@ -55,7 +55,8 @@ _APPLICATION_ID = 0x53434F42
 _SCHEMA = (
     "CREATE TABLE meta(collector_id TEXT NOT NULL, "
     "auth_suspended INTEGER NOT NULL DEFAULT 0 CHECK(auth_suspended IN (0,1)), "
-    "credential_generation INTEGER NOT NULL DEFAULT 0 CHECK(credential_generation>=0))",
+    "credential_generation INTEGER NOT NULL DEFAULT 0 CHECK(credential_generation>=0), "
+    "credential_binding TEXT)",
     "CREATE TABLE checkpoints(stream TEXT PRIMARY KEY, revision INTEGER NOT NULL, "
     "value TEXT NOT NULL)",
     "CREATE TABLE batches(seq INTEGER PRIMARY KEY AUTOINCREMENT, batch_id TEXT UNIQUE NOT NULL, "
@@ -168,9 +169,9 @@ class Outbox:
                     db.execute(statement)
                 db.execute("INSERT INTO meta(collector_id) VALUES (?)", (str(collector_id),))
                 db.execute(f"PRAGMA application_id={_APPLICATION_ID}")
-                db.execute("PRAGMA user_version=2")
+                db.execute("PRAGMA user_version=3")
             elif (
-                version not in (1, 2)
+                version not in (1, 2, 3)
                 or application != _APPLICATION_ID
                 or tables != {"meta", "checkpoints", "batches", "receipts", "sqlite_sequence"}
             ):
@@ -187,7 +188,10 @@ class Outbox:
                     "ALTER TABLE meta ADD COLUMN credential_generation INTEGER NOT NULL "
                     "DEFAULT 0 CHECK(credential_generation>=0)"
                 )
-                db.execute("PRAGMA user_version=2")
+            if version in (1, 2):
+                db.execute("ALTER TABLE meta ADD COLUMN credential_binding TEXT")
+                db.execute("PRAGMA user_version=3")
+            self._binding(db)
 
     def _prepare(self) -> None:
         try:
@@ -259,7 +263,7 @@ class Outbox:
             db.execute("BEGIN IMMEDIATE")
             if not initializing:
                 if (
-                    db.execute("PRAGMA user_version").fetchone()[0] != 2
+                    db.execute("PRAGMA user_version").fetchone()[0] != 3
                     or db.execute("PRAGMA application_id").fetchone()[0] != _APPLICATION_ID
                 ):
                     raise OutboxError("SCHEMA_UNSUPPORTED")
@@ -457,8 +461,45 @@ class Outbox:
         with self._transaction() as db:
             return self._auth(db)[1]
 
+    def _binding(self, db: sqlite3.Connection) -> UUID | None:
+        row = db.execute("SELECT credential_binding FROM meta").fetchone()
+        if row is None:
+            raise OutboxError("STATE_UNAVAILABLE")
+        if row[0] is None:
+            return None
+        try:
+            binding = UUID(row[0])
+            if str(binding) != row[0]:
+                raise ValueError
+            return binding
+        except (ValueError, TypeError, AttributeError):
+            raise OutboxError("STATE_UNAVAILABLE") from None
+
+    def credential_binding(self) -> UUID | None:
+        with self._transaction() as db:
+            return self._binding(db)
+
+    def activate_credentials(self, binding: UUID) -> int:
+        if not isinstance(binding, UUID):
+            raise OutboxError("INVALID_CREDENTIALS")
+        with self._transaction() as db:
+            generation = self._auth(db)[1]
+            # Replaying the same config transition cannot undo credential revocation.
+            if self._binding(db) == binding:
+                return generation
+            if generation == 2**63 - 1:
+                raise OutboxError("STATE_UNAVAILABLE")
+            db.execute(
+                "UPDATE meta SET auth_suspended=0,credential_generation=?,credential_binding=?",
+                (generation + 1, str(binding)),
+            )
+            db.execute("UPDATE batches SET lease_id=NULL,lease_until=NULL")
+            return generation + 1
+
     def resume_auth(self) -> int:
         with self._transaction() as db:
+            if self._binding(db) is not None:
+                raise OutboxError("CREDENTIAL_BOUND")
             generation = self._auth(db)[1]
             if generation == 2**63 - 1:
                 raise OutboxError("STATE_UNAVAILABLE")

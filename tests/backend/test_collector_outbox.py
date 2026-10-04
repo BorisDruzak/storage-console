@@ -275,7 +275,7 @@ def test_future_schema_and_unrelated_database_are_not_modified(tmp_path):
     path = tmp_path / "private" / "outbox.sqlite3"
     Outbox(path, collector)
     with sqlite3.connect(path) as db:
-        db.execute("PRAGMA user_version=3")
+        db.execute("PRAGMA user_version=4")
     before = path.read_bytes()
     with pytest.raises(OutboxError) as failure:
         Outbox(path, collector)
@@ -383,13 +383,13 @@ def test_running_collector_rejects_a_schema_or_identity_change_without_writing(t
     path = tmp_path / "private" / "outbox.sqlite3"
     box = Outbox(path, collector)
     with sqlite3.connect(path) as db:
-        db.execute("PRAGMA user_version=3")
+        db.execute("PRAGMA user_version=4")
     with pytest.raises(OutboxError) as failure:
         box.enqueue("heartbeat", heartbeat(collector), "stream", 0, {})
     assert failure.value.code == "SCHEMA_UNSUPPORTED"
     with sqlite3.connect(path) as db:
         assert db.execute("SELECT count(*) FROM batches").fetchone()[0] == 0
-        db.execute("PRAGMA user_version=2")
+        db.execute("PRAGMA user_version=3")
         db.execute("UPDATE meta SET collector_id=?", (str(uuid4()),))
     with pytest.raises(OutboxError) as failure:
         box.checkpoint("stream")
@@ -532,7 +532,7 @@ def test_schema1_migration_preserves_pending_bytes_checkpoint_and_enqueue_receip
     path, collector, batch = legacy_state(tmp_path)
     box = Outbox(path, collector)
     with sqlite3.connect(path) as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 3
     assert not box.auth_suspended() and box.credential_generation() == 0
     box.enqueue("heartbeat", batch, "stream", 0, {"cursor": 1})
     assert box.checkpoint("stream").revision == box.status().pending_count == 1

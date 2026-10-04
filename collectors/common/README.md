@@ -39,16 +39,22 @@ heartbeat тоже может остановить сбор. По умолчан
 между streams; более ранний retained пакет своего stream нельзя обойти.
 
 401/403 сохраняют auth suspension после перезапуска. Новый transport сам по себе
-не возобновляет очередь: оператор должен явно вызвать `refresh_credentials(new_transport)`.
+не возобновляет очередь: для непривязанной общей очереди оператор должен явно вызвать
+`refresh_credentials(new_transport)`; Windows runtime использует новую credential version.
 Идентичность collector UUID должна совпадать; автоматической выдачи ключа нет.
 Поздний ответ старого sender/lease не отменяет обновление и не удаляет новую lease.
 `close()` прекращает новые попытки; незавершённый пакет остаётся reclaimable.
 
-SQLite schema1 обновляется до2 атомарно, с сохранением всех пакетов, receipts и
-checkpoints. Код schema1 не открывает schema2; rollback старого кода требует
+SQLite schema1/2 обновляется до3 атомарно, с сохранением всех пакетов, receipts и
+checkpoints. Schema3 добавляет `credential_binding()` и явный
+`activate_credentials(UUID)`: новая credential version меняет generation, снимает
+auth suspension и аннулирует все старые lease одной транзакцией. Повтор той же
+version ничего не возобновляет; для привязанного state `resume_auth()` запрещён.
+Код schema1/2 не открывает schema3; rollback старого кода требует
 согласованной работы с версией state. В Linux каталог должен принадлежать service
 user и иметь700, state-файлы600; symlink/hardlink отвергаются. Установка защищённых
-Windows ACL остаётся обязательным будущим runtime gate; эти проверки не доказывают её.
+Windows ACL выполняется библиотекой `ProtectedState`; установленная служба и её
+учётная запись остаются обязательной отдельной runtime-приёмкой.
 
 Проверки очереди/transport: `pytest tests/backend/test_collector_outbox.py
 tests/backend/test_collector_transport.py tests/backend/test_collector_delivery.py -q`.

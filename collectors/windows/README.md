@@ -1,5 +1,16 @@
 # Windows Collector
 
+Защищённая конфигурация runtime реализована библиотечно: `ProtectedState` создаёт
+локальный state с владельцем Administrators и DACL только SYSTEM/Administrators,
+удерживает ancestor handles и эксклюзивный lock. Credentials шифруются machine DPAPI;
+нельзя размещать ciphertext в общем доступе. `configuration.activate(...)` явно
+создаёт новую credential version, затем атомарно заменяет private config до128KiB.
+CA сохраняется отдельно для каждой version. `configuration.load(...)` проверяет
+binding в SQLite schema3 и не снимает сохранённый auth suspension при перезапуске.
+Сбой между активацией БД и заменой config требует повторной настройки оператором.
+Изменение identity/scope отклоняется; backlog никогда не удаляется автоматически.
+CLI, scheduler и установленная SCM-служба пока остаются следующими задачами.
+
 Реализованы native metadata provider и bounded producer для Wave1. Они собирают
 heartbeat, identity/filesystem/capacity/mount aliases томов и metadata файлов/каталогов
 в explicitly configured local roots. Данные идут через существующий

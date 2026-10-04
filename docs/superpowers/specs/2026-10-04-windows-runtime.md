@@ -27,8 +27,9 @@ Public CA bytes are copied into that protected directory; no ambient/user CA or
 proxy fallback. All secrets, ciphertext and roots are repr-hidden and never logged.
 
 Private config version1 contains collector UUID, HTTPS origin, Scope, credential
-version UUID, encrypted token and bounded runtime settings. Configuration requires
-exclusive ownership of the runtime lock and explicit operator activation. Add an
+version UUID, encrypted token and bounded runtime settings. Serialized configuration
+must fit128KiB, checked before activation. Configuration requires exclusive ownership
+of the runtime lock and explicit operator activation. Add an
 internal credential binding to SQLite schema3: activate a new UUID, clear auth
 suspension, advance credential generation and invalidate old leases in one FULL
 transaction. Startup only verifies binding/config agreement: restart never clears
