@@ -51,6 +51,7 @@ CollectorCredential(CollectorView,token:SecretStr); RotateCollector(empty); SetC
 
 Files: create `apps/api/source_control/{__init__,registry,routes,transport}.py`,
 `tests/backend/test_source_registry.py`, `tests/backend/test_source_control.py`;
+`tests/backend/test_source_transport.py`, `apps/web/src/api/source-contracts.test.ts`;
 modify `apps/api/main.py`, `tests/backend/test_openapi.py`, generated OpenAPI/TS files via
 `apps/web/scripts/generate-api.mjs` (confirm actual generator entrypoint before invoking).
 Consumes Task1 contracts; existing Engine, Actor, require_permission/require_csrf and token_hash.
@@ -60,14 +61,14 @@ rotate_collector(engine,actor,id)->CollectorCredential;
 set_collector_enabled(engine,actor,id,data)->CollectorView;
 list_collectors(engine,source_id,limit,offset)->Page[CollectorView]. RegistryError(status,detail).
 
-- [ ] RED PostgreSQL tests: UUID/immutable natural identity duplicate+concurrency, type pairing,
+- [x] RED PostgreSQL tests: UUID/immutable natural identity duplicate+concurrency, type pairing,
   missing resources, hash-only persistence/audit-empty-details, failed audit rollback,
   rotation/replayed batch rejection, disabled explicit re-enable, concurrent ingest serialization.
-- [ ] Implement transactional registry/locks, fixed audit actions, PG conflict returning semantics.
-- [ ] RED HTTP tests with real sessions: all read roles/admin writes, bearer401/viewer403,
+- [x] Implement transactional registry/locks, fixed audit actions, PG conflict returning semantics.
+- [x] RED HTTP tests with real sessions: all read roles/admin writes, bearer401/viewer403,
   Origin/CSRF negatives/current roles, actual streamed16KiB/415/422/no-store, safe database503.
-- [ ] Implement router/transport with exact spec endpoints, dependency admission and error mapping.
-- [ ] Generate/check OpenAPI/types; test UserSession security and response token separation.
+- [x] Implement router/transport with exact spec endpoints, dependency admission and error mapping.
+- [x] Generate/check OpenAPI/types; test UserSession security and response token separation.
 - [ ] GREEN full Linux3.13/PG16 suite/migration roundtrip/check, Ruff/mypy/pipcheck;
   inspect diff and commit `feat(sources): add audited source and collector management`.
 
@@ -98,3 +99,19 @@ plan elaborates Wave1; no new approval loop is needed. New collector runtime/out
 PVE and PBS inventory will have separate subsystem plans after this management deliverable.
 
 Task1 RED missing-module collection → GREEN66 contract tests on Linux3.13 and localPython3.14. Ruff public apps/packages/tests PASS; Linux mypy68/pipcheck and frontend api:check PASS. JSON secret serializer verified against pinned Pydantic2.13.5; no new API route or source registry runtime yet.
+
+Task2 registry RED missing module → PostgreSQL9 GREEN; HTTP13 RED (absent routes) →24 GREEN
+including lock/role/CSRF/replay/atomic audit tests, then stable pagination and duplicate Origin.
+Full Linux3.13/PostgreSQL16 backend286 PASS, migration base→head/check→base→head/check,
+deployment46/Ruff/mypy72/pipcheck PASS. Final schema/frontend generation changes: selected85
+backend PASS, frontend84/typecheck/lint/build/APIcheck PASS. Standalone token validator RED
+(absent exports, then unbounded string) → GREEN after management-tag inclusion and explicit
+43-character token schema. Namespace transport RED intercepted similar prefix → five GREEN;
+latest Linux selected transport/HTTP/OpenAPI22 and Ruff/mypy72 PASS. Gitleaks1.16MB PASS.
+All pre-existing OpenAPI operations and schemas compared equal; five new management operations.
+Windows mypy reports POSIX-only auth APIs; authoritative Linux typing passes without bypass.
+Publication/exact remote CI pending; Task2 final checkbox remains open until terminal verification.
+
+Ruling: include generated response validators in Task2 alongside API types — future controls
+must consume bounded, typed credentials rather than an unvalidated wire string. Cost: small
+additional browser bundle until Task3 uses these management validators; no new dependency.

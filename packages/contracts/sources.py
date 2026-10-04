@@ -63,7 +63,10 @@ class CollectorView(Contract):
 
 
 class CollectorCredential(CollectorView):
-    token: SecretStr = Field(repr=False)
+    token: SecretStr = Field(
+        repr=False,
+        json_schema_extra={"minLength": 43, "maxLength": 43, "pattern": "^[A-Za-z0-9_-]{43}$"},
+    )
 
     @field_validator("token")
     @classmethod

@@ -15,6 +15,148 @@
       "title": "ApiError",
       "type": "object"
     },
+    "CollectorCredential": {
+      "additionalProperties": false,
+      "properties": {
+        "collector_type": {
+          "enum": [
+            "WINDOWS",
+            "PVE",
+            "PBS"
+          ],
+          "title": "Collector Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Seen At"
+        },
+        "source_node_id": {
+          "format": "uuid",
+          "title": "Source Node Id",
+          "type": "string"
+        },
+        "token": {
+          "maxLength": 43,
+          "minLength": 43,
+          "pattern": "^[A-Za-z0-9_-]{43}$",
+          "title": "Token",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Version"
+        }
+      },
+      "required": [
+        "id",
+        "source_node_id",
+        "collector_type",
+        "version",
+        "enabled",
+        "created_at",
+        "last_seen_at",
+        "token"
+      ],
+      "title": "CollectorCredential",
+      "type": "object"
+    },
+    "CollectorView": {
+      "additionalProperties": false,
+      "properties": {
+        "collector_type": {
+          "enum": [
+            "WINDOWS",
+            "PVE",
+            "PBS"
+          ],
+          "title": "Collector Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_seen_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Seen At"
+        },
+        "source_node_id": {
+          "format": "uuid",
+          "title": "Source Node Id",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Version"
+        }
+      },
+      "required": [
+        "id",
+        "source_node_id",
+        "collector_type",
+        "version",
+        "enabled",
+        "created_at",
+        "last_seen_at"
+      ],
+      "title": "CollectorView",
+      "type": "object"
+    },
     "Counts": {
       "additionalProperties": false,
       "properties": {
@@ -50,6 +192,78 @@
         "filesystem_objects"
       ],
       "title": "Counts",
+      "type": "object"
+    },
+    "CreateCollector": {
+      "additionalProperties": false,
+      "properties": {
+        "collector_type": {
+          "enum": [
+            "WINDOWS",
+            "PVE",
+            "PBS"
+          ],
+          "title": "Collector Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "collector_type"
+      ],
+      "title": "CreateCollector",
+      "type": "object"
+    },
+    "CreateSource": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_cadence_seconds": {
+          "default": 60,
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Expected Cadence Seconds",
+          "type": "integer"
+        },
+        "fqdn": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fqdn"
+        },
+        "hostname": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Hostname",
+          "type": "string"
+        },
+        "instance_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Instance Id",
+          "type": "string"
+        },
+        "source_type": {
+          "enum": [
+            "FILESERVER",
+            "PVE",
+            "PBS"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_type",
+        "hostname",
+        "instance_id"
+      ],
+      "title": "CreateSource",
       "type": "object"
     },
     "DomainHealth": {
@@ -411,6 +625,40 @@
       "title": "Overview",
       "type": "object"
     },
+    "Page_CollectorView_": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/CollectorView"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        },
+        "total": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset"
+      ],
+      "title": "Page[CollectorView]",
+      "type": "object"
+    },
     "Page_Share_": {
       "additionalProperties": false,
       "properties": {
@@ -511,6 +759,26 @@
         "offset"
       ],
       "title": "Page[Volume]",
+      "type": "object"
+    },
+    "RotateCollector": {
+      "additionalProperties": false,
+      "properties": {},
+      "title": "RotateCollector",
+      "type": "object"
+    },
+    "SetCollectorEnabled": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "title": "SetCollectorEnabled",
       "type": "object"
     },
     "Share": {
@@ -635,6 +903,71 @@
         "freshness"
       ],
       "title": "Source",
+      "type": "object"
+    },
+    "SourceRegistration": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "expected_cadence_seconds": {
+          "default": 60,
+          "maximum": 86400,
+          "minimum": 1,
+          "title": "Expected Cadence Seconds",
+          "type": "integer"
+        },
+        "fqdn": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Fqdn"
+        },
+        "hostname": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Hostname",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "instance_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Instance Id",
+          "type": "string"
+        },
+        "source_type": {
+          "enum": [
+            "FILESERVER",
+            "PVE",
+            "PBS"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_type",
+        "hostname",
+        "instance_id",
+        "id",
+        "created_at"
+      ],
+      "title": "SourceRegistration",
       "type": "object"
     },
     "UserResponse": {

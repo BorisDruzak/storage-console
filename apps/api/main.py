@@ -14,6 +14,8 @@ from starlette.requests import Request
 from apps.api.body_limit import IngestBodyLimit
 from apps.api.ingest import router as ingest_router
 from apps.api.read.routes import router as read_router
+from apps.api.source_control.routes import router as source_router
+from apps.api.source_control.transport import ControlTransport
 from apps.api.user_auth.dependencies import UserAuth
 from apps.api.user_auth.routes import router as auth_router
 from apps.api.user_auth.transport import AuthTransport
@@ -59,8 +61,10 @@ def create_app(
     application.include_router(auth_router())
     application.include_router(ingest_router(database))
     application.include_router(read_router(database))
+    application.include_router(source_router(database))
     application.add_middleware(IngestBodyLimit, max_bytes=config.max_ingest_bytes)
     application.add_middleware(AuthTransport)
+    application.add_middleware(ControlTransport)
 
     @application.exception_handler(RequestValidationError)
     async def invalid_request(_: Request, __: RequestValidationError) -> JSONResponse:

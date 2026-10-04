@@ -1,5 +1,22 @@
 # Статус реализации
 
+## Wave 1 — API управления источниками, console/runtime в работе
+
+Реализованы регистрация FILESERVER/PVE/PBS с неизменяемым UUID/natural identity,
+регистрация соответствующих collectors, одноразовая выдача/ротация ключа и отключение.
+Изменения требуют storage_admin, актуальной сессии и Origin/CSRF; collector bearer
+не разрешает управление. В БД только хеш ключа; изменение и аудит атомарны.
+Список collectors содержит metadata, без ключей/хешей. Источник без телеметрии
+остаётся UNKNOWN. Размер JSON ограничен по фактически полученным байтам; ошибки generic,
+ответы no-store. OpenAPI, TypeScript и standalone validators обновлены.
+
+Linux3.13/PostgreSQL16: полный backend286, миграции round-trip/check, deployment46,
+Ruff/mypy72/pipcheck PASS. После финальных изменений — selected85 и transport/HTTP/OpenAPI22
+PASS; frontend84/types/lint/build/APIcheck и Gitleaks PASS. Remote CI ещё ожидается.
+План: [source management](superpowers/plans/2026-10-04-source-management.md).
+Формы console, полная TLS/browser приёмка управления и один итоговый обзор следуют далее.
+Durable outbox, Windows/PVE/PBS runtime и живой inventory ещё не реализованы.
+
 ## Пользовательская авторизация — source acceptance и CI подтверждены
 
 Локальный аварийный администратор и строгий LDAPS-провайдер, сессии с DB-clock expiry,

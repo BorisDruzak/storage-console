@@ -59,3 +59,27 @@ def test_auth_contract_exposes_user_cookie_and_never_server_credentials():
         if "read" in operation.get("tags", []):
             assert operation["security"] == [{"UserSession": []}]
             assert set(operation["responses"]) >= {"401", "403", "503"}
+
+
+def test_source_management_contract_keeps_user_and_collector_admission_separate():
+    spec = json.loads(generated_contract())
+    for path, method in (
+        ("/api/v1/sources", "post"),
+        ("/api/v1/sources/{source_id}/collectors", "post"),
+        ("/api/v1/sources/{source_id}/collectors", "get"),
+        ("/api/v1/collectors/{collector_id}/rotate-token", "post"),
+        ("/api/v1/collectors/{collector_id}", "patch"),
+    ):
+        operation = spec["paths"][path][method]
+        assert operation["security"] == [{"UserSession": []}]
+        assert set(operation["responses"]) >= {"401", "403", "404", "422", "503"}
+    schemas = spec["components"]["schemas"]
+    assert "token" not in schemas["CollectorView"]["properties"]
+    assert "token_hash" not in schemas["CollectorView"]["properties"]
+    assert "token" in schemas["CollectorCredential"]["properties"]
+    assert schemas["CollectorCredential"]["properties"]["token"]["minLength"] == 43
+    assert schemas["CollectorCredential"]["properties"]["token"]["maxLength"] == 43
+    assert schemas["CollectorCredential"]["properties"]["token"]["pattern"] == "^[A-Za-z0-9_-]{43}$"
+    assert "token_hash" not in schemas["CollectorCredential"]["properties"]
+    assert schemas["RotateCollector"]["additionalProperties"] is False
+    assert schemas["CreateSource"]["properties"]["expected_cadence_seconds"]["maximum"] == 86400
