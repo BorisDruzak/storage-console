@@ -3,8 +3,8 @@
 ## Purpose and boundary
 
 Canonical section 7 requires path aliases and rename history. One volume/FileId
-identifies one object even when several hard links are observed. The accepted
-Windows metadata component currently reports MULTIPLE_LINKS instead of publishing
+identifies one object even when several hard links are observed. The initially accepted
+Windows metadata component reported MULTIPLE_LINKS instead of publishing
 misleading history. This capability replaces that interim limitation after backend
 acceptance. It does not accept the Windows Service, USN continuity, snapshot
 deletions, large-tree performance, or a live pilot.
@@ -112,6 +112,8 @@ ordinary single-path migration round trip remains supported. No production
 migration is authorized by tests against disposable schemas.
 New path-qualified DELETE events carry an internal path_delete_only marker;
 pre-upgrade events retain false and their legacy whole-delete interpretation.
+First-inventory hydration respects this marker, including legacy events retained
+before an object existed; it does not rewrite the original event.
 Downgrade also refuses any marked event, including before first inventory, since
 the older schema cannot preserve its meaning through a later re-upgrade.
 

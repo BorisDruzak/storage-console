@@ -9,7 +9,8 @@ from sqlalchemy import MetaData, create_engine, func, insert, select, text
 from sqlalchemy.engine import make_url
 
 from packages.contracts.changes import ChangeRecord
-from packages.shared.ingest.core import change
+from packages.contracts.inventory import FileObjectRecord, VolumeRecord
+from packages.shared.ingest.core import change, inventory
 from packages.shared.models.core import filesystem_objects, object_path_history, object_path_states
 
 pytestmark = pytest.mark.skipif(
@@ -302,3 +303,70 @@ def test_new_path_only_deletion_refuses_destructive_legacy_round_trip(
                 .all()
             )
             assert active == ["a/x"]
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_first_inventory_hydration_preserves_legacy_delete_semantics(migration_setup, legacy):
+    engine, config = migration_setup
+    old = MetaData()
+    old.reflect(engine)
+    source = uuid4()
+    at = datetime(2026, 1, 1, tzinfo=UTC)
+    event = ChangeRecord(
+        volume_identity="v",
+        file_id="42",
+        event_type="DELETE",
+        old_relative_path="a/x",
+        occurred_at=at + timedelta(seconds=10),
+    )
+    with engine.begin() as connection:
+        connection.execute(
+            insert(old.tables["source_nodes"]).values(
+                id=source, source_type="FILESERVER", hostname="synthetic", instance_id=str(source)
+            )
+        )
+        if legacy:
+            connection.execute(
+                insert(old.tables["change_events"]).values(
+                    id=uuid4(),
+                    source_node_id=source,
+                    **event.model_dump(),
+                )
+            )
+    command.upgrade(config, "0005")
+    with engine.begin() as connection:
+        if not legacy:
+            change(connection, source, event)
+        inventory(
+            connection,
+            source,
+            VolumeRecord(
+                unique_identity="v", filesystem="NTFS", occurred_at=at + timedelta(seconds=1)
+            ),
+        )
+        inventory(
+            connection,
+            source,
+            FileObjectRecord(
+                volume_identity="v",
+                file_id="42",
+                object_type="FILE",
+                name="x",
+                relative_path="b/x",
+                link_count=2,
+                occurred_at=at + timedelta(seconds=1),
+            ),
+        )
+    with engine.connect() as connection:
+        obj = connection.execute(select(filesystem_objects)).mappings().one()
+        active = (
+            connection.execute(
+                select(object_path_states.c.relative_path).where(
+                    object_path_states.c.active_history_id.is_not(None)
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert obj["deleted_at"] == (event.occurred_at if legacy else None)
+    assert active == ([] if legacy else ["b/x"])

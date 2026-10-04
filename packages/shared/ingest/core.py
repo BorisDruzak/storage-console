@@ -273,7 +273,7 @@ def _hydrate_changes(
             event = ChangeRecord.model_validate(
                 {key: row[key] for key in ChangeRecord.model_fields}
             )
-            _path_change(connection, target, event)
+            _path_change(connection, target, event, path_delete_only=row["path_delete_only"])
             latest = max(latest, event.occurred_at)
         last = rows[-1]
         cursor = (last["occurred_at"], last["id"])
@@ -285,9 +285,11 @@ def _hydrate_changes(
         )
 
 
-def _path_change(connection: Connection, target: UUID, record: ChangeRecord) -> None:
+def _path_change(
+    connection: Connection, target: UUID, record: ChangeRecord, *, path_delete_only: bool = True
+) -> None:
     if record.event_type == "DELETE":
-        if record.old_relative_path is None:
+        if record.old_relative_path is None or not path_delete_only:
             paths.delete(connection, target, record.occurred_at)
         else:
             paths.end(connection, target, record.old_relative_path, record.occurred_at)
