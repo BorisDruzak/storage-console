@@ -109,6 +109,9 @@ def _outbox(state: ProtectedState, config: PrivateConfig) -> Outbox:
         for name in names:
             if (state.root / name).exists():
                 state.validate_file(name)
+        if not (state.root / "outbox.sqlite3").exists():
+            # Do not inherit a shell-specific default owner for a persistent private DB.
+            state.create_file("outbox.sqlite3")
         box = Outbox(state.root / "outbox.sqlite3", config.collector_id, config.settings.limits())
         for name in names:
             if (state.root / name).exists():

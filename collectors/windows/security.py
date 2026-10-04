@@ -399,6 +399,13 @@ class ProtectedState:
     def validate_file(self, name: str) -> None:
         self._validate_file(self._name(name))
 
+    def create_file(self, name: str) -> None:
+        path = self._name(name)
+        if name.casefold() == "runtime.lock":
+            raise SecurityError("STATE_INVALID")
+        self._write_new(path, b"")
+        self._validate_file(path)
+
     def read(self, name: str, maximum: int) -> bytes:
         path = self._name(name)
         if type(maximum) is not int or not 1 <= maximum <= 1024 * 1024:
