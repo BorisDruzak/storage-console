@@ -102,6 +102,8 @@ class _Api:
         self._bind("GetVolumeInformationByHandleW", [p, w, d, p, p, p, w, d], b)
         self._bind("GetDiskFreeSpaceExW", [w, p, p, p], b)
         self._bind("GetVolumePathNamesForVolumeNameW", [w, w, d, p], b)
+        self._bind("GetDriveTypeW", [w], d)
+        self._bind("GetVolumeNameForVolumeMountPointW", [w, w, d], b)
 
     def _bind(self, name: str, args: list[type[Any]], result: type[Any]) -> None:
         fn = cast(_Function, getattr(self._dll, name))
@@ -160,6 +162,16 @@ class _Api:
         if size >= len(buffer):
             raise CaptureError("METADATA_INVALID")
         return buffer.value
+
+    def volume_root(self, drive: str) -> str:
+        if int(self.functions["GetDriveTypeW"](drive)) not in {2, 3, 5, 6}:
+            raise CaptureError("INVALID_SCOPE")
+        buffer = ctypes.create_unicode_buffer(64)
+        self._check(self.functions["GetVolumeNameForVolumeMountPointW"](drive, buffer, len(buffer)))
+        _, root, relative = _volume_path(buffer.value)
+        if relative:
+            raise CaptureError("SCOPE_CHANGED")
+        return root
 
     def volume(self, handle: int, path: str, alias: str) -> VolumeRecord:
         identity, root, _ = _volume_path(path)
@@ -221,7 +233,9 @@ class NativeInventory:
 
     def _root(self, api: _Api, root: str) -> Iterator[Observation]:
         with ExitStack() as stack:
-            path = root[:3]
+            # Resolve the local volume before opening any metadata handle. A
+            # subsequent drive-letter remap cannot turn CreateFile into SMB access.
+            path = api.volume_root(root[:3])
             parent = None
             parent_id: str | None = None
             serial = None

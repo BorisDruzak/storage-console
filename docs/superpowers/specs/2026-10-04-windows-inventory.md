@@ -27,11 +27,15 @@ runtime data and never belong in public examples/logs/error messages.
 Open with FILE_READ_ATTRIBUTES only, OPEN_EXISTING,
 FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT and READ|WRITE sharing.
 Omit DELETE sharing to pin every ancestor while enumerating. Open each ancestor
-from the drive root, reject reparse/non-directory, and resolve each handle using
+from the volume root, reject reparse/non-directory, and resolve each handle using
 GetFinalPathNameByHandleW/VOLUME_NAME_GUID. Continue using this stable volume GUID
 path, checking each child's actual parent/volume. Do not enumerate an alias whose
 parent changed. This deliberately may report sharing violations during concurrent
 rename, rather than follow a replacement outside the configured scope.
+GetDriveTypeW rejects remote/unknown drives before metadata access;
+GetVolumeNameForVolumeMountPointW resolves the local volume GUID before the first
+CreateFileW. Opening only GUID paths prevents a drive-letter remap from becoming
+network access between validation and open.
 
 GetFileInformationByHandleEx FileIdInfo/BasicInfo/StandardInfo from the same handle:
 128-bit file ID, directory/type, size and attributes. GetVolumeInformationByHandleW

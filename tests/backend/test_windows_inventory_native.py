@@ -217,3 +217,36 @@ def test_volume_reports_all_mount_aliases_not_only_current_scope_drive(tmp_path,
     with api.opened(str(tmp_path)) as handle:
         volume = api.volume(handle, api.final_path(handle), str(tmp_path))
     assert volume.mount_aliases == ["C:\\", "D:\\"]
+
+
+def test_mapped_remote_drive_rejected_before_any_metadata_open(tmp_path, monkeypatch):
+    api = _Api()
+    opened = []
+    real_open = api.open
+
+    def tracked(path):
+        opened.append(True)
+        return real_open(path)
+
+    monkeypatch.setitem(api.functions, "GetDriveTypeW", lambda root: 4)
+    monkeypatch.setattr(api, "open", tracked)
+    values = list(NativeInventory(api=api).scan(Scope((str(tmp_path),))))
+    assert len(values) == 1 and values[0].error_code == "INVALID_SCOPE"
+    assert not opened
+
+
+def test_every_capture_handle_uses_volume_guid_even_after_drive_alias_changes(
+    tmp_path, monkeypatch
+):
+    api = _Api()
+    real_open = api.open
+    paths = []
+
+    def tracked(path):
+        paths.append(path)
+        return real_open(path)
+
+    monkeypatch.setattr(api, "open", tracked)
+    values = list(NativeInventory(api=api).scan(Scope((str(tmp_path),))))
+    assert not any(v.error_code for v in values)
+    assert paths and all(path.startswith("\\\\?\\Volume{") for path in paths)
