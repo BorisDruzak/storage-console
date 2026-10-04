@@ -41,6 +41,23 @@ def healthcheck(values: dict[str, str], compose: Compose) -> None:
             raise ConfigError("Один из обязательных сервисов не healthy")
         if name != "web" and any(port.get("PublishedPort") for port in row.get("Publishers") or []):
             raise ConfigError("PostgreSQL/API/worker не должны публиковать порты")
+        if name != "postgres":
+            image_ref = values["WEB_IMAGE" if name == "web" else "API_IMAGE"]
+            expected_id = run(
+                ["docker", "image", "inspect", "--format", "{{.Id}}", image_ref]
+            ).strip()
+            identity = run(
+                [
+                    "docker",
+                    "container",
+                    "inspect",
+                    "--format",
+                    '{{.Image}} {{index .Config.Labels "org.opencontainers.image.revision"}}',
+                    str(row["ID"]),
+                ]
+            ).split()
+            if identity != [expected_id, values["APP_RELEASE"]]:
+                raise ConfigError("Работающий контейнер не соответствует образу release")
     host, port = values["STORAGE_HOSTNAME"], values["HTTPS_PORT"]
     tls = [
         "curl",

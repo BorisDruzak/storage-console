@@ -161,3 +161,36 @@ def test_operator_gateway_rejects_empty_or_unhashed_credentials(tmp_path, conten
     path.write_text(content)
     with pytest.raises(ConfigError):
         check_auth(path)
+
+
+@pytest.mark.parametrize("wrong_identity", ["image", "revision", None])
+def test_healthcheck_verifies_running_release_identity(monkeypatch, wrong_identity):
+    from deploy.scripts import lifecycle
+
+    class HealthyCompose:
+        def services(self):
+            return [
+                {"Service": name, "ID": name, "State": "running", "Health": "healthy"}
+                for name in ("postgres", "api", "worker", "web")
+            ]
+
+    def synthetic_run(args, **kwargs):
+        if args[0] == "docker":
+            if args[1] == "image":
+                return "sha256:expected-image"
+            image = "sha256:old-image" if wrong_identity == "image" else "sha256:expected-image"
+            revision = "c" * 40 if wrong_identity == "revision" else values["APP_RELEASE"]
+            return image + " " + revision
+        if "--fail" in args:
+            return '{"status":"ok"}'
+        if "-w" in args:
+            return "401"
+        return "HTTP/1.1 308 Permanent Redirect\nLocation: https://storage.example.test/\n"
+
+    monkeypatch.setattr(lifecycle, "run", synthetic_run)
+    values = parse_environment(valid_text())
+    if wrong_identity:
+        with pytest.raises(ConfigError):
+            lifecycle.healthcheck(values, HealthyCompose())
+    else:
+        lifecycle.healthcheck(values, HealthyCompose())
