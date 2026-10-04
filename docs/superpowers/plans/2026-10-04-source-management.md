@@ -87,9 +87,9 @@ Consumes generated types and current session Actor, query invalidation/client401
 - [x] GREEN frontend tests/typecheck/lint/i18n/build/APIcheck/npm audit and existing E2E.
 - [x] Extend strict-TLS disposable browser acceptance: register/read/enroll/ingest heartbeat,
   rotate old/new bearer checks, disable/re-enable, source fresh, token closed before screenshots.
-- [ ] Full backend/deployment/migrations/typing, frontend and secrets checks; one fresh whole-feature
+- [x] Full backend/deployment/migrations/typing, frontend and secrets checks; one fresh whole-feature
   review, meaningful RED→GREEN fixes only; publish main and verify exact terminal required CI.
-- [ ] Update actual acceptance/remaining Wave1 runtime work and commit
+- [x] Update actual acceptance/remaining Wave1 runtime work and commit
   `feat(web): manage sources and collector credentials in console` (split independent fixes).
 
 ## Rulings and execution evidence
@@ -133,7 +133,10 @@ Gitleaks and eight ShellCheck scripts PASS. Fresh disposable strict-TLS producti
 acceptance includes a real committed enrollment with its response deliberately discarded,
 metadata reconciliation and explicit rotation, then old401/new202/disable401/re-enable202,
 source freshness/reload/mobile/auth/session/backup/restore. Controls screenshots contain no keys.
-Final new main publication and exact terminal CI remain pending until observed.
+Console опубликован в `a9012163bce77815f709790502187fdce69cf46f`;
+[CI37178692013](https://github.com/BorisDruzak/storage-console/actions/runs/37178692013)
+terminal SUCCESS: backend/frontend/compose-smoke/production-smoke/secrets PASS,
+Sonar SKIPPED. Exact remote main и clean checkout проверены до следующего этапа.
 
 Ruling: out-of-band role changes are learned through session restore/events or denied writes;
 known role changes clear keys and every write enforces current server permissions. No new

@@ -25,7 +25,9 @@ Frontend115/types/lint/i18n/build/APIcheck/audit0 и shell E2E11 PASS; Gitleaks/
 регистрация, реальная потеря ответа после commit enrollment, ротация, old-key401/new-key202,
 disable401/re-enable202, source freshness, reload/mobile и backup/restore PASS.
 Один полный независимый обзор завершён; два Important воспроизведены RED→GREEN и исправлены.
-Публикация console и CI точной новой ревизии ещё ожидаются.
+Console опубликован в `a9012163bce77815f709790502187fdce69cf46f`;
+[CI37178692013](https://github.com/BorisDruzak/storage-console/actions/runs/37178692013)
+успешен на точной ревизии: пять обязательных jobs, Sonar SKIPPED.
 План: [source management](superpowers/plans/2026-10-04-source-management.md).
 Durable outbox, Windows/PVE/PBS runtime и живой inventory ещё не реализованы.
 

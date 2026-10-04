@@ -17,6 +17,8 @@ Wave 0B и Wave 0C могут частично выполняться парал
   - [Source management plan](../superpowers/plans/2026-10-04-source-management.md)
     — API/console регистрации и ключей collectors реализованы и проверены на изолированном
       HTTPS-стенде; durable outbox и живой inventory следуют отдельно.
+  - [Collector durable delivery](../superpowers/plans/2026-10-04-collector-delivery.md)
+    — transactional outbox/checkpoints, strict HTTPS, restart/retry и реальная ingest-приёмка.
 - Wave 2 — USN change stream
 - Wave 3 — attribution
 - Wave 4 — operational health
