@@ -1,6 +1,6 @@
 # Статус реализации
 
-## Пользовательская авторизация — source acceptance, публикация CI ожидается
+## Пользовательская авторизация — source acceptance и CI подтверждены
 
 Локальный аварийный администратор и строгий LDAPS-провайдер, сессии с DB-clock expiry,
 Origin/CSRF, пять ролей и защищённые read API реализованы. Русская/английская форма входа,
@@ -21,7 +21,10 @@ runtime. Эти инфраструктурные проверки остаютс
 CI обнаружил отсутствие keyUsage в синтетическом CA при строгой проверке Python3.13.
 Генератор fixture исправлен без отключения TLS-проверок: deployment46 PASS, включая
 OpenSSL -x509_strict/server-purpose/hostname и отказ неправильному hostname.
-Терминальный результат исправленного CI ещё ожидается.
+Исправление опубликовано в `8880329f43bb76ec4669d9abb9476da89fbcd05c`.
+[CI 37174844328](https://github.com/BorisDruzak/storage-console/actions/runs/37174844328)
+завершён успешно на этой ревизии: backend, frontend, compose-smoke, production-smoke,
+secrets. Sonar пропущен; внешний Quality Gate остаётся открытым.
 
 ## Wave 0A — foundation опубликован; внешний Sonar gate не проверен
 
