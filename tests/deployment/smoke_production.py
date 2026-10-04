@@ -277,7 +277,7 @@ bootstrap_admin(make_engine(Settings().database_url), 'synthetic-browser-admin',
         ),
         text=True,
         capture_output=True,
-        timeout=120,
+        timeout=180,
     )
     if result.returncode != 0:
         stage = result.stdout.strip()

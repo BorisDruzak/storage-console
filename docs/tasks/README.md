@@ -15,7 +15,8 @@ Wave 0B и Wave 0C могут частично выполняться парал
 
 - Wave 1 — source registration / heartbeat / inventory
   - [Source management plan](../superpowers/plans/2026-10-04-source-management.md)
-    — регистрация и ключи collectors; durable outbox и живой inventory следуют отдельно.
+    — API/console регистрации и ключей collectors реализованы и проверены на изолированном
+      HTTPS-стенде; durable outbox и живой inventory следуют отдельно.
 - Wave 2 — USN change stream
 - Wave 3 — attribution
 - Wave 4 — operational health

@@ -69,7 +69,7 @@ list_collectors(engine,source_id,limit,offset)->Page[CollectorView]. RegistryErr
   Origin/CSRF negatives/current roles, actual streamed16KiB/415/422/no-store, safe database503.
 - [x] Implement router/transport with exact spec endpoints, dependency admission and error mapping.
 - [x] Generate/check OpenAPI/types; test UserSession security and response token separation.
-- [ ] GREEN full Linux3.13/PG16 suite/migration roundtrip/check, Ruff/mypy/pipcheck;
+- [x] GREEN full Linux3.13/PG16 suite/migration roundtrip/check, Ruff/mypy/pipcheck;
   inspect diff and commit `feat(sources): add audited source and collector management`.
 
 ## Task3 — Console lifecycle and final acceptance
@@ -81,11 +81,11 @@ and focused adjacent tests; modify `packages/i18n/{ru-RU,en-US}.json`,
 `docs/implementation-status.md`, `docs/tasks/README.md`, this plan.
 Consumes generated types and current session Actor, query invalidation/client401 semantics.
 
-- [ ] RED translated admin forms, other-role metadata-only, create/enroll/rotate/disable,
+- [x] RED translated admin forms, other-role metadata-only, create/enroll/rotate/disable,
   pending/resubmit/failure, one-time token close/unmount/session changes and stale response tests.
-- [ ] Implement focused components; token never in query cache/browser storage/logs.
-- [ ] GREEN frontend tests/typecheck/lint/i18n/build/APIcheck/npm audit and existing E2E.
-- [ ] Extend strict-TLS disposable browser acceptance: register/read/enroll/ingest heartbeat,
+- [x] Implement focused components; token never in query cache/browser storage/logs.
+- [x] GREEN frontend tests/typecheck/lint/i18n/build/APIcheck/npm audit and existing E2E.
+- [x] Extend strict-TLS disposable browser acceptance: register/read/enroll/ingest heartbeat,
   rotate old/new bearer checks, disable/re-enable, source fresh, token closed before screenshots.
 - [ ] Full backend/deployment/migrations/typing, frontend and secrets checks; one fresh whole-feature
   review, meaningful RED→GREEN fixes only; publish main and verify exact terminal required CI.
@@ -110,8 +110,37 @@ backend PASS, frontend84/typecheck/lint/build/APIcheck PASS. Standalone token va
 latest Linux selected transport/HTTP/OpenAPI22 and Ruff/mypy72 PASS. Gitleaks1.16MB PASS.
 All pre-existing OpenAPI operations and schemas compared equal; five new management operations.
 Windows mypy reports POSIX-only auth APIs; authoritative Linux typing passes without bypass.
-Publication/exact remote CI pending; Task2 final checkbox remains open until terminal verification.
+Task2 опубликован в `adc8ad20088d26f2595b2132702ab81780c2ecbe`.
+[CI37176997771](https://github.com/BorisDruzak/storage-console/actions/runs/37176997771)
+terminal SUCCESS: все пять обязательных jobs; Sonar SKIPPED (внешний gate).
+Финальные CI logs подтверждают backend291/deployment46/mypy72/strict deploy6,
+OpenAPI match и Alembic check.
 
 Ruling: include generated response validators in Task2 alongside API types — future controls
 must consume bounded, typed credentials rather than an unvalidated wire string. Cost: small
 additional browser bundle until Task3 uses these management validators; no new dependency.
+
+Task3 console: client RED missing import/promised identity errors → GREEN9; initial
+components RED absent imports → GREEN5, extended authority/session/race coverage →112.
+Whole-feature review: two Important. First committed enrollment/source registration with
+lost response leaves a cached empty list; second newly issued key lacks its matching UUID
+when the collector is outside the current page. Three regression tests RED → GREEN31
+focused source tests, full frontend115 PASS. Uncertain results now refresh only metadata
+GETs; credential issuance is never retried. The key panel displays its returned collector UUID.
+Linux3.13/PG16 backend291, migration round-trip/check, deployment46, Ruff/mypy72/strict deploy6,
+OpenAPI/pipcheck PASS. Frontend types/lint/i18n/build/APIcheck/audit0, shell E2E11,
+Gitleaks and eight ShellCheck scripts PASS. Fresh disposable strict-TLS production/browser
+acceptance includes a real committed enrollment with its response deliberately discarded,
+metadata reconciliation and explicit rotation, then old401/new202/disable401/re-enable202,
+source freshness/reload/mobile/auth/session/backup/restore. Controls screenshots contain no keys.
+Final new main publication and exact terminal CI remain pending until observed.
+
+Ruling: out-of-band role changes are learned through session restore/events or denied writes;
+known role changes clear keys and every write enforces current server permissions. No new
+background role polling is introduced here. Cost: an already-issued key may remain displayed
+until the client learns of the change; rotation/disable independently revoke collector access.
+Ruling: absent Storage Console GitNexus index means source/contracts/tests are authoritative;
+no index/group synchronization is fabricated. Cost: indexed impact proof is unavailable.
+Primary deployment/live AD/DNS and full runtime/outbox/Waves1–8 remain required later gates.
+Deferred minor: collector last_seen_at currently has a heartbeat label even though any ingest
+updates it. It is metadata, not the source freshness calculation; no health behavior was changed.

@@ -1,6 +1,6 @@
 # Статус реализации
 
-## Wave 1 — API управления источниками, console/runtime в работе
+## Wave 1 — управление источниками в API и console; runtime в работе
 
 Реализованы регистрация FILESERVER/PVE/PBS с неизменяемым UUID/natural identity,
 регистрация соответствующих collectors, одноразовая выдача/ротация ключа и отключение.
@@ -10,11 +10,23 @@
 остаётся UNKNOWN. Размер JSON ограничен по фактически полученным байтам; ошибки generic,
 ответы no-store. OpenAPI, TypeScript и standalone validators обновлены.
 
-Linux3.13/PostgreSQL16: полный backend286, миграции round-trip/check, deployment46,
-Ruff/mypy72/pipcheck PASS. После финальных изменений — selected85 и transport/HTTP/OpenAPI22
-PASS; frontend84/types/lint/build/APIcheck и Gitleaks PASS. Remote CI ещё ожидается.
+API опубликован в `adc8ad20088d26f2595b2132702ab81780c2ecbe`;
+[CI37176997771](https://github.com/BorisDruzak/storage-console/actions/runs/37176997771)
+завершён успешно: пять обязательных jobs, Sonar SKIPPED.
+Финальная console-проверка Linux3.13/PostgreSQL16: backend291, миграции round-trip/check,
+deployment46, Ruff/mypy72/strict deploy6/pipcheck/OpenAPI PASS.
+Frontend115/types/lint/i18n/build/APIcheck/audit0 и shell E2E11 PASS; Gitleaks/ShellCheck PASS.
+
+Русские/английские формы регистрации и управления доступны администратору; остальные
+четыре роли видят metadata. Одноразовый ключ и соответствующий collector UUID показаны
+только в component memory; закрытие, unmount, выход/expiry/известная смена роли очищают их.
+После потерянного ответа обновляется metadata, без повторной выдачи ключа.
+Настоящий Chromium на изолированном production Compose: strict TLS trust/rejection,
+регистрация, реальная потеря ответа после commit enrollment, ротация, old-key401/new-key202,
+disable401/re-enable202, source freshness, reload/mobile и backup/restore PASS.
+Один полный независимый обзор завершён; два Important воспроизведены RED→GREEN и исправлены.
+Публикация console и CI точной новой ревизии ещё ожидаются.
 План: [source management](superpowers/plans/2026-10-04-source-management.md).
-Формы console, полная TLS/browser приёмка управления и один итоговый обзор следуют далее.
 Durable outbox, Windows/PVE/PBS runtime и живой inventory ещё не реализованы.
 
 ## Пользовательская авторизация — source acceptance и CI подтверждены
@@ -137,8 +149,10 @@ Live overview domain cards/source list+detail/volumes/shares подключен�
 Полные overall/freshness summaries и остальные domain pages/locale-timezone UX остаются впереди.
 
 Wave 0B backend/contracts/domain DB/queue реализованы; external Sonar gate не подтверждён.
-Wave 0C полный shell/pages/typed domain API и Wave 0D production deployment/runbook не завершены.
-Wave 1–8 collectors и operational/discovery modules не реализованы.
+Wave 0C shell/pages и Wave 0D deployment package/runbook реализованы; основной runtime
+ещё не переключён, production DNS/live AD/внешние Sonar/Sentry gates не подтверждены.
+Wave 1 source management реализован; collectors/runtime и Wave 2–8 operational/discovery
+modules ещё не реализованы.
 Полные pilot критерии v0.1 пока не выполнены.
 
 Основная спецификация заморожена и описывает целевой продукт; этот документ отражает реализацию и evidence отдельно.

@@ -63,6 +63,13 @@ button:disabled { cursor: default; opacity: .55; }
 .auth-card form { display: grid; align-items: stretch; }
 .auth-card input, .auth-card select { width: 100%; min-width: 0; }
 .session-bar { display: flex; justify-content: end; align-items: center; gap: 16px; padding: 8px 24px; background: white; border-bottom: 1px solid #dce3eb; }
+.source-controls { margin-top: 24px; padding: 20px; border: 1px solid #dce3eb; border-radius: 8px; background: white; min-width: 0; }
+.source-controls fieldset { border: 0; padding: 0; margin: 0; width: 100%; min-width: 0; }
+.control-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; margin-bottom: 16px; }
+.source-controls input { width: 100%; min-width: 0; }
+.control-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.credential-panel { margin-top: 20px; padding: 16px; background: #fff3d9; border-left: 4px solid #c39838; }
+.credential-panel button { margin-top: 12px; }
 .tabs { display: flex; flex-wrap: wrap; margin-top: 0; margin-bottom: 20px; }
 .tabs a { color: #165f91; background: white; border: 1px solid #dce3eb; }
 .tabs a[aria-current] { color: white; }

@@ -13,7 +13,8 @@ import { RecoveryPage } from './pages/RecoveryPage';
 import { AccessPage, HygienePage, DiagnosticsPage, DiscoveryPage, PoliciesPage, AuditPage } from './pages/ReadDomains';
 import { SettingsPage } from './pages/SettingsPage';
 import { usePreferences } from './preferences';
-import { SessionProvider } from './auth/SessionProvider';
+import { SessionProvider, useSession } from './auth/SessionProvider';
+import type { Actor } from './auth/client';
 import { AuthGate } from './auth/LoginPage';
 
 const pages:Partial<Record<Section,ComponentType>>={
@@ -30,7 +31,7 @@ async function readiness({ signal }: { signal: AbortSignal }): Promise<boolean> 
   return true;
 }
 
-export function ConsoleShell() {
+export function ConsoleShell({ actor, onPermissionDenied }: { actor?: Actor; onPermissionDenied?: () => void }) {
   const { t, i18n } = useTranslation();
   const { section } = useRoute();
   const preferences=usePreferences();const heading=useRef<HTMLHeadingElement>(null);
@@ -57,12 +58,17 @@ export function ConsoleShell() {
       </header>
       <div className="content">
         <h1 id="main-content" ref={heading} tabIndex={-1}>{t(`navigation.${section}`)}</h1>
-        {Page?<Page />:<p>{t('common.unavailableEvidence')}</p>}
+        {section === 'sources' ? <SourcesPage actor={actor} onPermissionDenied={onPermissionDenied} /> : Page?<Page />:<p>{t('common.unavailableEvidence')}</p>}
       </div>
     </main>
   </div>;
 }
 
 export function App() {
-  return <SessionProvider><AuthGate><ConsoleShell /></AuthGate></SessionProvider>;
+  return <SessionProvider><AuthGate><AuthenticatedConsole /></AuthGate></SessionProvider>;
+}
+
+function AuthenticatedConsole() {
+  const session = useSession();
+  return session.state.kind === 'authenticated' ? <ConsoleShell actor={session.state.actor} onPermissionDenied={session.retry} /> : null;
 }
