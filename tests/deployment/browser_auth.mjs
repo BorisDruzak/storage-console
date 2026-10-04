@@ -170,9 +170,14 @@ try {
     const rejectedRead = page.waitForResponse(response => response.url().startsWith(origin + '/api/v1/') &&
       !response.url().includes('/auth/') && response.status() === 401, { timeout: 10000 }).catch(() => null);
     await context.addCookies([{ ...current, value: 'a'.repeat(43) }]);
+    // Auth restoration can unmount the shell before any route read starts.
+    // Independently prove API denial instead of depending on that request race.
+    phase = 'rejected-session-api-denial-' + (rejectBeforeNavigation ? 'before' : 'during');
+    assert.equal(await status('/api/v1/overview'), 401);
     if (rejectBeforeNavigation) {
       // Exercise a rejection that has already unmounted the protected shell.
-      // An uncached page guarantees a protected read rather than a cache hit.
+      // Select an uncached route if the shell is still mounted; auth restoration
+      // may already have gated it. API denial was independently proved above.
       phase = 'rejected-session-before-navigation-gate';
       await page.evaluate(() => { window.location.hash = '#sources?offset=50'; });
       await expect(page.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
@@ -191,7 +196,9 @@ try {
       phase += '-shell-' + await other.locator('.session-bar').count();
       throw error;
     }
+    phase = 'rejected-session-read-proof-' + (rejectBeforeNavigation ? 'before' : 'during');
     assert.ok(await rejectedRead);
+    phase = 'rejected-session-shell-proof';
     assert.equal(await page.locator('.session-bar').count(), 0);
   }
   phase = 'mobile-and-runtime-errors';
