@@ -4,9 +4,9 @@ from datetime import timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import delete, select, update
 
-from apps.api.user_auth.sessions import Actor, SessionStore
+from apps.api.user_auth.sessions import Actor
 from packages.shared.models.security import (
     audit_log,
     login_rate_buckets,
@@ -15,19 +15,6 @@ from packages.shared.models.security import (
     user_sessions,
     users,
 )
-
-
-@pytest.fixture
-def session_setup(ingest_setup):
-    _, engine, *_ = ingest_setup
-    user, role = uuid4(), uuid4()
-    with engine.begin() as connection:
-        connection.execute(
-            insert(users).values(id=user, username="synthetic", auth_provider="local")
-        )
-        connection.execute(insert(roles).values(id=role, code="storage_admin"))
-        connection.execute(insert(user_roles).values(user_id=user, role_id=role))
-    return SessionStore(engine), engine, user, role
 
 
 def test_opaque_session_rotation_hashes_and_server_logout(session_setup):

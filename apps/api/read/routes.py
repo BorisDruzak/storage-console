@@ -1,11 +1,12 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
 
 from apps.api.ingest import ApiError
+from apps.api.user_auth.dependencies import require_permission
 from packages.contracts.read import (
     Counts,
     Domains,
@@ -37,8 +38,9 @@ def router(engine: Engine) -> APIRouter:
     result = APIRouter(
         prefix="/api/v1",
         tags=["read"],
+        dependencies=[Depends(require_permission("read"))],
         responses={
-            **{code: {"model": ApiError} for code in (404, 422, 503)},
+            **{code: {"model": ApiError} for code in (401, 403, 404, 422, 503)},
             200: {
                 "headers": {
                     "X-Evidence-Valid-For-Ms": {

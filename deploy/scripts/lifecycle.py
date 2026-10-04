@@ -72,8 +72,14 @@ def healthcheck(values: dict[str, str], compose: Compose) -> None:
     if ready != {"status": "ok"}:
         raise ConfigError("HTTPS readiness не подтверждена")
     code = run([*tls, "-o", "/dev/null", "-w", "%{http_code}", f"https://{host}:{port}/"])
-    if code != "401":
-        raise ConfigError("Web должен требовать операторскую аутентификацию")
+    if code != "200":
+        raise ConfigError("Web должен показывать форму входа")
+    for path in ("/api/v1/auth/me", "/api/v1/overview"):
+        denied = run(
+            [*tls, "-o", "/dev/null", "-w", "%{http_code}", f"https://{host}:{port}{path}"]
+        )
+        if denied != "401":
+            raise ConfigError("Anonymous пользователь не должен получать данные API")
     redirect = run(
         [
             "curl",
@@ -92,7 +98,7 @@ def healthcheck(values: dict[str, str], compose: Compose) -> None:
     if (
         not lines
         or " 308 " not in lines[0]
-        or not any(line.lower() == f"location: https://{host}/" for line in lines)
+        or not any(line.lower() == f"location: {values['APP_ORIGIN']}/" for line in lines)
     ):
         raise ConfigError("HTTP должен перенаправлять на canonical HTTPS hostname")
     print("HTTPS, HTTP redirect и сервисы: проверены")
@@ -104,6 +110,50 @@ def verify_images(values: dict[str, str]) -> None:
         labels = images[0]["Config"].get("Labels") or {}
         if labels.get("org.opencontainers.image.revision") != values["APP_RELEASE"]:
             raise ConfigError("Revision образа не соответствует APP_RELEASE")
+
+
+def verify_auth_configuration(values: dict[str, str]) -> None:
+    # Validate as the actual API UID before stopping writers; operator need not
+    # read the private JSON. Network is disabled and no configuration is printed.
+    script = """import os
+from pathlib import Path
+from packages.shared.auth.configuration import load_auth_config, AuthConfigurationError
+from packages.shared.auth.ldap_provider import DirectoryProvider
+config = load_auth_config(Path('/run/secrets/storage-console/auth.json'))
+if config.origin != os.environ['APP_ORIGIN']:
+    raise AuthConfigurationError()
+if config.ldap is not None:
+    DirectoryProvider(config.ldap)
+"""
+    args = [
+        "docker",
+        "run",
+        "--rm",
+        "--user",
+        "10001:10001",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges:true",
+        "-e",
+        "APP_ORIGIN=" + values["APP_ORIGIN"],
+    ]
+    for source, target in (
+        (values["AUTH_CONFIG_FILE"], "auth.json"),
+        (values.get("DIRECTORY_CA_FILE") or values["TLS_CA_FILE"], "directory-ca.pem"),
+    ):
+        args.extend(
+            [
+                "--mount",
+                f"type=bind,src={source},dst=/run/secrets/storage-console/{target},readonly",
+            ]
+        )
+    run([*args, values["API_IMAGE"], "python", "-c", script], timeout=30)
 
 
 def verify_source(values: dict[str, str]) -> None:
@@ -126,6 +176,7 @@ def deploy(values: dict[str, str], compose: Compose) -> None:
         else:
             raise ConfigError("API и Web должны использовать единый способ поставки образов")
         verify_images(values)
+        verify_auth_configuration(values)
         print("Образы release: проверены", flush=True)
         compose.call("up", "-d", "--wait", "--wait-timeout", "120", "postgres", timeout=150)
         compose.call("stop", "web", "api", "worker", timeout=60)

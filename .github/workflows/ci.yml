@@ -63,20 +63,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cp .env.example .env
-      - run: docker compose up --build --wait --wait-timeout 180
-      - run: curl --fail http://127.0.0.1:8080/ready
-      - run: docker compose run --rm migrate alembic check
-      - run: docker compose exec -T worker python -m apps.worker.health
-      - uses: actions/setup-node@v4
-        with: {node-version: '24', cache: npm}
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-        env:
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8080
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - name: Create private disposable HTTPS configuration
+        run: |
+          fixture_env=$(PYTHONPATH=. python tests/deployment/prepare_development.py)
+          echo "FIXTURE_ENV=$fixture_env" >> "$GITHUB_ENV"
+          echo "FIXTURE_CA=$(dirname "$fixture_env")/ca.pem" >> "$GITHUB_ENV"
+      - run: docker compose --env-file "$FIXTURE_ENV" up --build --wait --wait-timeout 180
+      - name: Strict TLS readiness and protected read
+        run: |
+          curl --fail --noproxy '*' --cacert "$FIXTURE_CA" --resolve storage.example.test:8443:127.0.0.1 https://storage.example.test:8443/ready
+          status=$(curl --silent --noproxy '*' --cacert "$FIXTURE_CA" --resolve storage.example.test:8443:127.0.0.1 -o /dev/null -w '%{http_code}' https://storage.example.test:8443/api/v1/overview)
+          test "$status" = 401
+      - run: docker compose --env-file "$FIXTURE_ENV" run --rm migrate alembic check
+      - run: docker compose --env-file "$FIXTURE_ENV" exec -T worker python -m apps.worker.health
       - if: always()
-        run: docker compose ps && docker compose logs --tail=30
+        run: docker compose --env-file "$FIXTURE_ENV" down
 
   secrets:
     runs-on: ubuntu-latest

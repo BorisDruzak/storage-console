@@ -54,3 +54,8 @@ def test_auth_contract_exposes_user_cookie_and_never_server_credentials():
     schemas = spec["components"]["schemas"]
     assert schemas["LoginRequest"]["properties"]["password"]["writeOnly"] is True
     assert set(schemas["UserResponse"]["properties"]) == {"id", "username", "roles"}
+    for path in spec["paths"].values():
+        operation = path.get("get", {})
+        if "read" in operation.get("tags", []):
+            assert operation["security"] == [{"UserSession": []}]
+            assert set(operation["responses"]) >= {"401", "403", "503"}

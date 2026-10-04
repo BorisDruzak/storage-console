@@ -38,6 +38,21 @@ services:
 
   api:
     <<: *runtime
+    environment:
+      <<: *environment
+      APP_ORIGIN: ${APP_ORIGIN:?Set canonical HTTPS APP_ORIGIN}
+      AUTH_CONFIG_FILE: /run/secrets/storage-console/auth.json
+    volumes:
+      - type: bind
+        source: ${AUTH_CONFIG_FILE:?Set private AUTH_CONFIG_FILE}
+        target: /run/secrets/storage-console/auth.json
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${DIRECTORY_CA_FILE:-${TLS_CA_FILE:?Set TLS_CA_FILE}}
+        target: /run/secrets/storage-console/directory-ca.pem
+        read_only: true
+        bind: {create_host_path: false}
     depends_on:
       migrate: {condition: service_completed_successfully}
     healthcheck:
@@ -64,8 +79,32 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-      target: development
-    ports: ["127.0.0.1:${WEB_PORT:-8080}:80"]
+      target: production
+    environment:
+      STORAGE_HOSTNAME: ${STORAGE_HOSTNAME:?Set development DNS hostname}
+      APP_ORIGIN: ${APP_ORIGIN:?Set canonical HTTPS APP_ORIGIN}
+      NGINX_ENVSUBST_FILTER: ^(STORAGE_HOSTNAME|APP_ORIGIN)$$
+    ports: ["127.0.0.1:${WEB_PORT:-8080}:80", "127.0.0.1:${HTTPS_PORT:-8443}:443"]
+    volumes:
+      - type: bind
+        source: ${TLS_CERT_FILE:?Set TLS_CERT_FILE}
+        target: /etc/storage-console/tls/fullchain.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${TLS_KEY_FILE:?Set TLS_KEY_FILE}
+        target: /etc/storage-console/tls/privkey.pem
+        read_only: true
+        bind: {create_host_path: false}
+    read_only: true
+    tmpfs: [/tmp, /var/cache/nginx, /var/run, /etc/nginx/conf.d]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:8081/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
       api: {condition: service_healthy}
     restart: unless-stopped

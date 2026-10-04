@@ -1,6 +1,7 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -16,6 +17,7 @@ from apps.api.read.routes import router as read_router
 from apps.api.user_auth.dependencies import UserAuth
 from apps.api.user_auth.routes import router as auth_router
 from apps.api.user_auth.transport import AuthTransport
+from packages.shared.auth.configuration import AuthConfigurationError, load_auth_config
 from packages.shared.database import make_engine
 from packages.shared.logging import configure_logging
 from packages.shared.observability import configure_sentry
@@ -36,12 +38,21 @@ def create_app(
     database = engine if engine is not None else make_engine(config.database_url)
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         configure_logging()
-        configure_sentry(config)
-        logger.info("runtime", extra={"event": "api_started"})
-        yield
-        database.dispose()
+        try:
+            if config.auth_config_file:
+                providers = load_auth_config(Path(config.auth_config_file))
+                if config.app_origin != providers.origin:
+                    raise AuthConfigurationError()
+                application.state.user_auth = UserAuth(database, providers)
+            elif user_auth is None:
+                raise AuthConfigurationError()
+            configure_sentry(config)
+            logger.info("runtime", extra={"event": "api_started"})
+            yield
+        finally:
+            database.dispose()
 
     application = FastAPI(title="Storage Console API", version="0.1.0", lifespan=lifespan)
     application.state.user_auth = user_auth

@@ -1,6 +1,7 @@
 import logging
 import signal
 import threading
+import time
 
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
@@ -8,6 +9,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from apps.worker.processor import HANDLERS
+from packages.shared.auth.retention import collect_auth_rows
 from packages.shared.database import make_engine, service_heartbeats
 from packages.shared.jobs import process_one
 from packages.shared.logging import configure_logging
@@ -18,22 +20,27 @@ logger = logging.getLogger(__name__)
 
 
 def publish_heartbeat(engine: Engine) -> None:
-    statement = insert(service_heartbeats).values(service='worker', last_seen_at=func.now())
+    statement = insert(service_heartbeats).values(service="worker", last_seen_at=func.now())
     statement = statement.on_conflict_do_update(
-        index_elements=['service'], set_={'last_seen_at': func.now()},
+        index_elements=["service"],
+        set_={"last_seen_at": func.now()},
     )
     with engine.begin() as connection:
         connection.execute(statement)
 
 
 def run(settings: Settings, engine: Engine, stop: threading.Event) -> None:
+    last_auth_cleanup: float | None = None
     while not stop.is_set():
         processed = False
         try:
             publish_heartbeat(engine)
+            if last_auth_cleanup is None or time.monotonic() - last_auth_cleanup >= 60:
+                collect_auth_rows(engine)
+                last_auth_cleanup = time.monotonic()
             processed = process_one(engine, HANDLERS)
         except SQLAlchemyError:
-            logger.warning('runtime', extra={'event': 'worker_database_unavailable'})
+            logger.warning("runtime", extra={"event": "worker_database_unavailable"})
         if not processed:
             stop.wait(settings.worker_interval_seconds)
 
@@ -46,12 +53,12 @@ def main() -> None:
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
     signal.signal(signal.SIGINT, lambda *_: stop.set())
-    logger.info('runtime', extra={'event': 'worker_started'})
+    logger.info("runtime", extra={"event": "worker_started"})
     try:
         run(settings, engine, stop)
     finally:
         engine.dispose()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

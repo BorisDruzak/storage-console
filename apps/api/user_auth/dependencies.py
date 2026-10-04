@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import APIKeyCookie
@@ -54,7 +55,13 @@ class UserAuth:
                 self.store.login_failed()
                 raise denied(401, "AUTH_FAILED")
             return issued
-        except (ProviderUnavailable, SQLAlchemyError):
+        except ProviderUnavailable:
+            try:
+                self.store.login_failed()
+            except SQLAlchemyError:
+                pass  # Database outage cannot be audited; never retry or leak its error.
+            raise denied(503, "AUTH_UNAVAILABLE") from None
+        except SQLAlchemyError:
             raise denied(503, "AUTH_UNAVAILABLE") from None
 
 
@@ -83,7 +90,15 @@ def cookie(request: Request, name: str) -> str:
 
 def require_origin(request: Request) -> None:
     if single_header(request, "origin") != require_auth(request).config.origin:
+        audit_denial(request, "auth.origin_denied")
         raise denied(403, "AUTH_ORIGIN_DENIED")
+
+
+def audit_denial(request: Request, action: str, user: UUID | None = None) -> None:
+    try:
+        require_auth(request).store.audit_denial(action, user)
+    except SQLAlchemyError:
+        raise denied(503, "AUTH_UNAVAILABLE") from None
 
 
 def require_session(
@@ -102,9 +117,10 @@ def require_actor(current: Annotated[CurrentSession, Depends(require_session)]) 
     return current.actor
 
 
-def require_permission(permission: str) -> Callable[[Actor], Actor]:
-    def check(actor: Annotated[Actor, Depends(require_actor)]) -> Actor:
+def require_permission(permission: str) -> Callable[..., Actor]:
+    def check(request: Request, actor: Annotated[Actor, Depends(require_actor)]) -> Actor:
         if not actor.can(permission):
+            audit_denial(request, "auth.permission_denied", actor.id)
             raise denied(403, "AUTH_FORBIDDEN")
         return actor
 
@@ -118,5 +134,6 @@ def require_csrf(
     if not current.csrf_matches(
         cookie(request, CSRF_COOKIE), single_header(request, "x-csrf-token") or ""
     ):
+        audit_denial(request, "auth.csrf_denied", current.actor.id)
         raise denied(403, "AUTH_CSRF_DENIED")
     return current

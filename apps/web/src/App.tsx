@@ -13,6 +13,8 @@ import { RecoveryPage } from './pages/RecoveryPage';
 import { AccessPage, HygienePage, DiagnosticsPage, DiscoveryPage, PoliciesPage, AuditPage } from './pages/ReadDomains';
 import { SettingsPage } from './pages/SettingsPage';
 import { usePreferences } from './preferences';
+import { SessionProvider } from './auth/SessionProvider';
+import { AuthGate } from './auth/LoginPage';
 
 const pages:Partial<Record<Section,ComponentType>>={
   overview:OverviewPage,sources:SourcesPage,health:StoragePage,activity:ActivityPage,recovery:RecoveryPage,
@@ -28,7 +30,7 @@ async function readiness({ signal }: { signal: AbortSignal }): Promise<boolean> 
   return true;
 }
 
-export function App() {
+export function ConsoleShell() {
   const { t, i18n } = useTranslation();
   const { section } = useRoute();
   const preferences=usePreferences();const heading=useRef<HTMLHeadingElement>(null);
@@ -59,4 +61,8 @@ export function App() {
       </div>
     </main>
   </div>;
+}
+
+export function App() {
+  return <SessionProvider><AuthGate><ConsoleShell /></AuthGate></SessionProvider>;
 }

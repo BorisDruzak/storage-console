@@ -31,8 +31,8 @@ def upload(client, collector, token, at):
     )
 
 
-def test_unseen_empty_and_missing_data_are_explicit_unknown(ingest_setup):
-    client, _, _, _, source = ingest_setup
+def test_unseen_empty_and_missing_data_are_explicit_unknown(authenticated_setup):
+    client, _, _, _, source = authenticated_setup
     overview = client.get("/api/v1/overview")
     assert overview.status_code == 200
     assert overview.json()["counts"]["volumes"] == 0
@@ -57,8 +57,10 @@ def test_unseen_empty_and_missing_data_are_explicit_unknown(ingest_setup):
     "age,expected",
     [(0, "HEALTHY"), (90, "OBSERVE"), (150, "WARNING"), (600, "CRITICAL"), (-60, "UNKNOWN")],
 )
-def test_source_event_age_controls_freshness_despite_recent_upload(ingest_setup, age, expected):
-    client, _, collector, token, source = ingest_setup
+def test_source_event_age_controls_freshness_despite_recent_upload(
+    authenticated_setup, age, expected
+):
+    client, _, collector, token, source = authenticated_setup
     upload(client, collector, token, datetime.now(UTC) - timedelta(seconds=age))
     response = client.get(f"/api/v1/sources/{source}/freshness")
     assert response.status_code == 200
@@ -73,8 +75,8 @@ def test_source_event_age_controls_freshness_despite_recent_upload(ingest_setup,
     )
 
 
-def test_source_pagination_and_projection_exclude_credentials(ingest_setup):
-    client, engine, _, _, _ = ingest_setup
+def test_source_pagination_and_projection_exclude_credentials(authenticated_setup):
+    client, engine, _, _, _ = authenticated_setup
     with engine.begin() as connection:
         for index in range(3):
             connection.execute(
@@ -91,8 +93,8 @@ def test_source_pagination_and_projection_exclude_credentials(ingest_setup):
         assert client.get("/api/v1/sources?" + query).status_code == 422
 
 
-def test_domain_health_reads_fresh_policy_findings_and_demotes_stale_evidence(ingest_setup):
-    client, engine, collector, token, source = ingest_setup
+def test_domain_health_reads_fresh_policy_findings_and_demotes_stale_evidence(authenticated_setup):
+    client, engine, collector, token, source = authenticated_setup
     upload(client, collector, token, datetime.now(UTC))
     signal, policy = uuid4(), uuid4()
     with engine.begin() as connection:
@@ -147,8 +149,8 @@ def test_domain_health_reads_fresh_policy_findings_and_demotes_stale_evidence(in
     assert client.get(f"/api/v1/sources/{source}/freshness").json()["state"] == "UNKNOWN"
 
 
-def test_critical_domain_keeps_unknown_scope_coverage_visible(ingest_setup):
-    client, engine, collector, token, source = ingest_setup
+def test_critical_domain_keeps_unknown_scope_coverage_visible(authenticated_setup):
+    client, engine, collector, token, source = authenticated_setup
     upload(client, collector, token, datetime.now(UTC))
     policy = uuid4()
     with engine.begin() as connection:
@@ -193,10 +195,10 @@ def test_critical_domain_keeps_unknown_scope_coverage_visible(ingest_setup):
     assert domain["unknown_source_count"] == 1
 
 
-def test_volume_share_serialization_filter_and_stale_quality(ingest_setup):
+def test_volume_share_serialization_filter_and_stale_quality(authenticated_setup):
     from packages.shared.models.core import volumes
 
-    client, engine, collector, token, source = ingest_setup
+    client, engine, collector, token, source = authenticated_setup
     stamp = datetime.now(UTC).isoformat()
     records = [
         dict(
@@ -246,8 +248,8 @@ def test_volume_share_serialization_filter_and_stale_quality(ingest_setup):
         assert client.get(f"/api/v1/{route}?limit=101").status_code == 422
 
 
-def test_source_lag_is_not_hidden_by_fresh_heartbeat(ingest_setup):
-    client, engine, collector, token, source = ingest_setup
+def test_source_lag_is_not_hidden_by_fresh_heartbeat(authenticated_setup):
+    client, engine, collector, token, source = authenticated_setup
     upload(client, collector, token, datetime.now(UTC))
     from packages.shared.models.core import collector_heartbeats
 
@@ -256,8 +258,8 @@ def test_source_lag_is_not_hidden_by_fresh_heartbeat(ingest_setup):
     assert client.get(f"/api/v1/sources/{source}/freshness").json()["state"] == "CRITICAL"
 
 
-def test_fresh_envelope_cannot_disguise_stale_records(ingest_setup):
-    client, _, collector, token, source = ingest_setup
+def test_fresh_envelope_cannot_disguise_stale_records(authenticated_setup):
+    client, _, collector, token, source = authenticated_setup
     now = datetime.now(UTC).isoformat()
     old = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
     payload = dict(
@@ -280,12 +282,14 @@ def test_fresh_envelope_cannot_disguise_stale_records(ingest_setup):
 @pytest.mark.parametrize(
     "mode,expected", [("unseen", "UNKNOWN"), ("stale", "CRITICAL"), ("lag", "CRITICAL")]
 )
-def test_fresh_collector_does_not_mask_another_enabled_collector(ingest_setup, mode, expected):
+def test_fresh_collector_does_not_mask_another_enabled_collector(
+    authenticated_setup, mode, expected
+):
     import hashlib
 
     from packages.shared.models.core import collector_heartbeats
 
-    client, engine, collector, token, source = ingest_setup
+    client, engine, collector, token, source = authenticated_setup
     other, other_token = uuid4(), uuid4().hex
     with engine.begin() as connection:
         connection.execute(
@@ -313,8 +317,8 @@ def test_fresh_collector_does_not_mask_another_enabled_collector(ingest_setup, m
     assert data["bottleneck_collector_id"] == str(other)
 
 
-def test_overview_freshness_includes_sources_outside_first_page(ingest_setup):
-    client, engine, collector, token, _ = ingest_setup
+def test_overview_freshness_includes_sources_outside_first_page(authenticated_setup):
+    client, engine, collector, token, _ = authenticated_setup
     upload(client, collector, token, datetime.now(UTC))
     with engine.begin() as connection:
         for index in range(55):
@@ -336,8 +340,10 @@ def test_overview_freshness_includes_sources_outside_first_page(ingest_setup):
 @pytest.mark.parametrize(
     "age,state", [(0, "HEALTHY"), (90, "OBSERVE"), (150, "WARNING"), (600, "CRITICAL")]
 )
-def test_overview_source_freshness_is_independent_from_operational_health(ingest_setup, age, state):
-    client, _, collector, token, _ = ingest_setup
+def test_overview_source_freshness_is_independent_from_operational_health(
+    authenticated_setup, age, state
+):
+    client, _, collector, token, _ = authenticated_setup
     upload(client, collector, token, datetime.now(UTC) - timedelta(seconds=age))
     data = client.get("/api/v1/overview").json()
     assert data["overall_state"] == "UNKNOWN"
@@ -345,8 +351,8 @@ def test_overview_source_freshness_is_independent_from_operational_health(ingest
     assert data["freshness"]["stale_source_count"] == int(age > 0)
 
 
-def test_overall_critical_does_not_hide_unknown_domains(ingest_setup):
-    client, engine, collector, token, source = ingest_setup
+def test_overall_critical_does_not_hide_unknown_domains(authenticated_setup):
+    client, engine, collector, token, source = authenticated_setup
     upload(client, collector, token, datetime.now(UTC))
     signal, policy = uuid4(), uuid4()
     with engine.begin() as connection:
@@ -384,8 +390,8 @@ def test_overall_critical_does_not_hide_unknown_domains(ingest_setup):
     assert any(domain["state"] == "UNKNOWN" for domain in data["domains"])
 
 
-def test_all_read_responses_publish_bounded_validity_and_disable_http_cache(ingest_setup):
-    client, _, _, _, source = ingest_setup
+def test_all_read_responses_publish_bounded_validity_and_disable_http_cache(authenticated_setup):
+    client, _, _, _, source = authenticated_setup
     paths = [
         "/overview",
         "/health/domains",
@@ -402,8 +408,8 @@ def test_all_read_responses_publish_bounded_validity_and_disable_http_cache(inge
         assert 0 <= int(response.headers["X-Evidence-Valid-For-Ms"]) <= 35000
 
 
-def test_read_validity_expires_before_source_freshness_changes(ingest_setup):
-    client, _, collector, token, source = ingest_setup
+def test_read_validity_expires_before_source_freshness_changes(authenticated_setup):
+    client, _, collector, token, source = authenticated_setup
     upload(client, collector, token, datetime.now(UTC) - timedelta(seconds=58))
     for path in [
         "/overview",
@@ -416,8 +422,8 @@ def test_read_validity_expires_before_source_freshness_changes(ingest_setup):
         assert 0 < int(response.headers["X-Evidence-Valid-For-Ms"]) <= 2000
 
 
-def test_domain_validity_expires_before_policy_evidence_becomes_unknown(ingest_setup):
-    client, engine, collector, token, source = ingest_setup
+def test_domain_validity_expires_before_policy_evidence_becomes_unknown(authenticated_setup):
+    client, engine, collector, token, source = authenticated_setup
     upload(client, collector, token, datetime.now(UTC))
     signal, policy = uuid4(), uuid4()
     old = datetime.now(UTC) - timedelta(seconds=58)
@@ -456,12 +462,12 @@ def test_domain_validity_expires_before_policy_evidence_becomes_unknown(ingest_s
         assert 0 < int(response.headers["X-Evidence-Valid-For-Ms"]) <= 2000
 
 
-def test_validity_accounts_for_collectors_masked_by_fixed_reported_lag(ingest_setup):
+def test_validity_accounts_for_collectors_masked_by_fixed_reported_lag(authenticated_setup):
     import hashlib
 
     from packages.shared.models.core import collector_heartbeats
 
-    client, engine, collector, token, source = ingest_setup
+    client, engine, collector, token, source = authenticated_setup
     other, other_token = uuid4(), uuid4().hex
     with engine.begin() as connection:
         connection.execute(

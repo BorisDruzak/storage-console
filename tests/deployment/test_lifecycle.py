@@ -12,6 +12,7 @@ def valid_text():
     return "\n".join(
         [
             "STORAGE_HOSTNAME=storage.example.test",
+            "APP_ORIGIN=https://storage.example.test",
             "APP_RELEASE=" + "a" * 40,
             "API_IMAGE=storage-api:" + "a" * 40,
             "WEB_IMAGE=storage-web:" + "a" * 40,
@@ -23,7 +24,7 @@ def valid_text():
             "TLS_CERT_FILE=/etc/storage-control-plane/fullchain.pem",
             "TLS_KEY_FILE=/etc/storage-control-plane/privkey.pem",
             "TLS_CA_FILE=/etc/storage-control-plane/ca.pem",
-            "AUTH_FILE=/etc/storage-control-plane/users.htpasswd",
+            "AUTH_CONFIG_FILE=/etc/storage-control-plane/auth.json",
         ]
     )
 
@@ -49,6 +50,10 @@ def test_configuration_keeps_values_as_data_and_supplies_defaults():
         "export SENTRY_DSN=ignored",
         "SENTRY_DSN=value\x00hidden",
         "SENTRY_DSN=https://secret@[invalid",
+        "APP_ORIGIN=http://storage.example.test",
+        "APP_ORIGIN=https://evil.example.test",
+        "APP_ORIGIN=https://storage.example.test/",
+        "DIRECTORY_CA_FILE=relative.pem",
     ],
 )
 def test_bad_configuration_is_rejected_without_echoing_values(extra):
@@ -143,6 +148,7 @@ def test_failed_migration_keeps_api_and_worker_stopped(monkeypatch):
     monkeypatch.setattr(lifecycle, "preflight", lambda *args: None)
     monkeypatch.setattr(lifecycle, "verify_images", lambda *args: None)
     monkeypatch.setattr(lifecycle, "verify_source", lambda *args: None)
+    monkeypatch.setattr(lifecycle, "verify_auth_configuration", lambda *args: None)
     monkeypatch.setattr(lifecycle, "deployment_lock", lambda *args: contextlib.nullcontext())
     with pytest.raises(ConfigError):
         lifecycle.deploy(parse_environment(valid_text()), FakeCompose())
@@ -153,14 +159,40 @@ def test_failed_migration_keeps_api_and_worker_stopped(monkeypatch):
     assert not any(call[0] == "up" and "api" in call for call in calls)
 
 
-@pytest.mark.parametrize("content", ["", "operator:plaintext", "operator:{PLAIN}password"])
-def test_operator_gateway_rejects_empty_or_unhashed_credentials(tmp_path, content):
-    from deploy.scripts.preflight import check_auth
+def test_invalid_provider_config_is_rejected_before_stopping_writers(monkeypatch):
+    import contextlib
 
-    path = tmp_path / "users.htpasswd"
-    path.write_text(content)
+    from deploy.scripts import lifecycle
+
+    calls = []
+
+    class FakeCompose:
+        def call(self, *args, **kwargs):
+            calls.append(args)
+            return ""
+
+    def invalid(*args):
+        raise ConfigError("synthetic provider validation failed")
+
+    monkeypatch.setattr(lifecycle, "preflight", lambda *args: None)
+    monkeypatch.setattr(lifecycle, "verify_images", lambda *args: None)
+    monkeypatch.setattr(lifecycle, "verify_source", lambda *args: None)
+    monkeypatch.setattr(lifecycle, "verify_auth_configuration", invalid)
+    monkeypatch.setattr(lifecycle, "deployment_lock", lambda *args: contextlib.nullcontext())
     with pytest.raises(ConfigError):
-        check_auth(path)
+        lifecycle.deploy(parse_environment(valid_text()), FakeCompose())
+    assert not any(call[0] in {"stop", "up", "run"} for call in calls)
+
+
+@pytest.mark.parametrize("mode", [0o644, 0o640, 0o660])
+def test_private_provider_config_rejects_nonprivate_permissions(tmp_path, mode):
+    from deploy.scripts.preflight import check_auth_file
+
+    path = tmp_path / "auth.json"
+    path.write_text("{}")
+    path.chmod(mode)
+    with pytest.raises(ConfigError):
+        check_auth_file(path)
 
 
 @pytest.mark.parametrize("wrong_identity", ["image", "revision", None])
@@ -184,7 +216,7 @@ def test_healthcheck_verifies_running_release_identity(monkeypatch, wrong_identi
         if "--fail" in args:
             return '{"status":"ok"}'
         if "-w" in args:
-            return "401"
+            return "401" if "/api/v1/" in args[-1] else "200"
         return "HTTP/1.1 308 Permanent Redirect\nLocation: https://storage.example.test/\n"
 
     monkeypatch.setattr(lifecycle, "run", synthetic_run)

@@ -1,5 +1,22 @@
 # Статус реализации
 
+## Пользовательская авторизация — source acceptance, публикация CI ожидается
+
+Локальный аварийный администратор и строгий LDAPS-провайдер, сессии с DB-clock expiry,
+Origin/CSRF, пять ролей и защищённые read API реализованы. Русская/английская форма входа,
+восстановление сессии и очистка evidence при выходе/read401 проверены. Приватный JSON
+монтируется только в API; development и production Compose требуют HTTPS.
+
+Linux3.13/PostgreSQL16: backend203, deployment45, миграции/check, mypy67/strict deploy6 PASS.
+Frontend81 и shell E2E11, lint/types/build/OpenAPI, Gitleaks/ShellCheck PASS; npm audit0.
+Изолированный production Compose: строгий TLS и отказ недоверенному CA, настоящий Chromium
+login/reload/cross-tab logout/read401, CSRF/collector boundary, backup/restore0002→head PASS.
+Один независимый полный обзор завершён; замечания по CA permissions и аудиту исправлены
+и подтверждены. Подробности: [план авторизации](superpowers/plans/2026-10-04-user-auth.md).
+
+Это не приёмка живого AD, внешних Sonar/Sentry, production DNS или переключения основного
+runtime. Эти инфраструктурные проверки остаются открытыми.
+
 ## Wave 0A — foundation опубликован; внешний Sonar gate не проверен
 
 - [x] Monorepo directories: API, Web, worker, collectors, contracts, i18n, shared, migrations, deploy, tests.

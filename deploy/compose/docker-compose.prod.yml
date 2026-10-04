@@ -56,6 +56,25 @@ services:
 
   api:
     <<: *runtime
+    environment:
+      <<: *environment
+      APP_ORIGIN: ${APP_ORIGIN:?Set canonical HTTPS APP_ORIGIN}
+      AUTH_CONFIG_FILE: /run/secrets/storage-console/auth.json
+    volumes:
+      - type: bind
+        source: ${STATE_DIR:?Set persistent STATE_DIR}/diagnostics
+        target: /data/diagnostics
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${AUTH_CONFIG_FILE:?Set private AUTH_CONFIG_FILE}
+        target: /run/secrets/storage-console/auth.json
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${DIRECTORY_CA_FILE:-${TLS_CA_FILE:?Set TLS_CA_FILE}}
+        target: /run/secrets/storage-console/directory-ca.pem
+        read_only: true
+        bind: {create_host_path: false}
     depends_on:
       migrate: {condition: service_completed_successfully}
     healthcheck:
@@ -88,7 +107,8 @@ services:
         APP_RELEASE: ${APP_RELEASE:?Set exact Git revision}
     environment:
       STORAGE_HOSTNAME: ${STORAGE_HOSTNAME:?Set production DNS hostname}
-      NGINX_ENVSUBST_FILTER: ^STORAGE_HOSTNAME$$
+      APP_ORIGIN: ${APP_ORIGIN:?Set canonical HTTPS APP_ORIGIN}
+      NGINX_ENVSUBST_FILTER: ^(STORAGE_HOSTNAME|APP_ORIGIN)$$
     ports:
       - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
       - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443"
@@ -101,11 +121,6 @@ services:
       - type: bind
         source: ${TLS_KEY_FILE:?Set TLS_KEY_FILE}
         target: /etc/storage-console/tls/privkey.pem
-        read_only: true
-        bind: {create_host_path: false}
-      - type: bind
-        source: ${AUTH_FILE:?Set operator AUTH_FILE}
-        target: /etc/storage-console/auth/users.htpasswd
         read_only: true
         bind: {create_host_path: false}
     read_only: true

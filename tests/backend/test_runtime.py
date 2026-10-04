@@ -10,9 +10,19 @@ from sqlalchemy.pool import StaticPool
 from uvicorn.config import LOGGING_CONFIG
 
 from apps.api.main import create_app
+from apps.api.user_auth.dependencies import UserAuth
 from apps.worker.health import is_fresh
+from packages.shared.auth.configuration import AuthConfig
 from packages.shared.logging import JsonFormatter, configure_logging
 from packages.shared.settings import Settings
+
+
+def configured_app(settings, engine):
+    return create_app(
+        settings,
+        engine,
+        user_auth=UserAuth(engine, AuthConfig("https://storage.example.test", True)),
+    )
 
 
 def test_health_runs_without_sentry_dsn():
@@ -20,7 +30,7 @@ def test_health_runs_without_sentry_dsn():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
-    with TestClient(create_app(settings, engine)) as client:
+    with TestClient(configured_app(settings, engine)) as client:
         assert client.get("/health").json() == {"status": "ok"}
         assert client.get("/ready").status_code == 200
 
@@ -28,7 +38,7 @@ def test_health_runs_without_sentry_dsn():
 def test_database_unavailable_is_not_healthy_or_secret_leaking():
     settings = Settings(database_url="postgresql+psycopg://user:private@127.0.0.1:1/missing")
     engine = create_engine(settings.database_url, connect_args={"connect_timeout": 1})
-    with TestClient(create_app(settings, engine)) as client:
+    with TestClient(configured_app(settings, engine)) as client:
         response = client.get("/ready")
         assert response.status_code == 503
         assert response.json() == {"status": "unavailable"}
@@ -73,7 +83,7 @@ def test_ingest_validation_does_not_echo_input_values():
     engine = create_engine(
         "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
     )
-    with TestClient(create_app(Settings(database_url="sqlite://"), engine)) as client:
+    with TestClient(configured_app(Settings(database_url="sqlite://"), engine)) as client:
         response = client.post(
             "/api/v1/ingest/heartbeat",
             json={"secret": "synthetic-private"},
@@ -88,16 +98,26 @@ def test_ingest_body_is_bounded():
         "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
     )
     with TestClient(
-        create_app(Settings(database_url="sqlite://", max_ingest_bytes=1024), engine)
+        configured_app(Settings(database_url="sqlite://", max_ingest_bytes=1024), engine)
     ) as client:
         response = client.post("/api/v1/ingest/heartbeat", content=b"x" * 1025)
     assert response.status_code == 413
 
 
 def test_read_database_error_uses_generic_response():
+    from uuid import uuid4
+
+    from apps.api.user_auth.dependencies import require_session
+    from apps.api.user_auth.sessions import Actor, CurrentSession
+
     settings = Settings(database_url="postgresql+psycopg://user:private@127.0.0.1:1/missing")
     engine = create_engine(settings.database_url, connect_args={"connect_timeout": 1})
-    with TestClient(create_app(settings, engine)) as client:
+    application = configured_app(settings, engine)
+    # Isolate read-query failure after admission; user-session DB failures have separate tests.
+    application.dependency_overrides[require_session] = lambda: CurrentSession(
+        Actor(uuid4(), "synthetic", frozenset({"viewer"})), "0" * 64
+    )
+    with TestClient(application) as client:
         response = client.get("/api/v1/overview")
         assert response.status_code == 503
         assert response.json() == {"detail": "READ_UNAVAILABLE"}

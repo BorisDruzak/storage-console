@@ -14,19 +14,20 @@ Ubuntu24.04, минимум4CPU,16GiB физической RAM (preflight тре
 в адрес этой ВМ; HTTP80/HTTPS443 доступны клиентам, PostgreSQL/API наружу не публикуются.
 
 Оператор предоставляет TLS certificate/fullchain/key, CA для проверки и клиентского доверия,
-а также файл хешей операторских учётных записей. SSH-доступ и полномочия root настраиваются
+а также приватную JSON-конфигурацию провайдеров входа. SSH-доступ и полномочия root настраиваются
 администратором. ВМ, DNS, CA и firewall не создаются этими скриптами.
 
-Текущий Web/read gateway использует временный Basic-auth доступ. Он не реализует
-AD/LDAP, продуктовые сессии, CSRF и RBAC. Collector ingest использует независимый bearer.
-До реализации полной аутентификации эксплуатация разрешается только в согласованном
-ограниченном контуре. Живые collectors и production shares этим пакетом не разворачиваются.
+SPA показывает форму входа без авторизации; read API требует пользовательскую сессию и
+разрешение роли. Вход использует явно выбранный локальный или LDAPS-провайдер, logout —
+Origin и CSRF. Collector ingest использует независимый bearer. Доверие TLS, доступность
+LDAPS и сопоставление AD-групп проверяются отдельно на целевой инфраструктуре.
+Живые collectors и production shares этим пакетом не разворачиваются.
 
 ## 2. Подготовка ОС
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y git python3 curl openssl ca-certificates apache2-utils
+sudo apt-get install -y git python3 curl openssl ca-certificates
 timedatectl status
 timedatectl show -p NTPSynchronized --value
 df -h /var/lib
@@ -79,6 +80,8 @@ sudoedit /etc/storage-control-plane/production.env
 
 Укажите DNS, точный40-символьный SHA, `API_IMAGE=storage-console-api:SHA`,
 `WEB_IMAGE=storage-console-web:SHA`, случайный64-hex POSTGRES_PASSWORD, постоянные пути и порты.
+`APP_ORIGIN` — канонический HTTPS origin того же `STORAGE_HOSTNAME`, без завершающего `/`;
+нестандартный внешний порт укажите явно. `AUTH_CONFIG_FILE` — абсолютный путь к приватному JSON.
 Для поставки готовых образов оба image reference должны иметь `@sha256:DIGEST`; OCI revision
 каждого должен совпадать с APP_RELEASE. Смешивать digest и сборку нельзя.
 При сборке требуется чистый checkout точного SHA. Env0600 принадлежит root или запускающему
@@ -96,15 +99,35 @@ SAN должен покрывать production DNS; preflight требует м�
 валидную CA-цепочку и совпадение публичных ключей cert/key.
 
 ```bash
-sudo chmod 600 /etc/storage-control-plane/tls/*.pem
-sudo htpasswd -cB -C 12 /etc/storage-control-plane/auth/users.htpasswd operator
-sudo chown root:101 /etc/storage-control-plane/auth/users.htpasswd
-sudo chmod 640 /etc/storage-control-plane/auth/users.htpasswd
+sudo chmod 600 /etc/storage-control-plane/tls/privkey.pem
+sudo chmod 644 /etc/storage-control-plane/tls/fullchain.pem /etc/storage-control-plane/tls/ca-chain.pem
+sudoedit /etc/storage-control-plane/auth/auth.json
+sudo chown 10001:10001 /etc/storage-control-plane/auth/auth.json
+sudo chmod 600 /etc/storage-control-plane/auth/auth.json
 ```
 
-Пароль htpasswd вводится интерактивно. `-c` используется только при создании нового файла;
-для добавления учётной записи уберите `-c`. Допускаются bcrypt cost10–16 или SHA512crypt,
-plaintext/пустой файл отклоняется. GID101 обеспечивает чтение Nginx worker в текущем образе.
+Минимальный JSON для явно включённого аварийного локального входа:
+
+```json
+{"version":1,"origin":"https://storage.example.test","local_enabled":true}
+```
+
+Origin должен точно совпадать с `APP_ORIGIN`. Файл обычный, без symlink/hardlink, не больше
+32KiB, UID10001 и mode0600. Он монтируется только в API; пароль технической AD-учётной
+записи не передаётся через env. Пользователя создайте интерактивно после запуска по
+[инструкции bootstrap](local-admin-ru.md); стандартной учётной записи нет.
+
+Для LDAPS добавьте объект `ldap`: DNS `hostname`, `base_dn`, `bind_dn`, `bind_password`,
+`ca_file` и `group_roles` (полный DN группы → список ролей). Допустимы роли `storage_admin`,
+`storage_operator`, `auditor`, `analyst`, `viewer`. Проверяются сертификат, DNS-имя и цепочка
+LDAPS636; незашифрованного fallback нет. В JSON используйте контейнерный путь
+`/run/secrets/storage-console/directory-ca.pem`; внешний публичный CA задаётся через
+`DIRECTORY_CA_FILE` (при отсутствии используется `TLS_CA_FILE`).
+Публичный CA должен быть читаемым внутри контейнера UID10001: например, root-owned mode0644.
+Родительский каталог на хосте остаётся700; bind mount открывается Docker. Не назначайте
+CA права закрытого ключа0600. Отдельный DIRECTORY_CA_FILE имеет те же права чтения.
+Техническая учётная запись должна иметь минимальные права чтения каталога;
+её пароль храните только в этом приватном JSON.
 Настройте доверие публичному CA на клиентах отдельным административным способом.
 Не используйте `curl -k`; закрытый ключ CA на ВМ приложения не нужен.
 
@@ -121,7 +144,8 @@ sudo systemctl start storage-control-plane.service
 ```
 
 Preflight проверяет ресурсы, NTP, Docker/Compose, файлы, DNS, TLS, auth и порты.
-Deploy блокирует конкурирующие операции, проверяет образы, запускает PostgreSQL, останавливает
+Deploy блокирует конкурирующие операции, проверяет образы и читает конфигурацию провайдеров
+под UID10001 в изолированном контейнере без сети до остановки сервисов. Затем запускает PostgreSQL, останавливает
 Web/API/worker, выполняет миграцию и запускает runtime после её успеха. Повторный запуск
 сохраняет постоянные данные. Unit oneshot/RemainAfterExit: `active (exited)` означает успешное
 завершение запуска; текущая работоспособность отдельно подтверждается healthcheck.
@@ -139,12 +163,12 @@ Web/API/worker, выполняет миграцию и запускает runtim
 ```bash
 sudo bash deploy/scripts/healthcheck.sh /etc/storage-control-plane/production.env
 curl --fail --cacert /etc/storage-control-plane/tls/ca-chain.pem https://storage.example.test/ready
-curl --cacert /etc/storage-control-plane/tls/ca-chain.pem -u operator https://storage.example.test/
+curl --fail --cacert /etc/storage-control-plane/tls/ca-chain.pem https://storage.example.test/
 ```
 
 Замените DNS примером своего контура. Healthcheck требует healthy PostgreSQL/API/worker/Web,
 соответствующие фактические image ID/revision, только Web published ports, строгий TLS,
-readiness200, anonymous Web401 и canonical HTTP308→HTTPS. После входа оператор проверяет
+readiness200, anonymous Web200, anonymous read/me401 и canonical HTTP308→HTTPS. После входа оператор проверяет
 страницы Web и read API; generic ready не доказывает правильность данных, collectors или Sentry.
 Отсутствие DNS не обходится production-скриптами. Тестовые resolver/сертификаты применяются
 только в изолированном smoke и не являются production-приёмкой.

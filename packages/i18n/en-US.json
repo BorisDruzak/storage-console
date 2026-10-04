@@ -1,4 +1,18 @@
 {
+  "auth": {
+    "title": "Sign in to Storage Console",
+    "provider": "Sign-in method",
+    "directory": "Domain account",
+    "local": "Local administrator",
+    "username": "Account",
+    "password": "Password",
+    "login": "Sign in",
+    "logout": "Sign out",
+    "AUTH_FAILED": "Sign-in failed. Check your credentials and access rights.",
+    "AUTH_UNAVAILABLE": "Sign-in service is unavailable. Please try again later.",
+    "AUTH_RATE_LIMITED": "Too many sign-in attempts. Please try again later.",
+    "logoutUnavailable": "Server sign-out could not be confirmed. Data is hidden; retry sign-out."
+  },
   "app": {
     "name": "Storage Console",
     "subtitle": "Storage observability",
@@ -50,11 +64,6 @@
     "showFullValue": "Full value",
     "skip": "Skip to content",
     "expired": "Evidence expired. Refresh to see current state."
-  },
-  "auth": {
-    "signIn": "Sign in",
-    "signOut": "Sign out",
-    "notConfigured": "Authentication will be added in the next stage"
   },
   "runtime": {
     "available": "API available",

@@ -7,6 +7,8 @@ import stat
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from packages.shared.auth.configuration import AuthConfigurationError, parse_auth_config
+
 DEFAULTS = {
     "PROJECT_NAME": "storage-control-plane",
     "POSTGRES_USER": "storage_console",
@@ -16,6 +18,7 @@ DEFAULTS = {
     "HTTP_PORT": "80",
     "HTTPS_PORT": "443",
     "SENTRY_DSN": "",
+    "DIRECTORY_CA_FILE": "",
 }
 REQUIRED = {
     "STORAGE_HOSTNAME",
@@ -28,9 +31,17 @@ REQUIRED = {
     "TLS_CERT_FILE",
     "TLS_KEY_FILE",
     "TLS_CA_FILE",
-    "AUTH_FILE",
+    "AUTH_CONFIG_FILE",
+    "APP_ORIGIN",
 }
-PATHS = {"STATE_DIR", "BACKUP_DIR", "TLS_CERT_FILE", "TLS_KEY_FILE", "TLS_CA_FILE", "AUTH_FILE"}
+PATHS = {
+    "STATE_DIR",
+    "BACKUP_DIR",
+    "TLS_CERT_FILE",
+    "TLS_KEY_FILE",
+    "TLS_CA_FILE",
+    "AUTH_CONFIG_FILE",
+}
 
 
 class ConfigError(Exception):
@@ -63,6 +74,16 @@ def parse_environment(text: str) -> dict[str, str]:
         )
     ):
         raise ConfigError("STORAGE_HOSTNAME должен быть DNS-именем")
+    try:
+        origin = parse_auth_config(
+            {"version": 1, "origin": result["APP_ORIGIN"], "local_enabled": True}
+        ).origin
+        if urlsplit(origin).hostname != hostname:
+            raise AuthConfigurationError()
+    except AuthConfigurationError:
+        raise ConfigError(
+            "APP_ORIGIN должен быть canonical HTTPS origin STORAGE_HOSTNAME"
+        ) from None
     if not re.fullmatch(r"[a-f0-9]{40}", result["APP_RELEASE"]):
         raise ConfigError("APP_RELEASE должен содержать полный Git SHA")
     for key in ("API_IMAGE", "WEB_IMAGE"):
@@ -92,6 +113,14 @@ def parse_environment(text: str) -> dict[str, str]:
         # Pure POSIX syntax also makes configuration tests portable on Windows.
         if not result[key].startswith("/") or result[key] == "/" or ".." in path.parts:
             raise ConfigError("Пути должны быть абсолютными и не содержать родительских переходов")
+    if result["DIRECTORY_CA_FILE"]:
+        directory_ca = Path(result["DIRECTORY_CA_FILE"])
+        if (
+            not result["DIRECTORY_CA_FILE"].startswith("/")
+            or result["DIRECTORY_CA_FILE"] == "/"
+            or ".." in directory_ca.parts
+        ):
+            raise ConfigError("Путь directory CA должен быть абсолютным")
     if result["STATE_DIR"] == result["BACKUP_DIR"]:
         raise ConfigError("Каталоги данных и резервных копий должны различаться")
     if result["SENTRY_DSN"]:

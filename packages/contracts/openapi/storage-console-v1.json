@@ -2778,6 +2778,26 @@
               }
             }
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -2809,6 +2829,11 @@
             "description": "Service Unavailable"
           }
         },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
         "summary": "Health Domains",
         "tags": [
           "read"
@@ -3619,6 +3644,26 @@
               }
             }
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -3650,6 +3695,11 @@
             "description": "Service Unavailable"
           }
         },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
         "summary": "Overview",
         "tags": [
           "read"
@@ -3729,6 +3779,26 @@
               }
             }
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -3760,6 +3830,11 @@
             "description": "Service Unavailable"
           }
         },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
         "summary": "Share List",
         "tags": [
           "read"
@@ -3822,6 +3897,26 @@
               }
             }
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -3853,6 +3948,11 @@
             "description": "Service Unavailable"
           }
         },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
         "summary": "Sources",
         "tags": [
           "read"
@@ -3901,6 +4001,26 @@
               }
             }
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -3932,6 +4052,11 @@
             "description": "Service Unavailable"
           }
         },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
         "summary": "Source Detail",
         "tags": [
           "read"
@@ -3980,6 +4105,26 @@
               }
             }
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4011,6 +4156,11 @@
             "description": "Service Unavailable"
           }
         },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
         "summary": "Source Freshness",
         "tags": [
           "read"
@@ -4090,6 +4240,26 @@
               }
             }
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4121,6 +4291,11 @@
             "description": "Service Unavailable"
           }
         },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
         "summary": "Volume List",
         "tags": [
           "read"

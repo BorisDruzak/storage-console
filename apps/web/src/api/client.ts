@@ -31,6 +31,7 @@ async function get<N extends ResponseName>(path: string, name: N, signal?: Abort
     const response = await fetch(`/api/v1${path}`, {
       method: 'GET', signal: combined, cache:'no-store', credentials: 'same-origin', headers: { Accept: 'application/json' },
     });
+    if (response.status === 401) window.dispatchEvent(new Event('storage-session-expired'));
     if (!response.ok) throw new ApiError(response.status === 404 ? 'NOT_FOUND' :
       response.status === 401 || response.status === 403 ? 'AUTH_REQUIRED' : 'API_UNAVAILABLE');
     const lifetime=response.headers.get('X-Evidence-Valid-For-Ms');

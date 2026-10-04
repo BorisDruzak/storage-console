@@ -31,7 +31,7 @@ def check_ports(bindings: list[tuple[str, int]], owned: set[tuple[str, int]]) ->
                     raise ConfigError("Порт занят другим сервисом или адрес недоступен") from None
 
 
-def check_file(path: Path, *, private: bool = False, auth: bool = False) -> None:
+def check_file(path: Path, *, private: bool = False) -> None:
     try:
         info = path.lstat()
         if not stat.S_ISREG(info.st_mode) or not os.access(path, os.R_OK):
@@ -39,44 +39,31 @@ def check_file(path: Path, *, private: bool = False, auth: bool = False) -> None
         mode = stat.S_IMODE(info.st_mode)
         if private and mode != 0o600:
             raise ConfigError("Закрытый TLS-ключ должен иметь права0600")
-        if auth and (mode != 0o640 or info.st_gid != 101):
-            raise ConfigError("Auth-файл должен иметь права0640 и группу101 для Nginx")
     except OSError:
         raise ConfigError("TLS/auth файл недоступен") from None
 
 
-def check_auth(path: Path) -> None:
+def check_auth_file(path: Path) -> None:
     try:
-        with path.open(encoding="utf-8") as stream:
-            content = stream.read(65537)
-    except (OSError, UnicodeError):
-        raise ConfigError("Auth-файл недоступен") from None
-    rows = [line for line in content.splitlines() if line and not line.startswith("#")]
-    if not rows or len(content) > 65536:
-        raise ConfigError("Auth-файл пуст или превышает допустимый размер")
-    accounts: set[str] = set()
-    for row in rows:
-        account, sep, digest = row.partition(":")
-        sha512 = re.fullmatch(
-            r"\$6\$(?:rounds=\d+\$)?[./A-Za-z0-9]{1,16}\$[./A-Za-z0-9]{86}", digest
-        )
-        bcrypt = re.fullmatch(r"\$2[aby]\$(\d{2})\$[./A-Za-z0-9]{53}", digest)
+        info = path.lstat()
         if (
-            not sep
-            or not re.fullmatch(r"[A-Za-z0-9_.@-]{1,64}", account)
-            or account in accounts
-            or not (sha512 or (bcrypt and 10 <= int(bcrypt[1]) <= 16))
+            not stat.S_ISREG(info.st_mode)
+            or stat.S_IMODE(info.st_mode) != 0o600
+            or info.st_uid != 10001
+            or info.st_nlink != 1
+            or not 1 <= info.st_size <= 32768
         ):
-            raise ConfigError(
-                "Auth-файл должен содержать уникальные аккаунты и SHA512-crypt/bcrypt хеши"
-            )
-        accounts.add(account)
+            raise ConfigError("Provider JSON должен быть обычным файлом0600 UID10001 до32KiB")
+    except OSError:
+        raise ConfigError("Provider JSON недоступен") from None
 
 
 def check_tls(values: dict[str, str]) -> None:
-    for key in ("TLS_CERT_FILE", "TLS_KEY_FILE", "TLS_CA_FILE", "AUTH_FILE"):
-        check_file(Path(values[key]), private=key == "TLS_KEY_FILE", auth=key == "AUTH_FILE")
-    check_auth(Path(values["AUTH_FILE"]))
+    for key in ("TLS_CERT_FILE", "TLS_KEY_FILE", "TLS_CA_FILE"):
+        check_file(Path(values[key]), private=key == "TLS_KEY_FILE")
+    check_auth_file(Path(values["AUTH_CONFIG_FILE"]))
+    if values.get("DIRECTORY_CA_FILE"):
+        check_file(Path(values["DIRECTORY_CA_FILE"]))
     run(["openssl", "x509", "-in", values["TLS_CERT_FILE"], "-checkend", "604800", "-noout"])
     run(
         [

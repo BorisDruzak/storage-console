@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from packages.shared.auth.configuration import ROLES
 from packages.shared.auth.passwords import password_version
+from packages.shared.auth.retention import GLOBAL_LOGIN_KEY, lock_rate_rows
 from packages.shared.models.security import (
     audit_log,
     login_rate_buckets,
@@ -153,6 +154,16 @@ class SessionStore:
         with self.engine.begin() as connection:
             _audit(connection, "auth.failure", "DENIED")
 
+    def audit_denial(self, action: str, user: UUID | None = None) -> None:
+        if action not in {"auth.origin_denied", "auth.csrf_denied", "auth.permission_denied"}:
+            raise ValueError("AUTH_AUDIT_ACTION_INVALID")
+        key = hashlib.sha256(("denial:" + action + ":" + str(user)).encode()).hexdigest()
+        with self.engine.begin() as connection:
+            lock_rate_rows(connection)
+            _, first = _ticket(connection, key, 0)
+            if first:
+                _audit(connection, action, "DENIED", user)
+
     def issue(self, user_id: UUID, *, credential_tag: str | None = None) -> IssuedSession | None:
         with self.engine.begin() as connection:
             user = (
@@ -253,7 +264,7 @@ class SessionStore:
         account = hashlib.sha256(
             ("login:account:" + provider + ":" + username.lower()).encode()
         ).hexdigest()
-        global_key = hashlib.sha256(b"login:global").hexdigest()
+        global_key = GLOBAL_LOGIN_KEY
         with self.engine.begin() as connection:
             # Always global→account: serialize shared budget without deadlocks.
             allowed, first_denial = _ticket(connection, global_key, 100)

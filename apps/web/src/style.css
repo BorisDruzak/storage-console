@@ -58,6 +58,11 @@ select:focus-visible { outline: 3px solid #59a6de; outline-offset: 3px; }
 .raw-value code { display: block; margin-top: 8px; }
 @media (max-width: 600px) { .ladder { grid-template-columns: 1fr; } }
 button:disabled { cursor: default; opacity: .55; }
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.auth-card { width: min(100%, 420px); padding: 28px; background: white; border: 1px solid #dce3eb; border-radius: 12px; }
+.auth-card form { display: grid; align-items: stretch; }
+.auth-card input, .auth-card select { width: 100%; min-width: 0; }
+.session-bar { display: flex; justify-content: end; align-items: center; gap: 16px; padding: 8px 24px; background: white; border-bottom: 1px solid #dce3eb; }
 .tabs { display: flex; flex-wrap: wrap; margin-top: 0; margin-bottom: 20px; }
 .tabs a { color: #165f91; background: white; border: 1px solid #dce3eb; }
 .tabs a[aria-current] { color: white; }

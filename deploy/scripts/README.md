@@ -25,23 +25,28 @@ API_IMAGE/WEB_IMAGE должны иметь этот release-тег. Альте�
 
 До запуска подготовьте state/postgres, state/diagnostics и backup-каталог.
 Они не должны быть доступны группе/всем для записи. Diagnostics принадлежит UID10001.
-TLS-сертификат и доверенный CA — обычные доступные файлы; закрытый ключ0600.
-Auth-файл640 с группой101 доступен Nginx внутри контейнера; его родительский каталог
-держите приватным. Поддерживаются SHA512-crypt и bcrypt с cost10–16; plaintext запрещён.
-Это временный операторский шлюз; product AD/LDAP sessions/RBAC он не реализует.
+TLS-сертификат и публичный CA — обычные доступные файлы0644; закрытый ключ0600.
+AUTH_CONFIG_FILE — JSON0600 владельца UID10001, обычный файл без symlink/hardlink до32KiB.
+JSON монтируется только в API. APP_ORIGIN совпадает с JSON origin и задаёт canonical HTTPS DNS.
+Для LDAPS публичный DIRECTORY_CA_FILE (по умолчанию TLS_CA_FILE) читается API UID10001,
+контейнерный путь в JSON — /run/secrets/storage-console/directory-ca.pem.
+Родительские каталоги на хосте700. Учётная запись по умолчанию отсутствует:
+[интерактивный bootstrap](../../docs/deployment/local-admin-ru.md).
 
 Preflight проверяет Ubuntu,4 CPU,16GiB физической RAM (не менее15GiB usable),20GiB
 свободного места, NTP, Docker, DNS, ближайшее истечение TLS, SAN/цепочку и пару ключа,
 файлы/modes, каталоги и порты. Занятый порт допускается только у Web этого Compose-проекта.
 Production hostname должен разрешаться на эту ВМ; исключения для production DNS нет.
 
-Deploy получает неблокирующий lock в STATE_DIR. Образы собираются/проверяются до
+Deploy получает неблокирующий lock в STATE_DIR. Образы и приватная конфигурация входа
+под UID10001 в контейнере без сети проверяются до
 остановки текущего runtime; затем PostgreSQL становится healthy, Web/API/worker
 останавливаются, миграция выполняется отдельно и только после успеха запускается
 новый runtime. Успех требует healthy-сервисов, строгого HTTPS с CA и HTTP308.
 Healthcheck дополнительно проверяет, что DB/API/worker не публикуют порты,
 а фактические image ID и OCI revision работающих API/worker/Web соответствуют
-выбранным образам и APP_RELEASE.
+выбранным образам и APP_RELEASE. SPA анонимно200, read/me анонимно401; cookies Secure,
+пользовательский logout требует точный Origin и CSRF. Collector bearer остаётся независимым.
 
 При ошибке миграции писатели остаются остановленными. Автоматического downgrade,
 rollback или восстановления БД нет. Исправьте причину в maintenance-режиме и повторите

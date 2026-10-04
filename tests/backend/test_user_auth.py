@@ -1,19 +1,21 @@
+from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from typing import Annotated
 from uuid import uuid4
 
 import pytest
 from fastapi import Depends
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from apps.api.main import create_app
 from apps.api.user_auth.bootstrap import bootstrap_admin
 from apps.api.user_auth.dependencies import UserAuth, require_actor, require_permission
 from apps.api.user_auth.sessions import Actor
-from packages.shared.auth.configuration import AuthConfig
+from packages.shared.auth.configuration import AuthConfig, AuthConfigurationError
 from packages.shared.auth.providers import ProviderUnavailable
-from packages.shared.models.security import audit_log, roles, user_roles, users
+from packages.shared.models.security import audit_log, roles, user_roles, user_sessions, users
 from packages.shared.settings import Settings
 
 ORIGIN = "https://storage.example.test"
@@ -137,7 +139,16 @@ def test_logout_csrf_failure_preserves_session(auth_client, headers):
 
 def test_anonymous_and_collector_cannot_use_user_session_dependencies(auth_client):
     client, _, _, bearer = auth_client
-    for path in ("/api/v1/auth/me", "/session-probe", "/admin-probe"):
+    for path in (
+        "/api/v1/auth/me",
+        "/session-probe",
+        "/admin-probe",
+        "/api/v1/overview",
+        "/api/v1/sources",
+        "/api/v1/volumes",
+        "/api/v1/shares",
+        "/api/v1/health/domains",
+    ):
         assert client.get(path, headers={"Authorization": "Bearer " + bearer}).status_code == 401
 
 
@@ -198,7 +209,7 @@ def test_invalid_login_input_never_echoes_password(auth_client):
 
 @pytest.mark.parametrize("failure", [ProviderUnavailable(), SQLAlchemyError("synthetic-secret")])
 def test_provider_failures_are_generic_without_local_fallback(auth_client, monkeypatch, failure):
-    client, auth, *_ = auth_client
+    client, auth, engine, _ = auth_client
 
     def unavailable(*args):
         raise failure
@@ -209,6 +220,32 @@ def test_provider_failures_are_generic_without_local_fallback(auth_client, monke
     assert response.json() == {"detail": "AUTH_UNAVAILABLE"}
     assert not response.headers.get_list("set-cookie")
     assert response.headers["cache-control"] == "no-store"
+    with engine.connect() as connection:
+        rows = (
+            connection.execute(select(audit_log).where(audit_log.c.action == "auth.failure"))
+            .mappings()
+            .all()
+        )
+    assert len(rows) == (1 if isinstance(failure, ProviderUnavailable) else 0)
+    assert all(row["details"] == {} and row["user_id"] is None for row in rows)
+
+
+def test_provider_outage_does_not_retry_failed_database_audit(auth_client, monkeypatch):
+    client, auth, *_ = auth_client
+    calls = []
+
+    def unavailable(*args):
+        raise ProviderUnavailable()
+
+    def audit_unavailable():
+        calls.append(True)
+        raise SQLAlchemyError("synthetic-secret")
+
+    monkeypatch.setattr(auth.providers["local"], "authenticate", unavailable)
+    monkeypatch.setattr(auth.store, "login_failed", audit_unavailable)
+    response = login(client)
+    assert response.status_code == 503 and response.json() == {"detail": "AUTH_UNAVAILABLE"}
+    assert calls == [True]
 
 
 def test_session_database_failure_is_generic(auth_client, monkeypatch):
@@ -257,7 +294,83 @@ def test_duplicate_session_cookie_and_csrf_header_are_denied(auth_client):
 
 def test_missing_provider_configuration_has_no_default_account(ingest_setup):
     _, engine, *_ = ingest_setup
-    with TestClient(create_app(Settings(), engine), base_url=ORIGIN) as client:
-        response = login(client)
-        assert response.status_code == 503 and response.json() == {"detail": "AUTH_UNAVAILABLE"}
-        assert not response.headers.get_list("set-cookie")
+    with pytest.raises(AuthConfigurationError, match="^AUTH_CONFIG_INVALID$"):
+        with TestClient(create_app(Settings(), engine), base_url=ORIGIN):
+            pytest.fail("Unconfigured runtime must not start or create a default account")
+
+
+def test_csrf_denial_audit_is_bounded_and_contains_no_token(auth_client):
+    client, _, engine, _ = auth_client
+    assert login(client).status_code == 200
+    for _ in range(20):
+        assert (
+            client.post(
+                "/api/v1/auth/logout", headers={"Origin": ORIGIN, "X-CSRF-Token": "wrong"}
+            ).status_code
+            == 403
+        )
+    with engine.connect() as connection:
+        rows = (
+            connection.execute(select(audit_log).where(audit_log.c.action == "auth.csrf_denied"))
+            .mappings()
+            .all()
+        )
+        assert len(rows) == 1
+        assert rows[0]["details"] == {} and rows[0]["result"] == "DENIED"
+        assert rows[0]["user_id"] is not None
+
+
+def test_origin_denial_audit_does_not_persist_untrusted_origin(auth_client):
+    client, _, engine, _ = auth_client
+    for _ in range(20):
+        assert (
+            client.post(
+                "/api/v1/auth/login",
+                headers={"Origin": "https://untrusted.example.test"},
+                json={"provider": "local", "username": "emergency", "password": PASSWORD},
+            ).status_code
+            == 403
+        )
+    with engine.connect() as connection:
+        rows = (
+            connection.execute(select(audit_log).where(audit_log.c.action == "auth.origin_denied"))
+            .mappings()
+            .all()
+        )
+        assert len(rows) == 1
+        assert rows[0]["details"] == {} and rows[0]["user_id"] is None
+
+
+@pytest.mark.parametrize("state", ["disabled", "expired", "idle"])
+def test_http_read_rejects_disabled_expired_or_idle_session(auth_client, state):
+    client, _, engine, _ = auth_client
+    assert login(client).status_code == 200
+    with engine.begin() as connection:
+        if state == "disabled":
+            connection.execute(
+                update(users).where(users.c.username == "emergency").values(enabled=False)
+            )
+        else:
+            values = {
+                "created_at": func.clock_timestamp() - timedelta(hours=9),
+                "last_used_at": func.clock_timestamp() - timedelta(minutes=31),
+            }
+            if state == "expired":
+                values["expires_at"] = func.clock_timestamp() - timedelta(hours=1)
+                values["last_used_at"] = func.clock_timestamp() - timedelta(hours=9)
+            connection.execute(update(user_sessions).values(**values))
+    assert client.get("/api/v1/overview").status_code == 401
+    assert client.get("/api/v1/auth/me").status_code == 401
+
+
+def test_concurrent_http_login_enforces_single_shared_account_budget(auth_client):
+    client, *_ = auth_client
+
+    def attempt(_):
+        with TestClient(client.app, base_url=ORIGIN) as concurrent:
+            return login(concurrent).status_code
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(attempt, range(12)))
+    assert results.count(200) == 5
+    assert results.count(429) == 7

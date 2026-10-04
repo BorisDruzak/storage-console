@@ -32,24 +32,27 @@ Storage Control Plane для наблюдаемости сетевого фай�
 
 ## Локальный запуск foundation
 
-Требуются Docker Engine и Docker Compose v2 с поддержкой `--wait`.
+Требуются Linux, Python3.12+, OpenSSL, Docker Engine и Docker Compose v2 с поддержкой `--wait`.
+Для одноразового стенда создайте отдельный приватный каталог с тестовыми TLS-файлами и env:
 
 ```sh
-cp .env.example .env
-# Задайте локальный POSTGRES_PASSWORD; для URI используйте URL-safe значение.
-docker compose up --build --wait --wait-timeout 180
+fixture_env=$(PYTHONPATH=. python tests/deployment/prepare_development.py)
+docker compose --env-file "$fixture_env" -p storage-console-disposable up --build --wait --wait-timeout 180
 ```
 
-Откройте http://localhost:8080. По умолчанию Web опубликован только на loopback.
-PostgreSQL и API не публикуют порты в LAN. Это development stack: production HTTPS, authentication и deployment runbook относятся к следующим этапам.
+Web публикуется только на loopback: HTTPS8443, HTTP8080 перенаправляет на HTTPS.
+Тестовый origin — `https://storage.example.test:8443`; настройте разрешение этого имени
+на loopback и доверие публичному `ca.pem` из каталога fixture только для тестового клиента.
+Не отключайте проверку TLS. PostgreSQL и API не публикуют порты в LAN. Форме входа нужна
+явно созданная локальная учётная запись: [bootstrap](docs/deployment/local-admin-ru.md),
+в команде укажите тот же env и Compose-проект. Автоматического пользователя нет.
 
 ```sh
-docker compose ps
-curl --fail http://localhost:8080/ready
-docker compose exec worker python -m apps.worker.health
-docker compose run --rm migrate alembic check
-docker compose logs --tail=50 api worker
-docker compose down
+docker compose --env-file "$fixture_env" -p storage-console-disposable ps
+curl --fail --noproxy '*' --cacert "$(dirname "$fixture_env")/ca.pem" --resolve storage.example.test:8443:127.0.0.1 https://storage.example.test:8443/ready
+docker compose --env-file "$fixture_env" -p storage-console-disposable exec worker python -m apps.worker.health
+docker compose --env-file "$fixture_env" -p storage-console-disposable run --rm migrate alembic check
+docker compose --env-file "$fixture_env" -p storage-console-disposable down
 ```
 
 PostgreSQL хранится в named volume: обычный `down` сохраняет данные. `down -v` удаляет development database; не применять к данным, которые нужно сохранить.

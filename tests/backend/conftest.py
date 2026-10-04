@@ -8,8 +8,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, insert, text
 
 from apps.api.main import create_app
+from apps.api.user_auth.bootstrap import bootstrap_admin
+from apps.api.user_auth.dependencies import UserAuth
+from apps.api.user_auth.sessions import SessionStore
+from packages.shared.auth.configuration import AuthConfig
 from packages.shared.models import metadata
 from packages.shared.models.core import collectors, source_nodes
+from packages.shared.models.security import roles, user_roles, users
 from packages.shared.settings import Settings
 
 
@@ -48,3 +53,33 @@ def ingest_setup():
         with base.begin() as connection:
             connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
         base.dispose()
+
+
+@pytest.fixture
+def session_setup(ingest_setup):
+    _, engine, *_ = ingest_setup
+    user, role = uuid4(), uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            insert(users).values(id=user, username="synthetic", auth_provider="local")
+        )
+        connection.execute(insert(roles).values(id=role, code="storage_admin"))
+        connection.execute(insert(user_roles).values(user_id=user, role_id=role))
+    return SessionStore(engine), engine, user, role
+
+
+@pytest.fixture
+def authenticated_setup(ingest_setup):
+    _, engine, collector, bearer, source = ingest_setup
+    origin = "https://storage.example.test"
+    password = secrets.token_urlsafe(32)
+    bootstrap_admin(engine, "synthetic-read-admin", password)
+    auth = UserAuth(engine, AuthConfig(origin, True))
+    with TestClient(create_app(Settings(), engine, user_auth=auth), base_url=origin) as client:
+        response = client.post(
+            "/api/v1/auth/login",
+            headers={"Origin": origin},
+            json={"provider": "local", "username": "synthetic-read-admin", "password": password},
+        )
+        assert response.status_code == 200
+        yield client, engine, collector, bearer, source
