@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, Column, Float, Index, String, Table, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, Float, Index, String, Table, Text, false
 
 from .base import identity, metadata, reference, timestamp
 
@@ -12,6 +12,7 @@ change_events = Table(
     Column("event_type", String(32), nullable=False),
     timestamp("occurred_at"),
     Column("old_relative_path", Text),
+    Column("path_delete_only", Boolean, nullable=False, server_default=false()),
     Column("new_relative_path", Text),
     Column("file_id", String(255)),
     Column("parent_file_id", String(255)),

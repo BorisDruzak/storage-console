@@ -8,6 +8,8 @@ from alembic.config import Config
 from sqlalchemy import MetaData, create_engine, func, insert, select, text
 from sqlalchemy.engine import make_url
 
+from packages.contracts.changes import ChangeRecord
+from packages.shared.ingest.core import change
 from packages.shared.models.core import filesystem_objects, object_path_history, object_path_states
 
 pytestmark = pytest.mark.skipif(
@@ -38,7 +40,8 @@ def migration_setup(monkeypatch):
 
 
 @pytest.mark.parametrize("deleted", [False, True])
-def test_existing_paths_and_deleted_watermarks_survive_upgrade(migration_setup, deleted):
+@pytest.mark.parametrize("old_path", [None, "a/x"])
+def test_existing_paths_and_deleted_watermarks_survive_upgrade(migration_setup, deleted, old_path):
     engine, config = migration_setup
     old = MetaData()
     old.reflect(engine)
@@ -87,6 +90,7 @@ def test_existing_paths_and_deleted_watermarks_survive_upgrade(migration_setup, 
                 volume_identity="v",
                 file_id="42",
                 event_type="DELETE",
+                old_relative_path=old_path,
                 occurred_at=at + timedelta(seconds=5),
             )
         )
@@ -96,14 +100,25 @@ def test_existing_paths_and_deleted_watermarks_survive_upgrade(migration_setup, 
     with engine.connect() as connection:
         obj = connection.execute(select(filesystem_objects)).mappings().one()
         state = connection.execute(select(object_path_states)).mappings().one()
-        history = connection.execute(select(object_path_history)).mappings().one()
+        history = (
+            connection.execute(
+                select(object_path_history).order_by(object_path_history.c.valid_from_at)
+            )
+            .mappings()
+            .all()
+        )
     assert obj["id"] == target
     assert obj["last_deleted_at"] == at + timedelta(seconds=10 if deleted else 5)
     assert state["relative_path"] == "a/x"
-    assert state["active_history_id"] == (None if deleted else interval)
+    assert (state["active_history_id"] is None) == deleted
     assert state["parent_file_id"] == "a"
-    assert history["id"] == interval
-    assert history["valid_until_at"] == (at + timedelta(seconds=10) if deleted else None)
+    assert history[0]["id"] == interval
+    assert history[0]["valid_until_at"] == at + timedelta(seconds=10 if deleted else 5)
+    if not deleted:
+        assert len(history) == 2
+        assert history[1]["id"] == state["active_history_id"]
+        assert history[1]["valid_from_at"] == at + timedelta(seconds=10)
+        assert history[1]["valid_until_at"] is None
     command.downgrade(config, "0004")
     command.upgrade(config, "0005")
     command.check(config)
@@ -201,3 +216,89 @@ def test_backfill_crosses_keyset_pages_and_refuses_lossy_downgrade(migration_set
             )
             == 2
         )
+
+
+@pytest.mark.parametrize("has_inventory", [False, True])
+def test_new_path_only_deletion_refuses_destructive_legacy_round_trip(
+    migration_setup, has_inventory
+):
+    engine, config = migration_setup
+    old = MetaData()
+    old.reflect(engine)
+    source, volume, target = (uuid4() for _ in range(3))
+    at = datetime(2026, 1, 1, tzinfo=UTC)
+    with engine.begin() as connection:
+        connection.execute(
+            insert(old.tables["source_nodes"]).values(
+                id=source, source_type="FILESERVER", hostname="synthetic", instance_id=str(source)
+            )
+        )
+        if has_inventory:
+            connection.execute(
+                insert(old.tables["volumes"]).values(
+                    id=volume,
+                    source_node_id=source,
+                    unique_identity="v",
+                    filesystem="NTFS",
+                    first_seen_at=at,
+                    last_seen_at=at,
+                )
+            )
+            connection.execute(
+                insert(old.tables["filesystem_objects"]).values(
+                    id=target,
+                    volume_id=volume,
+                    file_id="42",
+                    object_type="FILE",
+                    current_name="x",
+                    current_relative_path="a/x",
+                    first_seen_at=at,
+                    last_seen_at=at,
+                )
+            )
+            connection.execute(
+                insert(old.tables["object_path_history"]).values(
+                    id=uuid4(),
+                    object_id=target,
+                    relative_path="a/x",
+                    valid_from_at=at,
+                )
+            )
+    command.upgrade(config, "0005")
+    from packages.shared.ingest import paths
+
+    with engine.begin() as connection:
+        if has_inventory:
+            paths.observe(
+                connection, target, "b/x", at + timedelta(seconds=1), name="x", parent_file_id=None
+            )
+        change(
+            connection,
+            source,
+            ChangeRecord(
+                volume_identity="v",
+                file_id="42",
+                event_type="DELETE",
+                old_relative_path="b/x",
+                occurred_at=at + timedelta(seconds=2),
+            ),
+        )
+    with pytest.raises(RuntimeError, match="PATH_DELETIONS_REQUIRE_COMPATIBLE_ROLLBACK"):
+        command.downgrade(config, "0004")
+    command.upgrade(config, "0005")
+    command.check(config)
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0005"
+        if has_inventory:
+            obj = connection.execute(select(filesystem_objects)).mappings().one()
+            assert obj["deleted_at"] is None and obj["current_relative_path"] == "a/x"
+            active = (
+                connection.execute(
+                    select(object_path_states.c.relative_path).where(
+                        object_path_states.c.active_history_id.is_not(None)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert active == ["a/x"]

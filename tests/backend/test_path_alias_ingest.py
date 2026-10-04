@@ -173,6 +173,33 @@ def test_path_removal_watermark_survives_later_path_resurrection(ingest_setup):
     assert active_interval["valid_from_at"] == START + timedelta(seconds=20)
 
 
+@pytest.mark.parametrize("removal", ["path", "whole", "sole"])
+def test_late_removal_splits_history_without_losing_newer_positive_path(ingest_setup, removal):
+    initial(ingest_setup)
+    upload(ingest_setup, "inventory", [object_record("a/x")], 1)
+    upload(ingest_setup, "inventory", [object_record("a/x")], 20)
+    if removal == "sole":
+        upload(ingest_setup, "inventory", [object_record("b/x", count=1)], 10)
+    else:
+        old = "a/x" if removal == "path" else None
+        upload(ingest_setup, "changes", [change_record("DELETE", old)], 10)
+    obj, active, history = paths(ingest_setup)
+    assert "a/x" in active and obj["deleted_at"] is None
+    intervals = sorted(
+        (row["valid_from_at"], row["valid_until_at"])
+        for row in history
+        if row["relative_path"] == "a/x"
+    )
+    assert intervals == [
+        (START + timedelta(seconds=1), START + timedelta(seconds=10)),
+        (START + timedelta(seconds=20), None),
+    ]
+    # Older/replayed removals cannot split the supported post-removal interval again.
+    upload(ingest_setup, "changes", [change_record("DELETE", "a/x")], 8)
+    _, active_after, history_after = paths(ingest_setup)
+    assert active_after == active and len(history_after) == len(history)
+
+
 def test_whole_delete_resurrection_retains_negative_watermark(ingest_setup):
     initial(ingest_setup)
     upload(ingest_setup, "inventory", [object_record("a/x")], 1)

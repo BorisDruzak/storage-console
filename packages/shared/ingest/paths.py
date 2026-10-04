@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from hashlib import sha256
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import func, insert, select, update
@@ -95,6 +96,36 @@ def observe(
         )
 
 
+def _retire(connection: Connection, row: RowMapping, at: datetime) -> UUID | None:
+    active = row["active_history_id"]
+    if active is None:
+        return None
+    started = connection.execute(
+        select(object_path_history.c.valid_from_at).where(object_path_history.c.id == active)
+    ).scalar_one()
+    if row["seen_at"] > at and started > at:
+        return cast(UUID, active)
+    connection.execute(
+        update(object_path_history)
+        .where(object_path_history.c.id == active)
+        .values(valid_until_at=at)
+    )
+    if row["seen_at"] <= at:
+        return None
+    return cast(
+        UUID,
+        connection.scalar(
+            insert(object_path_history)
+            .values(
+                object_id=row["object_id"],
+                relative_path=row["relative_path"],
+                valid_from_at=row["seen_at"],
+            )
+            .returning(object_path_history.c.id)
+        ),
+    )
+
+
 def _end_matching(connection: Connection, target: UUID, at: datetime, keep: str | None) -> None:
     condition = (
         (object_path_states.c.object_id == target)
@@ -115,6 +146,34 @@ def _end_matching(connection: Connection, target: UUID, at: datetime, keep: str 
     connection.execute(
         update(object_path_states).where(condition).values(active_history_id=None, ended_at=at)
     )
+    newer = (
+        (object_path_states.c.object_id == target)
+        & object_path_states.c.active_history_id.is_not(None)
+        & (object_path_states.c.seen_at > at)
+    )
+    if keep is not None:
+        newer &= object_path_states.c.path_digest != keep
+    cursor = None
+    while True:
+        query = select(object_path_states).where(newer)
+        if cursor is not None:
+            query = query.where(object_path_states.c.id > cursor)
+        rows = (
+            connection.execute(query.order_by(object_path_states.c.id).limit(256)).mappings().all()
+        )
+        if not rows:
+            break
+        for row in rows:
+            ended = max(at, row["ended_at"]) if row["ended_at"] is not None else at
+            connection.execute(
+                update(object_path_states)
+                .where(object_path_states.c.id == row["id"])
+                .values(
+                    active_history_id=_retire(connection, row, at),
+                    ended_at=ended,
+                )
+            )
+        cursor = rows[-1]["id"]
 
 
 def end(connection: Connection, target: UUID, path: str, at: datetime) -> None:
@@ -124,13 +183,8 @@ def end(connection: Connection, target: UUID, path: str, at: datetime) -> None:
     values: dict[str, object] = dict(event_ended_at=at)
     if row["ended_at"] is None or row["ended_at"] <= at:
         values["ended_at"] = at
-    if row["active_history_id"] is not None and row["seen_at"] <= at:
-        connection.execute(
-            update(object_path_history)
-            .where(object_path_history.c.id == row["active_history_id"])
-            .values(valid_until_at=at)
-        )
-        values["active_history_id"] = None
+    if row["active_history_id"] is not None:
+        values["active_history_id"] = _retire(connection, row, at)
     connection.execute(
         update(object_path_states).where(object_path_states.c.id == row["id"]).values(**values)
     )

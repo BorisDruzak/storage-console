@@ -324,6 +324,7 @@ def change(connection: Connection, source: UUID, record: ChangeRecord) -> None:
         insert(change_events).values(
             source_node_id=source,
             object_id=existing["id"] if existing else None,
+            path_delete_only=record.event_type == "DELETE" and record.old_relative_path is not None,
             **record.model_dump(),
         )
     )

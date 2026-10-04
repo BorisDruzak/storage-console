@@ -48,6 +48,10 @@ by newer evidence; a delayed observation of a different still-existing alias can
 add it despite newer metadata for the first alias. Extend an active interval's
 start backwards only within its latest proven removal boundary. Do not reconstruct
 complete historical intervals from late observations of already closed paths.
+When a late removal falls inside an open interval with a newer positive watermark,
+close the pre-removal interval and reopen from that retained positive timestamp.
+Preserve the removal watermark even when the current interval starts after it;
+never invent the exact recreation time or an uninterrupted interval across removal.
 
 An observed link_count=1 proves that the observed path was the sole link at that
 time. Persist the latest sole-path proof separately from the latest link count;
@@ -99,11 +103,17 @@ use the object's last_seen_at and known name/parent; other historical paths have
 unknown parent. Existing deleted objects' remaining open intervals must close.
 Initialize whole-object deletion watermarks from historical DELETE semantics
 (all pre-upgrade DELETE events were whole-object deletes), including previously
-resurrected objects. Preserve every receipt, event and identity. Add an event index
+resurrected objects. Split an existing active interval across that retained deletion
+and reopen from its supported positive metadata timestamp. Preserve every receipt,
+event and identity. Add an event index
 on source_node_id/volume_identity/file_id/occurred_at for first-observation hydration.
 Downgrade refuses if multiple simultaneously active aliases would be lost; the
 ordinary single-path migration round trip remains supported. No production
 migration is authorized by tests against disposable schemas.
+New path-qualified DELETE events carry an internal path_delete_only marker;
+pre-upgrade events retain false and their legacy whole-delete interpretation.
+Downgrade also refuses any marked event, including before first inventory, since
+the older schema cannot preserve its meaning through a later re-upgrade.
 
 ## Verification
 

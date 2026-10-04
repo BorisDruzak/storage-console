@@ -173,6 +173,55 @@ def _backfill():
                 )
             )
         cursor = rows[-1]["id"]
+    # A legacy resurrection must not span its retained whole-object deletion.
+    cursor = None
+    while True:
+        query = (
+            sa.select(states, objects.c.last_deleted_at)
+            .join(objects, states.c.object_id == objects.c.id)
+            .join(history, states.c.active_history_id == history.c.id)
+            .where(
+                objects.c.last_deleted_at < states.c.seen_at,
+                history.c.valid_from_at <= objects.c.last_deleted_at,
+            )
+            .order_by(states.c.id)
+            .limit(PAGE_SIZE)
+        )
+        if cursor is not None:
+            query = query.where(states.c.id > cursor)
+        rows = connection.execute(query).mappings().all()
+        if not rows:
+            break
+        for row in rows:
+            removed = row["last_deleted_at"]
+            connection.execute(
+                sa.update(history)
+                .where(history.c.id == row["active_history_id"])
+                .values(valid_until_at=removed)
+            )
+            reopened = uuid4()
+            connection.execute(
+                sa.insert(history).values(
+                    id=reopened,
+                    object_id=row["object_id"],
+                    relative_path=row["relative_path"],
+                    valid_from_at=row["seen_at"],
+                )
+            )
+            connection.execute(
+                sa.update(states)
+                .where(states.c.id == row["id"])
+                .values(
+                    active_history_id=reopened,
+                    ended_at=max(removed, row["ended_at"])
+                    if row["ended_at"] is not None
+                    else removed,
+                    event_ended_at=max(removed, row["event_ended_at"])
+                    if row["event_ended_at"] is not None
+                    else removed,
+                )
+            )
+        cursor = rows[-1]["id"]
     # A retained pre-inventory deletion may be newer than an otherwise open path.
     connection.execute(
         sa.text("""
@@ -198,6 +247,15 @@ def _backfill():
 
 
 def upgrade() -> None:
+    op.add_column(
+        "change_events",
+        sa.Column(
+            "path_delete_only",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.false(),
+        ),
+    )
     op.add_column("filesystem_objects", sa.Column("link_count", sa.BigInteger()))
     for name in ("link_count_at", "sole_path_at", "last_deleted_at"):
         op.add_column("filesystem_objects", sa.Column(name, sa.DateTime(timezone=True)))
@@ -250,7 +308,12 @@ def downgrade() -> None:
     )
     if multiple is not None:
         raise RuntimeError("SIMULTANEOUS_PATHS_REQUIRE_COMPATIBLE_ROLLBACK")
+    if connection.scalar(
+        sa.text("SELECT EXISTS (SELECT 1 FROM change_events WHERE path_delete_only)")
+    ):
+        raise RuntimeError("PATH_DELETIONS_REQUIRE_COMPATIBLE_ROLLBACK")
     op.drop_index("ix_changes_object_identity_time", table_name="change_events")
+    op.drop_column("change_events", "path_delete_only")
     op.drop_table("object_path_states")
     op.drop_constraint("ck_object_link_count", "filesystem_objects", type_="check")
     for name in (
