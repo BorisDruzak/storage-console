@@ -3,7 +3,10 @@
 Реализованы native metadata provider и bounded producer для Wave1. Они собирают
 heartbeat, identity/filesystem/capacity/mount aliases томов и metadata файлов/каталогов
 в explicitly configured local roots. Данные идут через существующий
-[общий outbox/HTTPS delivery](../common/README.md); API contracts version1 не меняются.
+[общий outbox/HTTPS delivery](../common/README.md); `schema_version=1` сохраняется.
+Файловые записи содержат положительный `link_count`; старые пакеты без него сохраняют
+прежнюю сериализацию и digest. Перед запуском нового capture обновите backend и
+примените migration `0005`: старый strict endpoint отвергает новое поле.
 
 ```python
 from collectors.windows.inventory import Scope
@@ -24,9 +27,12 @@ mapped network drives отклоняются. Reparse points не обходят
 относительно parent handle и handle-based directory enumeration, без повторного
 разрешения pathname. File contents, audit policy и privileges не меняются.
 
-Файлы с несколькими hard links дают `MULTIPLE_LINKS` и partial capture: текущий
-ingest представляет один current path на FileId. Поддержка одновременных путей
-остаётся обязательной задачей; такие файлы пока не публикуются как ложные rename.
+Файлы с несколькими hard links сохраняют один FileId и несколько наблюдённых путей.
+Повторные сканы не открывают новые интервалы для неизменённых ссылок. Реальный
+`link_count=1` закрывает более старые другие aliases; отсутствие пути в scan не
+считается удалением. Path-only DELETE закрывает конкретный alias; удаление объекта
+целиком требует отдельного события без пути. Другая ссылка может находиться вне scope.
+`MULTIPLE_LINKS` остаётся допустимым кодом для ранее сохранённых ошибок/checkpoints.
 Heartbeat с ошибкой сбора даёт source freshness `UNKNOWN/COLLECTION_ERROR`;
 следующий heartbeat без ошибки снимает этот признак.
 
@@ -46,13 +52,20 @@ USN cursor/lag. Delivery/scheduling должны учитывать backpressure
 Enumeration cursor не durable; scan не является snapshot или deletion proof.
 Живой scheduler/Windows Service и interrupted large-tree throughput ещё не приняты.
 
-[План и проверки](../../docs/superpowers/plans/2026-10-04-windows-inventory.md):
+[Первоначальный план и проверки](../../docs/superpowers/plans/2026-10-04-windows-inventory.md):
 native temporary-tree tests и четыре Windows HTTPS/PostgreSQL replay/rename/error/
 hard-link partial cases прошли; Linux458/backend (17 native-only SKIP)+46 deployment/
 migrations/types/Ruff/OpenAPI прошёл. Один независимый обзор выявил три Important;
 исправления проверены RED→GREEN. Source `0e4cefac8515fb45b234922e7caea8bc9ee59c38`
 опубликован; [exact CI](https://github.com/BorisDruzak/storage-console/actions/runs/37191597943)
 terminal SUCCESS, все пять обязательных jobs PASS. Sonar SKIPPED остаётся внешним gate.
+
+[Поддержка path aliases](../../docs/superpowers/plans/2026-10-04-object-path-aliases.md):
+Linux499 backend (20 native-only SKIP)/46 deployment, migrations/types84+7/Ruff/OpenAPI
+прошли; Windows53 native/provider/producer tests и пять реальных HTTPS/PostgreSQL
+cases прошли, включая repeated hard links/unlink-one и delayed link-count race.
+Frontend117/APIcheck/types/lint/build, installed wheel/worker и public secrets scan
+прошли. Независимый обзор и exact-source publication CI пока ожидаются.
 
 Windows Service/state DACL, USN continuity, SMB/DFS/FSRM/VSS/ACL/telemetry,
 500k-object performance и live pilot остаются отдельными обязательными этапами.

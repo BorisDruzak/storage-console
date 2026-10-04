@@ -18,6 +18,10 @@ defaults and nulls. Omitted/explicit-null counts must reproduce the pre-upgrade
 canonical batch digest and retained outbox bytes. Positive counts affect the
 digest. Schema version remains 1; upgrade the backend before enabling new capture
 payloads, since an older strict endpoint rejects the added field.
+Native observation time is captured before the StandardInfo metadata query and
+carried through deferred record publication. A positive native count without that
+time fails explicitly; never give old count evidence a fresh publication timestamp.
+Inventory dates describe observation boundaries; exact operation times require USN.
 
 ## Identity and temporal evidence
 

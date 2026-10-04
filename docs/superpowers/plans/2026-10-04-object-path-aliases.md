@@ -89,15 +89,23 @@ README and implementation/task status docs. Keep MULTIPLE_LINKS accepted in old
 error/checkpoint contracts; stop emitting it solely for ordinary hard links.
 Interface: native FileObjectRecord carries actual StandardInfo.NumberOfLinks.
 
-- [ ] RED actual native hard-link fixture emits both paths/count2/same FileId;
+- [x] RED actual native hard-link fixture emits both paths/count2/same FileId;
   unlink-one gives count1 without opening file contents or traversing reparses.
-- [ ] Remove the interim multi-link rejection and emit validated real FILE counts;
+- [x] Remove the interim multi-link rejection and emit validated real FILE counts;
   rerun actual native/privacy/scope tests GREEN.
-- [ ] RED actual strict-HTTPS/PostgreSQL repeated hard-link scans and unlink-one:
+- [x] RED actual strict-HTTPS/PostgreSQL repeated hard-link scans and unlink-one:
   one identity, stable active intervals, independent alias preservation. GREEN.
-- [ ] Run full backend/deployment/migrations/types/lint/OpenAPI/frontend, installed
+- [x] Run full backend/deployment/migrations/types/lint/OpenAPI/frontend, installed
   packaging, public-source secrets checks. Document exact evidence and pending gates.
 - [ ] One fresh whole-component review, re-grade, one RED/GREEN fix pass for important
   defects, no second review. Inspect and commit coherent capture/fix changes.
 - [ ] Publish authorized main; verify exact remote SHA, clean status and all required
   exact-source CI jobs. Record acceptance without treating this as full Wave 1.
+
+Task3 current pre-review proof: Linux499 passed/20 native-only skips, deployment46,
+migration round trips/check, mypy84+7, Ruff/OpenAPI passed. Actual Windows53 passed/
+1 unsupported-platform skip and five strict-HTTPS/PostgreSQL cases passed. Native
+link-count dates precede metadata query/publication; real concurrent link creation
+was demonstrated RED before the fix. Frontend117/API/types/lint/build, installed
+wheel/worker/provider imports and public-source secrets scan passed. One whole
+component review and exact main publication/CI remain; no live service was installed.

@@ -2,6 +2,7 @@ import ctypes
 import os
 import struct
 import subprocess
+from datetime import UTC, datetime
 
 import pytest
 
@@ -33,6 +34,8 @@ def test_native_identity_size_parent_and_rename(tmp_path):
     assert file.parent_file_id == directory.file_id
     assert len(file.file_id) == 32
     assert file.size_bytes == 17
+    assert file.link_count == 1
+    assert directory.link_count is None
     assert file.relative_path.endswith("scoped\\" + child.name)
     child.rename(root / "renamed.txt")
     after = records(root)
@@ -174,17 +177,72 @@ def test_streaming_depth_limit_and_long_paths(tmp_path):
     )
 
 
-def test_hard_links_are_partial_until_ingest_supports_simultaneous_paths(tmp_path):
+def test_hard_links_preserve_identity_paths_and_actual_count(tmp_path):
     root = tmp_path / "root"
     root.mkdir()
     first = root / "first.txt"
     first.write_bytes(b"synthetic")
-    os.link(first, root / "second.txt")
-    values = list(NativeInventory().scan(Scope((str(root),))))
-    assert [v.error_code for v in values if v.error_code] == ["MULTIPLE_LINKS", "MULTIPLE_LINKS"]
+    second = root / "second.txt"
+    os.link(first, second)
+    values = records(root)
+    files = [
+        record for record in values if record.kind == "object" and record.object_type == "FILE"
+    ]
+    assert {record.name for record in files} == {"first.txt", "second.txt"}
+    assert len({record.file_id for record in files}) == 1
+    assert len({record.relative_path for record in files}) == 2
+    assert {record.link_count for record in files} == {2}
+    second.unlink()
+    after = [
+        record
+        for record in records(root)
+        if record.kind == "object" and record.object_type == "FILE"
+    ]
+    assert len(after) == 1
+    assert after[0].file_id == files[0].file_id
+    assert after[0].link_count == 1
+
+
+def test_zero_file_link_count_is_explicit_metadata_failure(tmp_path, monkeypatch):
+    (tmp_path / "leaf.txt").write_bytes(b"synthetic")
+    api = _Api()
+    real_query = api._query
+
+    def query(handle, kind, value):
+        real_query(handle, kind, value)
+        if kind == 1 and not value.directory:
+            value.links = 0
+
+    monkeypatch.setattr(api, "_query", query)
+    values = list(NativeInventory(api=api).scan(Scope((str(tmp_path),))))
+    assert [value.error_code for value in values if value.error_code] == ["METADATA_INVALID"]
     assert not any(
-        v.record and v.record.kind == "object" and v.record.object_type == "FILE" for v in values
+        value.record and value.record.kind == "object" and value.record.object_type == "FILE"
+        for value in values
     )
+
+
+def test_link_count_timestamp_precedes_deferred_record_publication(tmp_path, monkeypatch):
+    first, second = tmp_path / "first.txt", tmp_path / "second.txt"
+    first.write_bytes(b"synthetic")
+    real_record = NativeInventory._record
+    added_at = None
+
+    def record(path, metadata, parent):
+        nonlocal added_at
+        if not metadata.directory and metadata.link_count == 1 and added_at is None:
+            added_at = datetime.now(UTC)
+            os.link(first, second)
+        return real_record(path, metadata, parent)
+
+    monkeypatch.setattr(NativeInventory, "_record", staticmethod(record))
+    values = records(tmp_path)
+    captured = next(
+        value for value in values if value.kind == "object" and value.name == first.name
+    )
+    assert added_at is not None
+    assert captured.link_count == 1
+    assert captured.occurred_at < added_at
 
 
 def test_child_metadata_failure_is_partial_and_every_handle_closes(tmp_path, monkeypatch):

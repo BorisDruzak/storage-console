@@ -4,8 +4,17 @@ from datetime import UTC, datetime
 import pytest
 
 from collectors.windows.inventory import CaptureError, Observation, Scope
-from collectors.windows.native import NativeInventory
+from collectors.windows.native import NativeInventory, _Metadata
 from packages.contracts.inventory import VolumeRecord
+
+
+def test_positive_native_link_count_requires_a_metadata_observation_time():
+    metadata = _Metadata(1, "42", False, 10, link_count=1)
+    with pytest.raises(CaptureError) as failure:
+        NativeInventory._record(
+            r"\\?\Volume{11111111-1111-1111-1111-111111111111}\x", metadata, None
+        )
+    assert failure.value.code == "METADATA_INVALID"
 
 
 @pytest.mark.parametrize(
@@ -81,5 +90,5 @@ def test_scope_fingerprint_preserves_case_sensitive_directory_identity():
 
 
 def test_scope_ancestor_handle_depth_is_bounded_before_native_access():
-    with pytest.raises(CaptureError, match='^INVALID_SCOPE$'):
-        Scope(('C:\\' + '\\'.join(['level']*65),))
+    with pytest.raises(CaptureError, match="^INVALID_SCOPE$"):
+        Scope(("C:\\" + "\\".join(["level"] * 65),))

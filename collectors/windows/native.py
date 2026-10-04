@@ -91,6 +91,8 @@ class _Metadata:
     file_id: str
     directory: bool
     size: int
+    link_count: int | None = None
+    observed_at: datetime | None = None
 
 
 def _native_failure(code: int) -> CaptureError:
@@ -276,17 +278,20 @@ class _Api:
         self._query(handle, 0, basic)
         if basic.attributes & 0x400:
             raise CaptureError("REPARSE_POINT")
+        observed_at = datetime.now(UTC)
         self._query(handle, 1, standard)
         self._query(handle, 18, identity)
         if standard.size < 0 or standard.delete_pending:
             raise CaptureError("METADATA_INVALID")
-        if not standard.directory and standard.links > 1:
-            raise CaptureError("MULTIPLE_LINKS")
+        if not standard.directory and standard.links < 1:
+            raise CaptureError("METADATA_INVALID")
         return _Metadata(
             identity.serial,
             bytes(identity.identifier).hex(),
             bool(standard.directory),
             standard.size,
+            None if standard.directory else int(standard.links),
+            observed_at,
         )
 
     def final_path(self, handle: int) -> str:
@@ -405,9 +410,11 @@ class NativeInventory:
 
     @staticmethod
     def _record(path: str, metadata: _Metadata, parent: str | None) -> FileObjectRecord:
+        if metadata.link_count is not None and metadata.observed_at is None:
+            raise CaptureError("METADATA_INVALID")
         identity, _, relative = _volume_path(path)
         return FileObjectRecord(
-            occurred_at=datetime.now(UTC),
+            occurred_at=metadata.observed_at or datetime.now(UTC),
             volume_identity=identity,
             file_id=metadata.file_id,
             parent_file_id=parent,
@@ -415,6 +422,7 @@ class NativeInventory:
             name=PureWindowsPath(path).name or "volume-root",
             relative_path=relative or "\\",
             size_bytes=None if metadata.directory else metadata.size,
+            link_count=metadata.link_count,
         )
 
     def _children(
