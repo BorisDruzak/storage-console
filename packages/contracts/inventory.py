@@ -43,6 +43,15 @@ class FileObjectRecord(Record):
     name: Path
     relative_path: Path
     size_bytes: NonNegative | None = None
+    link_count: Annotated[int, Field(ge=1, le=2**32 - 1, strict=True)] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+
+    @model_validator(mode="after")
+    def validate_link_count(self) -> Self:
+        if self.object_type != "FILE" and self.link_count is not None:
+            raise ValueError("Link count is only available for files")
+        return self
 
 
 InventoryRecord = Annotated[

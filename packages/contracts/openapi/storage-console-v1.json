@@ -1512,6 +1512,19 @@
             "title": "Kind",
             "type": "string"
           },
+          "link_count": {
+            "anyOf": [
+              {
+                "maximum": 4294967295.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link Count"
+          },
           "name": {
             "maxLength": 32767,
             "minLength": 1,
