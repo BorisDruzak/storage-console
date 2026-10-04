@@ -1,7 +1,47 @@
 # Windows Collector
 
-Резерв модуля: implementation начинается после Wave 0. Live collection пока отсутствует.
-Будущий Windows Service отправляет metadata/telemetry в API; не меняет audit policy или инфраструктуру.
+Реализованы native metadata provider и bounded producer для Wave1. Они собирают
+heartbeat, identity/filesystem/capacity/mount aliases томов и metadata файлов/каталогов
+в explicitly configured local roots. Данные идут через существующий
+[общий outbox/HTTPS delivery](../common/README.md); API contracts version1 не меняются.
 
-[Общие outbox/HTTPS delivery](../common/README.md) реализованы; установка Windows
-Service/ACL, USN continuity и живой inventory ещё не приняты.
+```python
+from collectors.windows.inventory import Scope
+from collectors.windows.native import NativeInventory
+from collectors.windows.producer import capture_heartbeat, capture_inventory
+
+# box is an existing private Outbox with the provisioned immutable collector UUID.
+scope = Scope(("D:\\SyntheticData",))
+report = capture_inventory(box, scope, NativeInventory().scan(scope))
+capture_heartbeat(box, error_code=report.errors[0] if report.errors else None)
+```
+
+Provider использует Unicode Win32 API, metadata-only access, volume GUID и128-bit
+FileId. Перед первым open проверяет local drive и переводит root в GUID path;
+mapped network drives отклоняются. Reparse points не обходятся. Ancestor handles
+удерживаются без DELETE sharing; это может временно мешать rename/delete директории
+во время scan. File contents, audit policy и privileges не меняются.
+
+Scope:1..32 local roots, <=64 ancestor components, <=64 уровней обхода ниже root;
+пересекающиеся roots отклоняются. Fingerprint сохраняет регистр компонентов пути:
+Windows поддерживает case-sensitive directories. При смене scope сначала доставьте/
+разберите retained batches, затем явно создайте новый private state; не удаляйте
+старый outbox с недоставленными данными.
+
+Chunks:256 records/8MiB по умолчанию; queue pressure/cancellation останавливают scan,
+сохраняя committed batches/checkpoints. `CaptureReport.completed=False` и fixed
+codes сообщают partial/error; не логируйте payload/paths. Heartbeat не придумывает
+USN cursor/lag. Delivery/scheduling должны учитывать backpressure: последовательный
+полный scan большого дерева до начала доставки может заполнить ограниченный outbox.
+
+После process restart новый scan начинается с roots, а старые batches остаются FIFO.
+Enumeration cursor не durable; scan не является snapshot или deletion proof.
+Живой scheduler/Windows Service и interrupted large-tree throughput ещё не приняты.
+
+[План и проверки](../../docs/superpowers/plans/2026-10-04-windows-inventory.md):
+native temporary-tree tests и реальный Windows HTTPS/PostgreSQL replay/rename прошли;
+финальный Linux457/backend (13 native-only SKIP)+46 deployment/migrations/types/
+Ruff/OpenAPI прошёл; независимый обзор и публикация/CI ещё выполняются.
+
+Windows Service/state DACL, USN continuity, SMB/DFS/FSRM/VSS/ACL/telemetry,
+500k-object performance и live pilot остаются отдельными обязательными этапами.

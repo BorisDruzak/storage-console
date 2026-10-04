@@ -57,6 +57,28 @@ frontend API/types PASS. Независимый полный обзор заве
 [интерфейсы и эксплуатационные ограничения](../collectors/common/README.md).
 Windows Service/ACL, USN и live Windows/PVE/PBS collectors/pilot остаются открытыми.
 
+## Wave 1 — Windows heartbeat/inventory; финальная приёмка в работе
+
+Native Win32 provider: local scope validation, volume GUID/128-bit FileId, metadata-only
+handles, complete mount aliases, Unicode/long paths, bounded streaming traversal.
+Mapped network drives/reparse points не обходятся; фиксированные issue codes сохраняют
+partial/error вместо ложной полноты. Pinned ancestors могут временно мешать directory
+rename/delete. Producer пишет256-record/8MiB chunks с atomic checkpoint, scope
+fingerprint, отдельным heartbeat stream и явной остановкой при queue pressure.
+Restart начинает новый scan и сохраняет старые FIFO batches; durable enumeration
+cursor/snapshot/deletion proof отсутствуют.
+
+Windows temporary-tree/provider/producer47 PASS/1 platform SKIP.
+Реальный HTTPS/PostgreSQL fake-provider replay и
+native Windows rename прошли; FileId/object identity сохранились, повтор ACK не
+добавил эффект. Финальный Linux full457/backend (13 native-only SKIP)+46 deployment,
+migrations/types/Ruff/OpenAPI прошли. Независимый полный обзор и итоговая публикация/
+CI ещё выполняются.
+Installed wheel/worker/provider imports и Gitleaks1.41MB PASS.
+План: [Windows inventory](superpowers/plans/2026-10-04-windows-inventory.md).
+Windows Service/state DACL, USN/операционные providers,500k-object performance,
+backpressure orchestration и живой pilot остаются открытыми.
+
 ## Пользовательская авторизация — source acceptance и CI подтверждены
 
 Локальный аварийный администратор и строгий LDAPS-провайдер, сессии с DB-clock expiry,

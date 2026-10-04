@@ -80,9 +80,18 @@ accept live Windows Service/DACL/USN or pilot performance. Real ingest/review re
 Files: create `tests/backend/test_windows_inventory_integration.py`; update
 Windows README/task index/status/this plan.
 
-- [ ] Real HTTPS/PostgreSQL fake-provider cross-platform and actual native Windows
+- [x] Real HTTPS/PostgreSQL fake-provider cross-platform and actual native Windows
   metadata/heartbeat accepted with retained replay and one batch effect.
 - [ ] Final Linux3.13 full/backend/deployment/migrations/types/Ruff/OpenAPI, Windows
   native acceptance, secrets/package checks; one fresh whole-component review.
 - [ ] Important/Critical fixes in one RED→GREEN pass; main publication/exact terminal CI;
   record remaining Service/DACL/USN/providers/performance/live pilot gates honestly.
+
+Task3 current evidence: actual Windows HTTPS/PostgreSQL2 cases passed; lost local ACK
+replays accepted duplicate with one effect, native rename preserves FileId/object ID
+and adds exactly one path-history observation. Linux real HTTPS/PostgreSQL fake-provider
+case passed, native case skipped. Full Linux3.13/PG16 backend457 passed/13 native-only
+skips, deployment46 passed, migrations roundtrip/check/mypy82+7/Ruff/OpenAPI passed.
+Windows provider/producer47 passed/1 platform skip. Mapped-drive regression failed
+before local-GUID pre-open resolution, then passed with no metadata open; every
+capture handle now uses GUID namespace. Whole-component review/fixes/exact CI remain.
