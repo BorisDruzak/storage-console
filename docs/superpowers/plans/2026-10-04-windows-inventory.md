@@ -1,0 +1,72 @@
+# Windows heartbeat and inventory implementation plan
+
+> **For agentic workers:** Use superpowers:executing-plans inline, task by task,
+> with one fresh whole-component reviewer at the end. Full canonical scope/main/
+> inline already authorized; no additional method-approval loop.
+
+**Goal:** Native read-only Windows metadata and heartbeat capture into durable delivery.
+**Architecture:** Typed observation port; pinned Win32 metadata handles and streaming
+enumeration; bounded producer uses existing contracts/outbox and independent heartbeat.
+**Tech Stack:** Python3.13 ctypes/os, pinned Pydantic2.13.5, PostgreSQL16 acceptance.
+**Spec:** `docs/superpowers/specs/2026-10-04-windows-inventory.md`.
+
+## Global constraints
+
+- No new dependencies, file contents, remote paths, audit-policy changes or privilege enablement.
+- 1..32 local non-overlapping drive-rooted directories <=32700 chars; depth<=64.
+- Metadata access0x80/share0x3/open3/flags0x02200000; handle final path uses volume GUID.
+- Existing version1 contracts;256-record/8MiB chunks default, configurable1..512 records.
+- Retain queued batches/checkpoints; restart full scan, no deletion/snapshot/USN claims.
+- Private state/service ACL and500k-object performance/live pilot remain gates.
+- Exact main CI, one whole-component review; no per-task agents.
+
+## Review focus
+
+1. Concurrent ancestor replacement and mount/drive alias changes must not enumerate outside scope.
+2. Open or query failure and generator cancellation must release every owned handle/iterator.
+3. Hard links/renames/long Unicode names must preserve volume/FileId identity and actual paths.
+4. Queue pressure and process restart must preserve previous batches and not claim scan completion.
+5. Denied/reparse/disappearing entries must be explicit partial evidence without path/error leaks.
+
+## Task 1 — Native metadata provider
+
+Files: create `collectors/windows/{__init__,inventory,native}.py`,
+`tests/backend/test_windows_inventory.py`, `tests/backend/test_windows_inventory_native.py`.
+Interfaces: `CaptureError(code)` fixed-code; `Observation(record=None,error_code=None)`
+record repr hidden; `Scope(roots:tuple[str,...]).fingerprint`; `NativeInventory.scan(scope)`
+returns Iterator[Observation]. Native API private handle helpers support injected failures.
+
+- [ ] RED scope validation/privacy/platform and actual native temp-tree volume/object identity,
+  rename/parent/size, junction ancestor/child exclusion and cleanup tests.
+- [ ] Implement lazy WinDLL, explicit signatures/structures, same-handle metadata,
+  pinned ancestor containment and bounded streaming traversal.
+- [ ] RED concurrent replacement, query failure, iterator close/depth/Unicode tests;
+  implement fixed issue handling, no raw OS messages/paths.
+- [ ] Windows native + portable cases, Linux import/types/Ruff; inspect complete diff;
+  commit `feat(collectors): capture native Windows inventory metadata`.
+
+## Task 2 — Bounded durable producer
+
+Files: create `collectors/windows/producer.py`, `tests/backend/test_windows_producer.py`.
+Interfaces: `capture_inventory(box,scope,observations,*,max_records=256,clock,stopped)`
+->CaptureReport; `capture_heartbeat(box,*,error_code=None,clock)` ->str batch_id.
+Consumes Scope/Observation fromTask1 and Outbox.enqueue/checkpoint; version0.1.0.
+
+- [ ] RED actual outbox/contracts/checkpoint/chunk limit/restart/scope mismatch/FIFO,
+  cancellation and pressure tests; heartbeat independent stream/no invented cursor/lag.
+- [ ] Implement bounded builder, explicit partial report, scope check before iteration,
+  transactional enqueue/checkpoint, close input generator on every exit.
+- [ ] Whole producer/native suite, Linux full tests/migrations/types/Ruff/OpenAPI;
+  commit `feat(collectors): enqueue Windows inventory and heartbeat`.
+
+## Task 3 — Real ingest acceptance and final review
+
+Files: create `tests/backend/test_windows_inventory_integration.py`; update
+Windows README/task index/status/this plan.
+
+- [ ] Real HTTPS/PostgreSQL fake-provider cross-platform and actual native Windows
+  metadata/heartbeat accepted with retained replay and one batch effect.
+- [ ] Final Linux3.13 full/backend/deployment/migrations/types/Ruff/OpenAPI, Windows
+  native acceptance, secrets/package checks; one fresh whole-component review.
+- [ ] Important/Critical fixes in one RED→GREEN pass; main publication/exact terminal CI;
+  record remaining Service/DACL/USN/providers/performance/live pilot gates honestly.
