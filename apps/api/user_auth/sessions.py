@@ -11,6 +11,7 @@ from sqlalchemy import Connection, Engine, RowMapping, func, insert, select, upd
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from packages.shared.auth.configuration import ROLES
+from packages.shared.auth.passwords import password_version
 from packages.shared.models.security import (
     audit_log,
     login_rate_buckets,
@@ -147,7 +148,7 @@ class SessionStore:
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 
-    def issue(self, user_id: UUID) -> IssuedSession | None:
+    def issue(self, user_id: UUID, *, credential_tag: str | None = None) -> IssuedSession | None:
         with self.engine.begin() as connection:
             user = (
                 connection.execute(select(users).where(users.c.id == user_id).with_for_update())
@@ -156,6 +157,21 @@ class SessionStore:
             )
             actor = _actor(connection, user) if user is not None else None
             if actor is None:
+                return None
+            if (
+                user is not None
+                and user["auth_provider"] == "local"
+                and user["password_hash"]
+                and credential_tag is None
+            ):
+                return None
+            if credential_tag is not None and (
+                re.fullmatch(r"[0-9a-f]{64}", credential_tag) is None
+                or user is None
+                or user["auth_provider"] != "local"
+                or not user["password_hash"]
+                or not hmac.compare_digest(credential_tag, password_version(user["password_hash"]))
+            ):
                 return None
             now = _time(connection)
             token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)

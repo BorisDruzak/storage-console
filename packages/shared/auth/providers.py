@@ -1,11 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from sqlalchemy import Engine, select
 
 from packages.shared.models.security import roles, user_roles, users
 
-from .passwords import verify_password
+from .passwords import password_version, verify_password
 
 
 @dataclass(frozen=True)
@@ -14,6 +14,7 @@ class Subject:
     subject: str
     username: str
     roles: frozenset[str]
+    credential_tag: str | None = field(default=None, repr=False)
 
 
 class AuthProvider(Protocol):
@@ -72,4 +73,10 @@ class LocalProvider:
             return None
         if not verify_password(user["password_hash"], password):
             return None
-        return Subject("local", str(user["id"]), user["username"], assigned)
+        return Subject(
+            "local",
+            str(user["id"]),
+            user["username"],
+            assigned,
+            password_version(user["password_hash"]),
+        )

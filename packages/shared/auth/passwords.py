@@ -1,3 +1,5 @@
+import hashlib
+
 from argon2 import PasswordHasher, extract_parameters
 from argon2.exceptions import InvalidHashError, VerificationError
 from argon2.low_level import Type
@@ -7,6 +9,11 @@ _hasher = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4, type=Typ
 
 class PasswordPolicyError(ValueError):
     pass
+
+
+def password_version(encoded: str) -> str:
+    """Opaque, non-credential tag for detecting rotation after verification."""
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
 def hash_password(password: str) -> str:
