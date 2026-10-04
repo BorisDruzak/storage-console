@@ -153,23 +153,37 @@ try {
   await expect(page.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
   await expect(other.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
   assert.equal(await status('/api/v1/auth/me'), 401);
-  phase = 'rejected-session-clears-console';
-  await page.locator('select[name="provider"]').selectOption('local');
-  await page.locator('input[name="username"]').fill(username);
-  await page.locator('input[name="password"]').fill(password);
-  await page.getByRole('button', { name: 'Войти', exact: true }).click();
-  await expect(page.locator('.session-bar')).toContainText(username);
-  const current = (await context.cookies()).find(cookie => cookie.name === '__Host-storage_session');
-  phase = 'rejected-session-cookie';
-  assert.ok(current?.secure && current.httpOnly);
-  await context.addCookies([{ ...current, value: 'a'.repeat(43) }]);
-  phase = 'rejected-session-navigation';
-  await page.getByRole('link', { name: 'Состояние хранилища', exact: true }).click();
-  phase = 'rejected-session-primary-gate';
-  await expect(page.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
-  phase = 'rejected-session-other-gate';
-  await expect(other.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
-  assert.equal(await page.locator('.session-bar').count(), 0);
+  for (const rejectBeforeNavigation of [false, true]) {
+    phase = 'rejected-session-clears-console';
+    await page.locator('select[name="provider"]').selectOption('local');
+    await page.locator('input[name="username"]').fill(username);
+    await page.locator('input[name="password"]').fill(password);
+    await page.getByRole('button', { name: 'Войти', exact: true }).click();
+    await expect(page.locator('.session-bar')).toContainText(username);
+    const current = (await context.cookies()).find(cookie => cookie.name === '__Host-storage_session');
+    phase = current ? 'rejected-session-cookie-flags' : 'rejected-session-cookie-missing';
+    assert.ok(current?.secure && current.httpOnly);
+    const rejectedRead = page.waitForResponse(response => response.url().startsWith(origin + '/api/v1/') &&
+      !response.url().includes('/auth/') && response.status() === 401, { timeout: 10000 }).catch(() => null);
+    await context.addCookies([{ ...current, value: 'a'.repeat(43) }]);
+    if (rejectBeforeNavigation) {
+      // Exercise a rejection that has already unmounted the protected shell.
+      // An uncached page guarantees a protected read rather than a cache hit.
+      phase = 'rejected-session-before-navigation-gate';
+      await page.evaluate(() => { window.location.hash = '#sources?offset=50'; });
+      await expect(page.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
+    }
+    phase = 'rejected-session-navigation';
+    // Background reads can correctly expire the session before this navigation.
+    // A DOM link then no longer exists; changing the route works in either state.
+    await page.evaluate(() => { window.location.hash = '#health'; });
+    phase = 'rejected-session-primary-gate';
+    await expect(page.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
+    phase = 'rejected-session-other-gate';
+    await expect(other.getByRole('heading', { name: 'Вход в Storage Console' })).toBeVisible();
+    assert.ok(await rejectedRead);
+    assert.equal(await page.locator('.session-bar').count(), 0);
+  }
   phase = 'mobile-and-runtime-errors';
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
