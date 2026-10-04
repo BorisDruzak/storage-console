@@ -458,6 +458,8 @@ class Outbox:
 
     def acknowledge(self, claim: Claim) -> bool:
         with self._transaction() as db:
+            if self._auth(db)[1] != claim.credential_generation:
+                return False
             row = db.execute(
                 "SELECT * FROM batches WHERE batch_id=? AND lease_id=?",
                 (claim.batch_id, claim.lease_id),
@@ -486,6 +488,8 @@ class Outbox:
         if code not in _DELIVERY_CODES:
             raise OutboxError("INVALID_CODE")
         with self._transaction() as db:
+            if self._auth(db)[1] != claim.credential_generation:
+                return False
             result = db.execute(
                 "UPDATE batches SET state=?, lease_id=NULL, lease_until=NULL, "
                 "next_attempt=?, attempts=min(attempts+1,2147483647), error_code=? "

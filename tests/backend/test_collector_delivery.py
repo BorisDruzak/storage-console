@@ -212,3 +212,38 @@ def test_sender_exception_never_echoes_credentials_or_acknowledges(tmp_path):
     result = Delivery(box, BrokenSender(box.collector_id), clock=lambda: now).run_once()
     assert result.state == "retry" and result.code == "NETWORK"
     assert "synthetic-private" not in repr(result) and box.status().pending_count == 1
+
+
+@pytest.mark.parametrize(
+    "operation,outcome",
+    [
+        ("acknowledge", DeliveryOutcome("accepted", duplicate=False)),
+        ("retry", DeliveryOutcome("retry", code="NETWORK")),
+        ("quarantine", DeliveryOutcome("quarantined", code="HTTP_REJECTED")),
+    ],
+)
+def test_refresh_between_completion_check_and_sql_cannot_settle_old_generation(
+    tmp_path, monkeypatch, operation, outcome
+):
+    box, batch, now = queued(tmp_path)
+    sender = Sender(box.collector_id, outcome)
+    old = Delivery(box, sender, clock=lambda: now)
+    fresh_sender = Sender(box.collector_id)
+    current = Delivery(Outbox(box.path, box.collector_id), fresh_sender, clock=lambda: now)
+    settle = getattr(box, operation)
+
+    def concurrent_refresh(*args):
+        # Another controller commits refresh after the old controller's check,
+        # immediately before the old result enters its SQLite transaction.
+        current.refresh_credentials(fresh_sender)
+        return settle(*args)
+
+    monkeypatch.setattr(box, operation, concurrent_refresh)
+    assert old.run_once().state == "stale"
+    assert box.credential_generation() == 1 and not box.auth_suspended()
+    assert box.status().pending_count == 1 and box.status().quarantined_count == 0
+    reclaimed = box.claim(now + timedelta(seconds=60))
+    assert (
+        reclaimed is not None and reclaimed.credential_generation == 1 and reclaimed.attempts == 0
+    )
+    assert reclaimed.body == batch.model_dump_json().encode()
