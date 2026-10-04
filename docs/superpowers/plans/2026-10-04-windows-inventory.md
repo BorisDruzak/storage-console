@@ -59,12 +59,21 @@ Interfaces: `capture_inventory(box,scope,observations,*,max_records=256,clock,st
 ->CaptureReport; `capture_heartbeat(box,*,error_code=None,clock)` ->str batch_id.
 Consumes Scope/Observation fromTask1 and Outbox.enqueue/checkpoint; version0.1.0.
 
-- [ ] RED actual outbox/contracts/checkpoint/chunk limit/restart/scope mismatch/FIFO,
+- [x] RED actual outbox/contracts/checkpoint/chunk limit/restart/scope mismatch/FIFO,
   cancellation and pressure tests; heartbeat independent stream/no invented cursor/lag.
-- [ ] Implement bounded builder, explicit partial report, scope check before iteration,
+- [x] Implement bounded builder, explicit partial report, scope check before iteration,
   transactional enqueue/checkpoint, close input generator on every exit.
-- [ ] Whole producer/native suite, Linux full tests/migrations/types/Ruff/OpenAPI;
+- [x] Whole producer/native suite, Linux full tests/migrations/types/Ruff/OpenAPI;
   commit `feat(collectors): enqueue Windows inventory and heartbeat`.
+
+Task2 evidence: Windows45 passed/1 platform skip. Linux3.13/PostgreSQL16 full
+backend456 passed/10 native-only skips, deployment46 passed, migration round trips
+and check passed, mypy82 source/7 deployment-helper files, Ruff/OpenAPI passed.
+Installed wheel/isolated worker/native-provider imports passed; public-source
+Gitleaks1.41MB found no leaks. Cleanup completion, callback error privacy, scope
+overlap/case/depth and complete volume mount aliases were reproduced before fixes.
+Capture restarts a new scan UUID and preserves old FIFO batches; this does not
+accept live Windows Service/DACL/USN or pilot performance. Real ingest/review remainTask3.
 
 ## Task 3 — Real ingest acceptance and final review
 

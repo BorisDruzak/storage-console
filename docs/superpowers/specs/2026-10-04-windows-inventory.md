@@ -18,8 +18,9 @@ explicit Unicode signatures, HANDLE-sized results and owned handle cleanup.
 
 ## Native capture
 
-Accept 1..32 drive-rooted local directory roots, each <=32700 characters. Reject
-UNC/device prefixes, relative paths, dot components, alternate streams, control
+Accept 1..32 drive-rooted local directory roots, each <=32700 characters.
+Each root has <=64 ancestor components, bounding simultaneously pinned handles.
+Reject UNC/device prefixes, relative paths, dot components, alternate streams, control
 characters and overlapping roots. Configured paths and observations are private
 runtime data and never belong in public examples/logs/error messages.
 
@@ -34,7 +35,9 @@ rename, rather than follow a replacement outside the configured scope.
 
 GetFileInformationByHandleEx FileIdInfo/BasicInfo/StandardInfo from the same handle:
 128-bit file ID, directory/type, size and attributes. GetVolumeInformationByHandleW
-and GetDiskFreeSpaceExW supply filesystem/label/capacity. Stable volume GUID is
+and GetDiskFreeSpaceExW supply filesystem/label/capacity; GetVolumePathNamesForVolumeNameW
+supplies the complete mount-alias list (<=128 names/65536 WCHAR buffer), since ingest
+ends aliases omitted from a later volume observation. Stable volume GUID is
 volume identity; file IDs are lowercase 32-hex strings. Relative paths are relative
 to the volume, so two configured roots cannot alias object paths. Parent file ID
 comes from the pinned parent. No synthetic path-derived IDs or filesystem fallback.
@@ -62,7 +65,9 @@ Filesystem enumeration cursors are volatile. Restart a new scan at the configure
 roots, preserving old retained batches in FIFO order. Repeated inventory is a new
 observation and uses a new scan UUID. Do not persist an opaque enumeration handle,
 claim restart resumes a directory position, infer deletions, or call this a snapshot.
-The scope fingerprint must match durable state before any native enumeration.
+The scope fingerprint preserves directory case and must match durable state before
+any native enumeration. Windows directories can be case-sensitive; case-only config
+changes conservatively require an explicit state reset.
 Incomplete/issue scans never set completed=true. Heartbeat reports known fixed
 capture failures; cursor/lag remain absent until actual USN continuity exists.
 
