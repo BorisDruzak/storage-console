@@ -58,6 +58,7 @@ def dump_database(compose: Compose, target: Path) -> None:
         [
             "pg_dump",
             "--format=custom",
+            "--schema=public",
             "--no-owner",
             "--no-acl",
             "--username",
@@ -147,23 +148,49 @@ def validate_backup(values: dict[str, str], archive: Path) -> Path:
 
 
 def restore_database(compose: Compose, dump: Path) -> None:
-    postgres_command(
-        compose,
-        [
-            "pg_restore",
-            "--clean",
-            "--if-exists",
-            "--no-owner",
-            "--no-acl",
-            "--single-transaction",
-            "--exit-on-error",
-            "--username",
-            compose.values["POSTGRES_USER"],
-            "--dbname",
-            compose.values["POSTGRES_DB"],
-        ],
-        source=dump,
-    )
+    temporary = Path(tempfile.mkdtemp(prefix=".restore-", dir=dump.parent))
+    try:
+        rendered, transaction = temporary / "archive.sql", temporary / "transaction.sql"
+        for path in (rendered, transaction):
+            path.touch(mode=0o600, exist_ok=False)
+        # Render completely before touching the DB: truncated archives/disk-full fail closed.
+        postgres_command(
+            compose,
+            [
+                "pg_restore",
+                "--file=-",
+                "--schema=public",
+                "--clean",
+                "--if-exists",
+                "--no-owner",
+                "--no-acl",
+                "--exit-on-error",
+            ],
+            source=dump,
+            target=rendered,
+        )
+        with transaction.open("wb") as output, rendered.open("rb") as incoming:
+            # The application owns the entire public schema. Newer migration objects must
+            # disappear together with restored Alembic history, inside the same transaction.
+            output.write(b"DROP SCHEMA IF EXISTS public CASCADE;\nCREATE SCHEMA public;\n")
+            shutil.copyfileobj(incoming, output)
+        postgres_command(
+            compose,
+            [
+                "psql",
+                "-X",
+                "--single-transaction",
+                "-v",
+                "ON_ERROR_STOP=1",
+                "--username",
+                compose.values["POSTGRES_USER"],
+                "--dbname",
+                compose.values["POSTGRES_DB"],
+            ],
+            source=transaction,
+        )
+    finally:
+        shutil.rmtree(temporary)
 
 
 def restore_backup(

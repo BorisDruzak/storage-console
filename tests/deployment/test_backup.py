@@ -126,3 +126,30 @@ def test_failed_safety_backup_prevents_restore(tmp_path, monkeypatch):
     with pytest.raises(ConfigError):
         backup.restore_backup(config, Compose(), archive, "synthetic-project/synthetic_database")
     assert events == [("stop", "web", "api", "worker")]
+
+
+def test_restore_replaces_managed_schema_in_one_transaction(tmp_path, monkeypatch):
+    from deploy.scripts import backup
+
+    commands = []
+
+    class Compose:
+        values = {"POSTGRES_USER": "synthetic_user", "POSTGRES_DB": "synthetic_database"}
+
+    def command(compose, args, *, source=None, target=None):
+        commands.append(args)
+        if target:
+            target.write_bytes(b"CREATE TABLE public.old_release_table (id int);\n")
+        if args[0] == "psql":
+            script = source.read_text()
+            assert script.index("DROP SCHEMA") < script.index("CREATE SCHEMA")
+            assert script.index("CREATE SCHEMA") < script.index("CREATE TABLE")
+            assert "--single-transaction" in args
+            assert "ON_ERROR_STOP=1" in args
+
+    dump = tmp_path / "database.dump"
+    dump.write_bytes(b"PGDMP synthetic")
+    monkeypatch.setattr(backup, "postgres_command", command)
+    backup.restore_database(Compose(), dump)
+    assert commands[-1][0] == "psql"
+    assert not list(tmp_path.glob(".restore-*"))
