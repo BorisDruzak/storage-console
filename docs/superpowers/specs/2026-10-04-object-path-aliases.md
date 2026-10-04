@@ -26,10 +26,15 @@ Repeated observations extend an existing interval rather than close/reopen it.
 The representative remains stable while active; when it ends, select the earliest
 active interval (UUID breaks ties) and use that alias's name and known parent.
 Do not copy the removed alias's parent into a replacement. With no active path,
-retain the last known representative and mark the object deleted at the latest
-proven removal time. Object metadata is updated only by observations at least as
+retain the last known representative. Path removal does not prove whole-object
+deletion: another link may exist outside approved scope. Set deleted_at only for
+an explicit whole-object deletion no older than the last positive path evidence;
+do not reinstate an old object tombstone after resurrection and a later alias-only
+removal. Object metadata is updated only by observations at least as
 new as its last metadata/event time; older independent alias evidence is still
 processed.
+Admitted older inventory also moves object first_seen_at to the earliest observed
+inventory timestamp; its metadata and last_seen_at remain protected by newer evidence.
 
 Maintain separate persistent positive and negative event-time watermarks per path.
 A path is active only when its last positive observation is newer than its path
@@ -50,6 +55,14 @@ approved scope. Persist an ever-observed-multiple flag: legacy unknown-count
 records cannot overwrite established multiple-path facts. Before that flag is
 set, legacy unknown-count inventory retains the existing single-path replacement
 semantics, with the same dated sole-path proof to resist stale delivery.
+Unknown-count observations before multiple-path evidence retain the legacy
+object-level stale-record guard, including after a newer rename. Explicit counts
+and unknown counts after multiple-path evidence use independent per-path ordering.
+Equal-time legacy replacement cycles retain delivery-order behavior. Track
+event_ended_at separately from inferred sole-path retirement: only an inferred
+equal-time end may be reopened by legacy inventory; explicit rename/delete and
+whole-object deletion still win ties. Contradictory explicit count-one proofs for
+different paths at the same time reject the batch with SOLE_PATH_CONFLICT.
 
 RENAME closes only old_relative_path and observes new_relative_path, preserving
 other aliases; identical old/new paths are an observation, not an interval churn.
@@ -64,13 +77,13 @@ fabricate an object before inventory provides its required metadata.
 
 Create `object_path_states`: UUID identity, object FK, exact relative_path Text,
 SHA-256 path_digest String(64), nullable parent_file_id/name, nullable seen_at and
-ended_at, nullable unique active_history_id FK to object_path_history. Unique
+ended_at/event_ended_at, nullable unique active_history_id FK to object_path_history. Unique
 (object_id,path_digest) provides a bounded index for 32767-character paths.
 Compare exact strings on every digest lookup and reject a collision with a bounded
 IngestConflict; the digest is never an object identity. Existing source-row locks
 serialize mutations, including uploads by distinct collectors on one source.
 
-Add nullable link_count/observed_at, sole_path_digest/sole_path_at, last_deleted_at
+Add nullable link_count/link_count_at, sole_path_digest/sole_path_at, last_deleted_at
 and non-null default-false multiple_paths_observed to filesystem_objects. Preserve
 the existing current path and history table contract. Path state owns the one open
 interval pointer; close an interval and clear its pointer atomically. Keep dates

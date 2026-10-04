@@ -99,3 +99,26 @@ def test_existing_nulls_and_datetime_uuid_encoders_are_preserved():
     assert batch.collector_id == UUID(OLD_BATCH["collector_id"])
     assert batch.sent_at == datetime(2026, 1, 1, tzinfo=UTC)
     assert batch.model_dump(mode="json") == OLD_BATCH
+
+
+def test_retained_legacy_outbox_body_survives_reopen_and_dto_reenqueue(tmp_path):
+    from collectors.common.outbox import Outbox, OutboxError
+
+    path = tmp_path / "private" / "state.sqlite3"
+    collector = UUID(OLD_BATCH["collector_id"])
+    batch = BatchEnvelope[InventoryRecord].model_validate_json(OLD_RAW)
+    box = Outbox(path, collector)
+    box.enqueue("inventory", batch, "inventory", 0, {"scan": "legacy"})
+    restored = Outbox(path, collector)
+    restored.enqueue("inventory", batch, "inventory", 0, {"scan": "legacy"})
+    assert restored.checkpoint("inventory").revision == 1
+    assert restored.status().pending_count == 1
+    claim = restored.claim(datetime.now(UTC))
+    assert claim is not None
+    assert claim.body == OLD_RAW
+    changed = BatchEnvelope[InventoryRecord].model_validate(
+        dict(OLD_BATCH, records=[dict(OLD_RECORD, link_count=2)])
+    )
+    with pytest.raises(OutboxError) as failure:
+        restored.enqueue("inventory", changed, "inventory", 0, {"scan": "legacy"})
+    assert failure.value.code == "BATCH_CONFLICT"

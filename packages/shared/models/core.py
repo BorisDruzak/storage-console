@@ -116,9 +116,16 @@ filesystem_objects = Table(
     timestamp("first_seen_at"),
     timestamp("last_seen_at"),
     timestamp("deleted_at", nullable=True),
+    Column("link_count", BigInteger),
+    timestamp("link_count_at", nullable=True),
+    Column("sole_path_digest", String(64)),
+    timestamp("sole_path_at", nullable=True),
+    timestamp("last_deleted_at", nullable=True),
+    Column("multiple_paths_observed", Boolean, nullable=False, server_default="false"),
     UniqueConstraint("volume_id", "file_id", name="uq_filesystem_object_identity"),
     CheckConstraint("object_type IN ('FILE','DIRECTORY')", name="ck_object_type"),
     CheckConstraint("size_bytes >= 0", name="ck_object_size"),
+    CheckConstraint("link_count BETWEEN 1 AND 4294967295", name="ck_object_link_count"),
     Index("ix_objects_volume_parent", "volume_id", "parent_file_id"),
 )
 object_path_history = Table(
@@ -130,4 +137,20 @@ object_path_history = Table(
     timestamp("valid_from_at"),
     timestamp("valid_until_at", nullable=True),
     Index("ix_object_path_history", "object_id", "valid_from_at"),
+)
+object_path_states = Table(
+    "object_path_states",
+    metadata,
+    identity(),
+    reference("object_id", "filesystem_objects.id"),
+    Column("relative_path", Text, nullable=False),
+    Column("path_digest", String(64), nullable=False),
+    Column("name", Text),
+    Column("parent_file_id", String(255)),
+    timestamp("seen_at", nullable=True),
+    timestamp("ended_at", nullable=True),
+    timestamp("event_ended_at", nullable=True),
+    reference("active_history_id", "object_path_history.id", nullable=True),
+    UniqueConstraint("object_id", "path_digest", name="uq_object_path_state"),
+    UniqueConstraint("active_history_id", name="uq_path_state_active_history"),
 )

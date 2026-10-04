@@ -39,11 +39,11 @@ files located through the existing generation scripts. Existing ingest digest an
 outbox algorithms remain unchanged.
 Interface: `FileObjectRecord.link_count: int | None`, omitted on None, FILE-only.
 
-- [ ] RED golden old record/envelope canonical JSON and SHA-256 against literal
+- [x] RED golden old record/envelope canonical JSON and SHA-256 against literal
   pre-upgrade fixtures; omitted/null count serialize identically. Positive counts
   serialize and alter digest. Reject bool/string/float/zero/overflow/directory count.
-- [ ] Implement only the additive field and validator; rerun the same tests GREEN.
-- [ ] Run existing contracts and outbox suites, strict DTO types, Ruff, and generated
+- [x] Implement only the additive field and validator; rerun the same tests GREEN.
+- [x] Run existing contracts and outbox suites, strict DTO types, Ruff, and generated
   OpenAPI/frontend drift checks. Inspect full diff and commit the coherent DTO change.
 
 ## Task 2 — Per-path persistence and transitions
@@ -53,25 +53,34 @@ create `migrations/versions/0005_object_path_aliases.py`, create
 `packages/shared/ingest/paths.py`, modify `packages/shared/ingest/core.py`, create
 `tests/backend/test_path_alias_ingest.py`, `tests/backend/test_path_alias_migration.py`.
 Update schema/metadata exports if necessary.
-Interfaces: `paths.observe(connection, object_id, path, at, *, name, parent_file_id)`;
-`paths.end(connection, object_id, path, at)`; `paths.sole(connection, object_id, path, at)`;
+Interfaces: `paths.observe(connection, object_id, path, at, *, name, parent_file_id, legacy_tie=False)`;
+`paths.end(connection, object_id, path, at)`; `paths.sole(connection, object_id, path, at, *, strict=True)`;
 `paths.delete(connection, object_id, at)`; `paths.representative(connection, object_id)`.
 Helpers do not own transactions; conflicts roll back the existing ingest transaction.
 
-- [ ] RED actual PostgreSQL two aliases/two scans: one object, two active intervals;
+- [x] RED actual PostgreSQL two aliases/two scans: one object, two active intervals;
   rename-one, path-delete, count1, whole-delete/resurrection, unchanged-path resurrection.
-- [ ] Implement state table/object watermarks, bounded migration/backfill and helper
+- [x] Implement state table/object watermarks, bounded migration/backfill and helper
   transitions; integrate inventory/change without global-old-alias discard. GREEN.
-- [ ] RED delayed independent aliases, equal-time deletion, stale changes and sole
+- [x] RED delayed independent aliases, equal-time deletion, stale changes and sole
   proofs, legacy unknown after explicit multiple, pre-inventory changes hydration.
   Implement event index/hydration and dated guards; rerun GREEN.
-- [ ] RED stored pre-upgrade receipt replay, changed-count same-ID conflict, distinct
+- [x] Verify stored pre-upgrade receipt replay, changed-count same-ID conflict, distinct
   collectors concurrent upload, forced digest collision rollback, 32767-char paths.
   Fix only demonstrated defects and rerun GREEN.
-- [ ] RED existing active/closed/deleted/resurrected migration rows, bounded backfill,
+- [x] RED existing active/closed/deleted/resurrected migration rows; verify bounded backfill,
   safe round trip and unsafe-multipath downgrade refusal. Implement guards, GREEN.
-- [ ] Run full Linux/PostgreSQL backend/deployment, base/head/check migration checks,
+- [x] Run full Linux/PostgreSQL backend/deployment, base/head/check migration checks,
   strict types/Ruff/OpenAPI. Inspect full diff and commit backend/schema capability.
+
+Task2 evidence: actual Linux3.13/PostgreSQL16 full498 passed/17 native-only skips,
+deployment46 passed, migration round trips/check, mypy84 source/7 deployment helpers,
+Ruff/OpenAPI passed. Twenty-two PostgreSQL alias/temporal/replay/conflict cases and
+three existing-row/keyset/downgrade cases passed. Golden DTO/outbox compatibility
+passed. Initial alias cases, hydration, legacy ties/stale records, first-seen
+chronology and object-delete inference were demonstrated RED before their fixes.
+Path-only removal retains last-known identity without claiming whole-object deletion.
+Native count publication, real Windows HTTPS acceptance and final review remainTask3.
 
 ## Task 3 — Native capture, delivery and acceptance
 

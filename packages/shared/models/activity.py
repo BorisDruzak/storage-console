@@ -22,6 +22,13 @@ change_events = Table(
         name="ck_change_event_type",
     ),
     Index("ix_changes_source_time", "source_node_id", "occurred_at"),
+    Index(
+        "ix_changes_object_identity_time",
+        "source_node_id",
+        "volume_identity",
+        "file_id",
+        "occurred_at",
+    ),
 )
 event_attributions = Table(
     "event_attributions",

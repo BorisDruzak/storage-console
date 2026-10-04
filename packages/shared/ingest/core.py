@@ -1,8 +1,7 @@
-from datetime import datetime
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import insert, select, tuple_, update
 from sqlalchemy.engine import Connection
 
 from packages.contracts.changes import ChangeRecord
@@ -10,15 +9,13 @@ from packages.contracts.inventory import FileObjectRecord, ShareRecord, VolumeRe
 from packages.shared.models.activity import change_events
 from packages.shared.models.core import (
     filesystem_objects,
-    object_path_history,
     shares,
     volume_aliases,
     volumes,
 )
 
-
-class IngestConflict(Exception):
-    """A bounded machine conflict; never exposes SQL or collector data."""
+from . import paths
+from .errors import IngestConflict as IngestConflict
 
 
 def volume_id(connection: Connection, source: UUID, identity: str) -> UUID:
@@ -168,14 +165,17 @@ def inventory(
             .mappings()
             .one_or_none()
         )
+        if (
+            existing is not None
+            and record.link_count is None
+            and not existing["multiple_paths_observed"]
+            and record.occurred_at < existing["last_seen_at"]
+        ):
+            return
         values = dict(
-            parent_file_id=record.parent_file_id,
             object_type=record.object_type,
-            current_name=record.name,
-            current_relative_path=record.relative_path,
             size_bytes=record.size_bytes,
             last_seen_at=record.occurred_at,
-            deleted_at=None,
         )
         if existing is None:
             target = connection.scalar(
@@ -184,39 +184,126 @@ def inventory(
                     volume_id=target_volume,
                     file_id=record.file_id,
                     first_seen_at=record.occurred_at,
+                    parent_file_id=record.parent_file_id,
+                    current_name=record.name,
+                    current_relative_path=record.relative_path,
                     **values,
                 )
                 .returning(filesystem_objects.c.id)
             )
-            connection.execute(
-                insert(object_path_history).values(
-                    object_id=target,
-                    relative_path=record.relative_path,
-                    valid_from_at=record.occurred_at,
+            target = cast(UUID, target)
+            multiple = False
+            count_at = None
+        else:
+            target = existing["id"]
+            multiple = existing["multiple_paths_observed"]
+            count_at = existing["link_count_at"]
+            if record.occurred_at < existing["first_seen_at"]:
+                connection.execute(
+                    update(filesystem_objects)
+                    .where(filesystem_objects.c.id == target)
+                    .values(first_seen_at=record.occurred_at)
                 )
+            if record.occurred_at >= existing["last_seen_at"]:
+                connection.execute(
+                    update(filesystem_objects)
+                    .where(filesystem_objects.c.id == target)
+                    .values(**values)
+                )
+        if record.link_count is not None:
+            count_values: dict[str, object] = {}
+            if count_at is None or record.occurred_at >= count_at:
+                count_values.update(link_count=record.link_count, link_count_at=record.occurred_at)
+            if record.link_count > 1:
+                multiple = True
+                count_values["multiple_paths_observed"] = True
+            if count_values:
+                connection.execute(
+                    update(filesystem_objects)
+                    .where(filesystem_objects.c.id == target)
+                    .values(**count_values)
+                )
+        if record.link_count == 1 or (record.link_count is None and not multiple):
+            paths.sole(
+                connection,
+                target,
+                record.relative_path,
+                record.occurred_at,
+                strict=record.link_count is not None,
             )
-        elif record.occurred_at >= existing["last_seen_at"]:
-            if existing["current_relative_path"] != record.relative_path:
-                change_path(connection, existing["id"], record.relative_path, record.occurred_at)
-            connection.execute(
-                update(filesystem_objects)
-                .where(filesystem_objects.c.id == existing["id"])
-                .values(**values)
-            )
-
-
-def change_path(connection: Connection, target: UUID, path: str, at: datetime) -> None:
-    connection.execute(
-        update(object_path_history)
-        .where(
-            object_path_history.c.object_id == target,
-            object_path_history.c.valid_until_at.is_(None),
+        paths.observe(
+            connection,
+            target,
+            record.relative_path,
+            record.occurred_at,
+            name=record.name,
+            parent_file_id=record.parent_file_id,
+            legacy_tie=record.link_count is None and not multiple,
         )
-        .values(valid_until_at=at)
+        if existing is None:
+            _hydrate_changes(connection, source, target, record)
+        paths.representative(connection, target)
+
+
+def _hydrate_changes(
+    connection: Connection, source: UUID, target: UUID, record: FileObjectRecord
+) -> None:
+    condition = (
+        (change_events.c.source_node_id == source)
+        & (change_events.c.volume_identity == record.volume_identity)
+        & (change_events.c.file_id == record.file_id)
+        & (change_events.c.object_id.is_(None))
     )
-    connection.execute(
-        insert(object_path_history).values(object_id=target, relative_path=path, valid_from_at=at)
-    )
+    latest = record.occurred_at
+    cursor = None
+    while True:
+        page = select(change_events).where(condition)
+        if cursor is not None:
+            page = page.where(tuple_(change_events.c.occurred_at, change_events.c.id) > cursor)
+        rows = (
+            connection.execute(
+                page.order_by(change_events.c.occurred_at, change_events.c.id).limit(256)
+            )
+            .mappings()
+            .all()
+        )
+        if not rows:
+            break
+        for row in rows:
+            event = ChangeRecord.model_validate(
+                {key: row[key] for key in ChangeRecord.model_fields}
+            )
+            _path_change(connection, target, event)
+            latest = max(latest, event.occurred_at)
+        last = rows[-1]
+        cursor = (last["occurred_at"], last["id"])
+    if latest > record.occurred_at:
+        connection.execute(
+            update(filesystem_objects)
+            .where(filesystem_objects.c.id == target)
+            .values(last_seen_at=latest)
+        )
+
+
+def _path_change(connection: Connection, target: UUID, record: ChangeRecord) -> None:
+    if record.event_type == "DELETE":
+        if record.old_relative_path is None:
+            paths.delete(connection, target, record.occurred_at)
+        else:
+            paths.end(connection, target, record.old_relative_path, record.occurred_at)
+    elif record.event_type == "RENAME":
+        old, new = record.old_relative_path, record.new_relative_path
+        assert old is not None and new is not None
+        if old != new:
+            paths.end(connection, target, old, record.occurred_at)
+        paths.observe(
+            connection,
+            target,
+            new,
+            record.occurred_at,
+            name=new.replace("\\", "/").rsplit("/", 1)[-1],
+            parent_file_id=record.parent_file_id,
+        )
 
 
 def change(connection: Connection, source: UUID, record: ChangeRecord) -> None:
@@ -240,21 +327,13 @@ def change(connection: Connection, source: UUID, record: ChangeRecord) -> None:
             **record.model_dump(),
         )
     )
-    if existing is None or record.occurred_at < existing["last_seen_at"]:
+    if existing is None:
         return
-    values: dict[str, object] = dict(last_seen_at=record.occurred_at)
-    if record.event_type == "DELETE":
-        values["deleted_at"] = record.occurred_at
-    elif record.event_type == "RENAME":
-        path = record.new_relative_path
-        assert path is not None
-        if path != existing["current_relative_path"]:
-            change_path(connection, existing["id"], path, record.occurred_at)
-        values.update(
-            current_relative_path=path,
-            current_name=path.replace("\\", "/").rsplit("/", 1)[-1],
-            parent_file_id=record.parent_file_id,
+    _path_change(connection, existing["id"], record)
+    if record.occurred_at >= existing["last_seen_at"]:
+        connection.execute(
+            update(filesystem_objects)
+            .where(filesystem_objects.c.id == existing["id"])
+            .values(last_seen_at=record.occurred_at)
         )
-    connection.execute(
-        update(filesystem_objects).where(filesystem_objects.c.id == existing["id"]).values(**values)
-    )
+    paths.representative(connection, existing["id"])
