@@ -333,6 +333,40 @@
       "title": "FreshnessSummary",
       "type": "object"
     },
+    "LoginRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "password": {
+          "format": "password",
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Password",
+          "type": "string",
+          "writeOnly": true
+        },
+        "provider": {
+          "enum": [
+            "local",
+            "ldap"
+          ],
+          "title": "Provider",
+          "type": "string"
+        },
+        "username": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Username",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "username",
+        "password"
+      ],
+      "title": "LoginRequest",
+      "type": "object"
+    },
     "Overview": {
       "additionalProperties": false,
       "properties": {
@@ -601,6 +635,43 @@
         "freshness"
       ],
       "title": "Source",
+      "type": "object"
+    },
+    "UserResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "enum": [
+              "storage_admin",
+              "storage_operator",
+              "auditor",
+              "analyst",
+              "viewer"
+            ],
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        },
+        "username": {
+          "title": "Username",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "roles"
+      ],
+      "title": "UserResponse",
       "type": "object"
     },
     "Volume": {

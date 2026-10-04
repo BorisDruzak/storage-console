@@ -9,7 +9,8 @@ import { _ } from 'ajv/dist/compile/codegen/index.js';
 
 const root = new URL('../../../', import.meta.url);
 const api = JSON.parse(await fs.readFile(new URL('packages/contracts/openapi/storage-console-v1.json', root), 'utf8'));
-const paths = Object.fromEntries(Object.entries(api.paths).filter(([, path]) => path.get?.tags?.includes('read')));
+const paths = Object.fromEntries(Object.entries(api.paths).filter(([, path]) =>
+  path.get?.tags?.includes('read') || Object.values(path).some(operation => operation.tags?.includes('authentication'))));
 const names = new Set();
 function references(value) {
   if (!value || typeof value !== 'object') return;
@@ -30,7 +31,7 @@ const validation = JSON.stringify({
 const ajv = new Ajv2020({ code: { source: true, formats: _`require("ajv-formats/dist/formats").fullFormats` }, strict: true });
 addFormats(ajv);
 ajv.addSchema({ ...JSON.parse(validation), $id: 'storage-console-read' });
-const responses = ['Overview', 'Domains', 'Source', 'Freshness', 'Page_Source_', 'Page_Volume_', 'Page_Share_'];
+const responses = ['Overview', 'Domains', 'Source', 'Freshness', 'Page_Source_', 'Page_Volume_', 'Page_Share_', 'UserResponse'];
 const compiled = standalone(ajv, Object.fromEntries(responses.map(name => [name, `storage-console-read#/$defs/${name}`])));
 const bundled = await build({ stdin: { contents: compiled, resolveDir: fileURLToPath(new URL('../', import.meta.url)) }, bundle: true, platform: 'browser', format: 'esm', minify: true, write: false });
 const declarations = `declare const validators: Record<${responses.map(name => JSON.stringify(name)).join(' | ')}, (value: unknown) => boolean>;\nexport default validators;\n`;

@@ -148,6 +148,11 @@ class SessionStore:
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
 
+    def login_failed(self) -> None:
+        # Caller must first consume a login ticket; global budget bounds audit volume.
+        with self.engine.begin() as connection:
+            _audit(connection, "auth.failure", "DENIED")
+
     def issue(self, user_id: UUID, *, credential_tag: str | None = None) -> IssuedSession | None:
         with self.engine.begin() as connection:
             user = (
@@ -213,7 +218,7 @@ class SessionStore:
             )
             return CurrentSession(actor, cast(str, session["csrf_hash"]))
 
-    def revoke(self, token: str) -> bool:
+    def revoke(self, token: str, *, rotation: bool = False) -> bool:
         if not _valid_token(token):
             return False
         with self.engine.begin() as connection:
@@ -226,7 +231,12 @@ class SessionStore:
                 .where(user_sessions.c.id == session["id"])
                 .values(revoked_at=_time(connection))
             )
-            _audit(connection, "auth.logout", "SUCCESS", cast(UUID, user["id"]))
+            _audit(
+                connection,
+                "auth.session_rotated" if rotation else "auth.logout",
+                "SUCCESS",
+                cast(UUID, user["id"]),
+            )
         return True
 
     def consume_ticket(self, provider: str, username: str) -> bool:

@@ -13,6 +13,9 @@ from starlette.requests import Request
 from apps.api.body_limit import IngestBodyLimit
 from apps.api.ingest import router as ingest_router
 from apps.api.read.routes import router as read_router
+from apps.api.user_auth.dependencies import UserAuth
+from apps.api.user_auth.routes import router as auth_router
+from apps.api.user_auth.transport import AuthTransport
 from packages.shared.database import make_engine
 from packages.shared.logging import configure_logging
 from packages.shared.observability import configure_sentry
@@ -21,7 +24,12 @@ from packages.shared.settings import Settings
 logger = logging.getLogger(__name__)
 
 
-def create_app(settings: Settings | None = None, engine: Engine | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    engine: Engine | None = None,
+    *,
+    user_auth: UserAuth | None = None,
+) -> FastAPI:
     # Uvicorn configures its handlers before importing this factory.
     configure_logging()
     config = settings or Settings()
@@ -36,9 +44,12 @@ def create_app(settings: Settings | None = None, engine: Engine | None = None) -
         database.dispose()
 
     application = FastAPI(title="Storage Console API", version="0.1.0", lifespan=lifespan)
+    application.state.user_auth = user_auth
+    application.include_router(auth_router())
     application.include_router(ingest_router(database))
     application.include_router(read_router(database))
     application.add_middleware(IngestBodyLimit, max_bytes=config.max_ingest_bytes)
+    application.add_middleware(AuthTransport)
 
     @application.exception_handler(RequestValidationError)
     async def invalid_request(_: Request, __: RequestValidationError) -> JSONResponse:

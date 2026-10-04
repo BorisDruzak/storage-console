@@ -5,12 +5,21 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 class IngestBodyLimit:
     """Bound chunked bodies before JSON parsing, including absent/false Content-Length."""
 
-    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        max_bytes: int,
+        *,
+        path_prefix: str = "/api/v1/ingest/",
+        detail: str = "INGEST_TOO_LARGE",
+    ) -> None:
         self.app = app
         self.max_bytes = max_bytes
+        self.path_prefix = path_prefix
+        self.detail = detail
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or not scope["path"].startswith("/api/v1/ingest/"):
+        if scope["type"] != "http" or not scope["path"].startswith(self.path_prefix):
             await self.app(scope, receive, send)
             return
         body = bytearray()
@@ -20,7 +29,7 @@ class IngestBodyLimit:
                 return
             chunk = message.get("body", b"")
             if len(body) + len(chunk) > self.max_bytes:
-                await JSONResponse({"detail": "INGEST_TOO_LARGE"}, status_code=413)(
+                await JSONResponse({"detail": self.detail}, status_code=413)(
                     scope,
                     receive,
                     send,
