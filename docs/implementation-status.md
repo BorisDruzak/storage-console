@@ -29,9 +29,9 @@ Console опубликован в `a9012163bce77815f709790502187fdce69cf46f`;
 [CI37178692013](https://github.com/BorisDruzak/storage-console/actions/runs/37178692013)
 успешен на точной ревизии: пять обязательных jobs, Sonar SKIPPED.
 План: [source management](superpowers/plans/2026-10-04-source-management.md).
-Durable outbox, Windows/PVE/PBS runtime и живой inventory ещё не реализованы.
+Общий outbox/delivery описан ниже; Windows/PVE/PBS runtime и живой inventory ещё не реализованы.
 
-## Wave 1 — общий collector delivery; финальная приёмка в работе
+## Wave 1 — общий collector delivery; приёмка компонента завершена
 
 Transactional SQLite outbox/checkpoints и strict HTTPS sender опубликованы в
 `725849a39922a655f016fc1b61396db6d24d1abd` и
@@ -45,9 +45,14 @@ SQLite schema1→2 обновляется атомарно; токен в state 
 Настоящий Uvicorn HTTPS/API/PostgreSQL: client process death после server commit,
 duplicate ACK без второго inventory effect, rotation/disable и explicit refresh
 проверены на Linux3.13 и Windows. Route диагностики исправлен по published API;
-diagnostic metadata реально сохраняются. Последний Linux full417/backend и46
+diagnostic metadata реально сохраняются. Последний Linux full420/backend и46
 deployment, миграции round-trip/check, mypy78+8, Ruff/OpenAPI/package/Gitleaks и
-frontend API/types PASS. Независимый полный обзор и итоговый CI ещё выполняются.
+frontend API/types PASS. Независимый полный обзор завершён: одна гонка settlement
+при обновлении ключа воспроизведена тремя тестами и исправлена атомарной проверкой
+поколения внутри SQLite-транзакций. Финальный прогон после исправления прошёл.
+Исходный код опубликован в `05410ba3d8caa5cdb29829aecfa52d80bce37b5c`;
+[CI37186391705](https://github.com/BorisDruzak/storage-console/actions/runs/37186391705)
+успешен на этой точной ревизии: пять обязательных jobs, Sonar SKIPPED.
 Подробнее: [план](superpowers/plans/2026-10-04-collector-delivery.md),
 [интерфейсы и эксплуатационные ограничения](../collectors/common/README.md).
 Windows Service/ACL, USN и live Windows/PVE/PBS collectors/pilot остаются открытыми.

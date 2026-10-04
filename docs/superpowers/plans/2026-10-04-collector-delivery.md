@@ -110,9 +110,9 @@ task index/status and this plan. Keep runtime integration tests independent from
   one persisted effect; rotation/disable leaves batches retained and explicit refresh recovers.
 - [x] Exercise real HTTPS with synthetic private credentials and Windows process-crash
   durability. No traces/logs/public artifacts containing credentials or real evidence.
-- [ ] Full Linux3.13/PG16/migrations, frontend compatibility, type/package/secret/native checks;
+- [x] Full Linux3.13/PG16/migrations, frontend compatibility, type/package/secret/native checks;
   one fresh whole-subsystem review; Important fixes RED→GREEN in one pass.
-- [ ] Publish main, verify exact terminal required CI, record actual acceptance and remaining
+- [x] Publish main, verify exact terminal required CI, record actual acceptance and remaining
   Windows/PVE/PBS/USN/pilot work. Do not mark the full goal or Wave1 complete.
 
 Task 3 execution evidence: actual Uvicorn HTTPS/API/PostgreSQL accepted inventory;
@@ -131,7 +131,20 @@ afterward; real API acceptance persists a diagnostic bundle and its correct batc
 Final Linux3.13/PostgreSQL16 full backend417/deployment46/migration round trips,
 mypy78 source plus8 deployment/helper files, Ruff/OpenAPI, installed wheel/worker,
 public Gitleaks1.35MB and frontend API/type checks passed. One whole-component
-review and final publication/terminal CI remain before component acceptance.
+review found one Important generation-settlement race: refresh could commit after
+the controller's check and before old ACK/retry/quarantine SQL. Three regressions
+failed before generation checks were moved inside both SQLite transactions, then
+passed. Retained bytes/attempts survive and the new generation reclaims the expired
+lease. No Critical/additional Important/concrete Minor findings were reported.
+Post-fix Linux3.13/PostgreSQL16 full backend420/deployment46/migration round trips,
+mypy78+8/Ruff/OpenAPI passed; Windows queue/policy57 passed with4 POSIX-only skips.
+Source published on main at `05410ba3d8caa5cdb29829aecfa52d80bce37b5c`.
+[CI37186391705](https://github.com/BorisDruzak/storage-console/actions/runs/37186391705)
+completed successfully on that exact revision: backend, frontend, compose-smoke,
+production-smoke and secrets passed; Sonar was skipped. Common durable delivery
+is accepted at source/component level. Windows service/ACL, provider collection,
+USN, live pilot, AD integration and production cutover remain separate gates;
+neither Wave1 nor the full implementation plan is complete.
 
 ## Rulings
 

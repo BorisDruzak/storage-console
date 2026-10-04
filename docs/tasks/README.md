@@ -19,7 +19,7 @@ Wave 0B и Wave 0C могут частично выполняться парал
       HTTPS-стенде; общий delivery layer и живой inventory следуют отдельно.
   - [Collector durable delivery](../superpowers/plans/2026-10-04-collector-delivery.md)
     — transactional outbox/checkpoints и strict HTTPS опубликованы; реальная
-      HTTPS/PostgreSQL crash/retry/rotation приёмка и финальный обзор выполняются.
+      HTTPS/PostgreSQL crash/retry/rotation приёмка, финальный обзор и CI пройдены.
       Живые collectors не установлены.
 - Wave 2 — USN change stream
 - Wave 3 — attribution

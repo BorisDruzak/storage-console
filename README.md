@@ -8,7 +8,10 @@ Storage Control Plane для наблюдаемости сетевого фай�
 
 **IMPLEMENTATION IN PROGRESS**
 
-Текущий этап: Wave 0A — foundation. Runtime API/worker и русский shell реализуются; live collectors и предметные данные отсутствуют. Подробный статус проверок: `docs/implementation-status.md`.
+Текущий этап: Wave 1 — управление источниками и общая доставка collector-пакетов.
+API/worker, русская console, авторизация и deployment package реализованы в коде;
+live collectors и operational evidence отсутствуют. Подробный статус проверок:
+`docs/implementation-status.md`.
 
 ## Основные принципы
 
@@ -107,7 +110,8 @@ Backup, snapshot consistency, verification и restore test — отдельны�
 Public OpenAPI: `packages/contracts/openapi/storage-console-v1.json`.
 После изменения routes/contracts выполните `python -m packages.contracts.export_openapi`;
 `--check` проверяет совпадение с runtime и выполняется в CI.
-Collector provisioning/user sessions продолжают реализацию Wave 1/0D.
+Collector provisioning и user sessions реализованы; общий durable outbox/HTTPS
+delivery описан в [collectors/common](collectors/common/README.md).
 Live collectors не подключены.
 
 ## Read API — текущая реализация Wave 0B
