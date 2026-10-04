@@ -17,6 +17,12 @@ login/reload/cross-tab logout/read401, CSRF/collector boundary, backup/restore00
 Это не приёмка живого AD, внешних Sonar/Sentry, production DNS или переключения основного
 runtime. Эти инфраструктурные проверки остаются открытыми.
 
+Первый интеграционный push `bf8ae84b12b1aff92e394778f26c987307b91dd1` проверен на main.
+CI обнаружил отсутствие keyUsage в синтетическом CA при строгой проверке Python3.13.
+Генератор fixture исправлен без отключения TLS-проверок: deployment46 PASS, включая
+OpenSSL -x509_strict/server-purpose/hostname и отказ неправильному hostname.
+Терминальный результат исправленного CI ещё ожидается.
+
 ## Wave 0A — foundation опубликован; внешний Sonar gate не проверен
 
 - [x] Monorepo directories: API, Web, worker, collectors, contracts, i18n, shared, migrations, deploy, tests.

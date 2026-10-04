@@ -123,6 +123,12 @@ def setup_tls(root: Path) -> None:
             "30",
             "-subj",
             "/CN=Synthetic Smoke CA",
+            "-addext",
+            "basicConstraints=critical,CA:TRUE",
+            "-addext",
+            "keyUsage=critical,keyCertSign,cRLSign",
+            "-addext",
+            "subjectKeyIdentifier=hash",
             "-keyout",
             str(root / "ca.key"),
             "-out",
@@ -141,7 +147,14 @@ def setup_tls(root: Path) -> None:
         ]
     )
     extension = root / "extensions.cnf"
-    extension.write_text("subjectAltName=DNS:storage.example.test\n")
+    extension.write_text(
+        "subjectAltName=DNS:storage.example.test\n"
+        "basicConstraints=critical,CA:FALSE\n"
+        "keyUsage=critical,digitalSignature,keyEncipherment\n"
+        "extendedKeyUsage=serverAuth\n"
+        "subjectKeyIdentifier=hash\n"
+        "authorityKeyIdentifier=keyid,issuer\n"
+    )
     run(
         [
             "openssl",
