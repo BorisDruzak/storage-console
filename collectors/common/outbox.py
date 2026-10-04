@@ -52,7 +52,9 @@ _DELIVERY_CODES = frozenset(
 )
 _APPLICATION_ID = 0x53434F42
 _SCHEMA = (
-    "CREATE TABLE meta(collector_id TEXT NOT NULL)",
+    "CREATE TABLE meta(collector_id TEXT NOT NULL, "
+    "auth_suspended INTEGER NOT NULL DEFAULT 0 CHECK(auth_suspended IN (0,1)), "
+    "credential_generation INTEGER NOT NULL DEFAULT 0 CHECK(credential_generation>=0))",
     "CREATE TABLE checkpoints(stream TEXT PRIMARY KEY, revision INTEGER NOT NULL, "
     "value TEXT NOT NULL)",
     "CREATE TABLE batches(seq INTEGER PRIMARY KEY AUTOINCREMENT, batch_id TEXT UNIQUE NOT NULL, "
@@ -114,6 +116,7 @@ class Claim:
     body: bytes
     lease_id: str
     attempts: int
+    credential_generation: int = 0
 
 
 @dataclass(frozen=True)
@@ -158,11 +161,11 @@ class Outbox:
             if version == 0 and application == 0 and not tables:
                 for statement in _SCHEMA:
                     db.execute(statement)
-                db.execute("INSERT INTO meta VALUES (?)", (str(collector_id),))
+                db.execute("INSERT INTO meta(collector_id) VALUES (?)", (str(collector_id),))
                 db.execute(f"PRAGMA application_id={_APPLICATION_ID}")
-                db.execute("PRAGMA user_version=1")
+                db.execute("PRAGMA user_version=2")
             elif (
-                version != 1
+                version not in (1, 2)
                 or application != _APPLICATION_ID
                 or tables != {"meta", "checkpoints", "batches", "receipts", "sqlite_sequence"}
             ):
@@ -170,6 +173,16 @@ class Outbox:
             identity = db.execute("SELECT collector_id FROM meta").fetchall()
             if len(identity) != 1 or identity[0][0] != str(collector_id):
                 raise OutboxError("IDENTITY_CONFLICT")
+            if version == 1:
+                db.execute(
+                    "ALTER TABLE meta ADD COLUMN auth_suspended INTEGER NOT NULL "
+                    "DEFAULT 0 CHECK(auth_suspended IN (0,1))"
+                )
+                db.execute(
+                    "ALTER TABLE meta ADD COLUMN credential_generation INTEGER NOT NULL "
+                    "DEFAULT 0 CHECK(credential_generation>=0)"
+                )
+                db.execute("PRAGMA user_version=2")
 
     def _prepare(self) -> None:
         try:
@@ -241,7 +254,7 @@ class Outbox:
             db.execute("BEGIN IMMEDIATE")
             if not initializing:
                 if (
-                    db.execute("PRAGMA user_version").fetchone()[0] != 1
+                    db.execute("PRAGMA user_version").fetchone()[0] != 2
                     or db.execute("PRAGMA application_id").fetchone()[0] != _APPLICATION_ID
                 ):
                     raise OutboxError("SCHEMA_UNSUPPORTED")
@@ -374,6 +387,9 @@ class Outbox:
     def claim(self, now: datetime) -> Claim | None:
         stamp = _time(now)
         with self._transaction() as db:
+            suspended, generation = self._auth(db)
+            if suspended:
+                return None
             row = db.execute(
                 "SELECT b.* FROM batches b WHERE state='pending' AND next_attempt<=? "
                 "AND (lease_id IS NULL OR lease_until<=?) "
@@ -392,7 +408,53 @@ class Outbox:
                 "UPDATE batches SET lease_id=?, lease_until=? WHERE seq=?",
                 (lease, stamp + self.limits.lease_seconds, row["seq"]),
             )
-            return Claim(row["batch_id"], row["domain"], row["body"], lease, row["attempts"])
+            return Claim(
+                row["batch_id"], row["domain"], row["body"], lease, row["attempts"], generation
+            )
+
+    def _auth(self, db: sqlite3.Connection) -> tuple[bool, int]:
+        row = db.execute("SELECT auth_suspended,credential_generation FROM meta").fetchone()
+        if (
+            row is None
+            or type(row[0]) is not int
+            or row[0] not in (0, 1)
+            or (type(row[1]) is not int or not 0 <= row[1] <= 2**63 - 1)
+        ):
+            raise OutboxError("STATE_UNAVAILABLE")
+        return bool(row[0]), row[1]
+
+    def auth_suspended(self) -> bool:
+        with self._transaction() as db:
+            return self._auth(db)[0]
+
+    def credential_generation(self) -> int:
+        with self._transaction() as db:
+            return self._auth(db)[1]
+
+    def resume_auth(self) -> int:
+        with self._transaction() as db:
+            generation = self._auth(db)[1]
+            if generation == 2**63 - 1:
+                raise OutboxError("STATE_UNAVAILABLE")
+            db.execute(
+                "UPDATE meta SET auth_suspended=0,credential_generation=?", (generation + 1,)
+            )
+            return generation + 1
+
+    def suspend_auth(self, claim: Claim) -> bool:
+        with self._transaction() as db:
+            if self._auth(db)[1] != claim.credential_generation:
+                return False
+            result = db.execute(
+                "UPDATE batches SET lease_id=NULL,lease_until=NULL,next_attempt=0, "
+                "attempts=min(attempts+1,2147483647),error_code='AUTH_REQUIRED' "
+                "WHERE batch_id=? AND lease_id=?",
+                (claim.batch_id, claim.lease_id),
+            )
+            if result.rowcount != 1:
+                return False
+            db.execute("UPDATE meta SET auth_suspended=1")
+            return True
 
     def acknowledge(self, claim: Claim) -> bool:
         with self._transaction() as db:

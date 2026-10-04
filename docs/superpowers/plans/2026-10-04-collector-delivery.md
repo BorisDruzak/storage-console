@@ -64,20 +64,41 @@ review remain Tasks2/3. Windows service ACL installation is a later runtime gate
 
 ## Task 2 — Strict transport and delivery policy
 
-Files: create `collectors/common/{transport,delivery}.py`,
-`tests/backend/test_collector_transport.py`, `tests/backend/test_collector_delivery.py`.
+Files: create `collectors/common/{transport,_https_worker,delivery}.py`,
+`tests/backend/test_collector_transport.py`, `tests/backend/test_collector_delivery.py`;
+extend `outbox.py`/its tests with a transactional local schema1-to2 migration.
 Consumes Task1 Claim and existing BatchEnvelope/Receipt semantics.
-Interfaces: Transport(origin,ca,token,timeout).send(claim)->DeliveryOutcome; Delivery.run_once
+Interfaces: Transport(origin,ca,token,timeout,collector_id=UUID).send(claim)->DeliveryOutcome;
+Delivery.run_once
 uses injected clock/randomness/transport; explicit refresh_credentials resumes401/403 suspension.
 
-- [ ] RED config/secret repr, exact routes/headers/unchanged body, real TLS trust/hostname,
+Execution rulings: persist suspension and a non-secret credential generation in schema2
+so restart cannot resume a revoked credential and stale rejection cannot suspend a refreshed
+sender. Preserve all schema1 evidence and identity during migration; retain future-schema
+rejection. A private stdlib subprocess enforces the whole15-second attempt deadline because
+urllib's socket timeout alone does not bound DNS or a slow response. Invoke its absolute
+script with isolated Python; secret/config/body use memory-only stdin, error output is
+discarded and result output contains only fixed bounded outcome fields. Snapshot the public
+CA configuration at construction; the worker must not reload changed trust silently.
+
+- [x] RED config/secret repr, exact routes/headers/unchanged body, real TLS trust/hostname,
   untrusted/redirect/ambient proxy rejection and response32KiB/exact202 receipt tests.
-- [ ] Implement bounded stdlib HTTPS transport with fixed outcome codes/no response echo.
-- [ ] RED transient capped retry/Retry-After,401/403 suspend+refresh, permanent quarantine,
+- [x] Implement bounded stdlib HTTPS transport with fixed outcome codes/no response echo.
+- [x] RED transient capped retry/Retry-After,401/403 suspend+refresh, permanent quarantine,
   malformed success/no ACK, cancellation/shutdown and stale completion tests.
-- [ ] Implement coordinator, no issuance/re-enrollment and no lost queued work.
-- [ ] Focused/full tests/Ruff/mypy/package checks; commit
+- [x] Implement coordinator, no issuance/re-enrollment and no lost queued work.
+- [x] Focused/full tests/Ruff/mypy/package checks; commit
   `feat(collectors): deliver retained batches over verified HTTPS`.
+
+Task 2 verification: Linux Python3.13/PostgreSQL16 full backend413 tests and46
+deployment tests passed, with migration base/head/check round trips, mypy78 source
+files plus7 deployment files, Ruff and OpenAPI checks. Installed wheel and its
+isolated worker ran successfully; public-source Gitleaks scanned1.33MB without leaks.
+Windows expanded checks passed117 cases, with4 POSIX-only skips; the remaining
+worker-owned deadline case passed separately after its fixture timing correction.
+Linux exposed an eager annotation startup error hidden by Python3.14 on Windows;
+future annotations and an isolated-process regression corrected it. This accepts
+transport/policy only; real API lost-response acceptance and final review remain Task3.
 
 ## Task 3 — Real API acceptance and review
 

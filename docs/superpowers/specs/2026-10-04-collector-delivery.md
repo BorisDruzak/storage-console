@@ -21,12 +21,19 @@ Windows protection. Actual runtime installation owns Windows ACL enforcement lat
 
 ## Durable outbox and checkpoints
 
-SQLite schema version1 stores immutable collector UUID, allowed domain, immutable batch
+Initial SQLite schema version1 stores immutable collector UUID, allowed domain, immutable batch
 ID/body/digest, delivery state and per-stream checkpoint revision/value. Reject a future
 schema or a different collector identity; never silently replace or drop existing work.
 Use one connection per operation, bounded busy timeout, parameter bindings and explicit
 BEGIN IMMEDIATE/COMMIT/ROLLBACK with autocommit=True. synchronous=FULL and rollback journal
 are the initial durability choice; no WAL sidecars without a demonstrated need.
+
+Delivery adds local schema2 through a transactional, lossless schema1 migration. A boolean
+authentication suspension and integer credential generation survive restart; neither is a
+credential or credential hash. Explicit credential refresh advances the generation and
+clears suspension. An older controller or late old-credential rejection cannot silently
+resume or suspend the newer sender. Existing batch bytes, checkpoint transitions, receipts
+and collector identity must survive unchanged; unsupported newer versions remain rejected.
 
 enqueue validates the domain-specific BatchEnvelope and collector identity, serializes
 canonical UTF-8 JSON once, checks limits, inserts the durable batch and compare-and-swaps
@@ -57,6 +64,12 @@ retry state or acknowledge/delete its batch; a stale response cannot delete a ne
 The network timeout is15seconds, less than the lease. Do not hold the SQLite transaction
 over network I/O. Successful ACK and receipt bookkeeping are transactional.
 
+The15-second deadline bounds the whole attempt, including DNS and response reads. Use a
+private stdlib worker subprocess, not a new service or broker; send credentials/config/body
+through memory-only stdin. The parent terminates a timed-out child and the worker has its
+own deadline for parent death. Neither command arguments, files, stderr nor result output
+may disclose credentials. Result output contains bounded fixed outcome metadata only.
+
 No ordering promise across unrelated streams. Per-stream delivery must preserve enqueue
 order: a backoff, active lease or quarantine at its head cannot be skipped by later
 inventory/change observations from that stream. Other streams may progress independently.
@@ -68,6 +81,8 @@ protected operator configuration at send time, with secret-safe repr. Validate o
 timeout and token format before opening a socket. HTTPS verifies chain, DNS hostname and
 TLS1.2 minimum; no insecure fallback, automatic redirects or ambient proxies. The allowed
 ingest domain determines the route; payload/input cannot choose a URL or header.
+Snapshot the configured public CA at construction so later file replacement cannot change
+the worker's trust without explicit configuration refresh.
 
 An HTTP202 response confirms delivery only if its bounded32KiB JSON exactly matches the
 existing Receipt: accepted=true and duplicate a strict boolean. Both duplicate=false and

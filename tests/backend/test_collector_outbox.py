@@ -4,6 +4,7 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 from uuid import UUID, uuid4
 
 import pytest
@@ -274,7 +275,7 @@ def test_future_schema_and_unrelated_database_are_not_modified(tmp_path):
     path = tmp_path / "private" / "outbox.sqlite3"
     Outbox(path, collector)
     with sqlite3.connect(path) as db:
-        db.execute("PRAGMA user_version=2")
+        db.execute("PRAGMA user_version=3")
     before = path.read_bytes()
     with pytest.raises(OutboxError) as failure:
         Outbox(path, collector)
@@ -382,13 +383,13 @@ def test_running_collector_rejects_a_schema_or_identity_change_without_writing(t
     path = tmp_path / "private" / "outbox.sqlite3"
     box = Outbox(path, collector)
     with sqlite3.connect(path) as db:
-        db.execute("PRAGMA user_version=2")
+        db.execute("PRAGMA user_version=3")
     with pytest.raises(OutboxError) as failure:
         box.enqueue("heartbeat", heartbeat(collector), "stream", 0, {})
     assert failure.value.code == "SCHEMA_UNSUPPORTED"
     with sqlite3.connect(path) as db:
         assert db.execute("SELECT count(*) FROM batches").fetchone()[0] == 0
-        db.execute("PRAGMA user_version=1")
+        db.execute("PRAGMA user_version=2")
         db.execute("UPDATE meta SET collector_id=?", (str(uuid4()),))
     with pytest.raises(OutboxError) as failure:
         box.checkpoint("stream")
@@ -486,3 +487,84 @@ def test_existing_instance_rejects_newly_unsafe_parent_and_sidecar(tmp_path, uns
     with pytest.raises(OutboxError) as failure:
         box.checkpoint("stream")
     assert failure.value.code == "UNSAFE_STATE"
+
+
+def legacy_state(tmp_path):
+    collector = uuid4()
+    batch = heartbeat(collector)
+    path = tmp_path / "legacy" / "outbox.sqlite3"
+    path.parent.mkdir(mode=0o700)
+    body = batch.model_dump_json().encode()
+    # Fixture represents the previously published version1 format, not current DDL.
+    with sqlite3.connect(path) as db:
+        db.executescript("""
+CREATE TABLE meta(collector_id TEXT NOT NULL);
+CREATE TABLE checkpoints(stream TEXT PRIMARY KEY, revision INTEGER NOT NULL,value TEXT NOT NULL);
+CREATE TABLE batches(seq INTEGER PRIMARY KEY AUTOINCREMENT,batch_id TEXT UNIQUE NOT NULL,
+ domain TEXT NOT NULL,stream TEXT NOT NULL,body BLOB NOT NULL,digest TEXT NOT NULL,
+ revision INTEGER NOT NULL,checkpoint TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'pending',
+ lease_id TEXT,lease_until REAL,next_attempt REAL NOT NULL DEFAULT 0,
+ attempts INTEGER NOT NULL DEFAULT 0,error_code TEXT);
+CREATE INDEX batch_stream_order ON batches(stream,seq);
+CREATE TABLE receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT,batch_id TEXT UNIQUE NOT NULL,
+ domain TEXT NOT NULL,stream TEXT NOT NULL,digest TEXT NOT NULL,revision INTEGER NOT NULL,
+ checkpoint TEXT NOT NULL);
+PRAGMA application_id=0x53434F42;
+PRAGMA user_version=1;
+""")
+        db.execute("INSERT INTO meta VALUES (?)", (str(collector),))
+        db.execute("INSERT INTO checkpoints VALUES ('stream',1,?)", ('{"cursor":1}',))
+        db.execute(
+            "INSERT INTO batches(batch_id,domain,stream,body,digest,revision,checkpoint) "
+            "VALUES (?,'heartbeat','stream',?,?,0,?)",
+            (batch.batch_id, body, sha256(body).hexdigest(), '{"cursor":1}'),
+        )
+        db.execute(
+            "INSERT INTO receipts(batch_id,domain,stream,digest,revision,checkpoint) "
+            "VALUES (?,'heartbeat','stream',?,0,?)",
+            (batch.batch_id, sha256(body).hexdigest(), '{"cursor":1}'),
+        )
+    path.chmod(0o600)
+    return path, collector, batch
+
+
+def test_schema1_migration_preserves_pending_bytes_checkpoint_and_enqueue_receipt(tmp_path):
+    path, collector, batch = legacy_state(tmp_path)
+    box = Outbox(path, collector)
+    with sqlite3.connect(path) as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert not box.auth_suspended() and box.credential_generation() == 0
+    box.enqueue("heartbeat", batch, "stream", 0, {"cursor": 1})
+    assert box.checkpoint("stream").revision == box.status().pending_count == 1
+    claim = box.claim(datetime.now(UTC))
+    assert claim is not None and claim.body == batch.model_dump_json().encode()
+
+
+def test_interrupted_migration_leaves_schema1_and_all_evidence_intact(tmp_path, monkeypatch):
+    path, collector, batch = legacy_state(tmp_path)
+    original = Outbox._connect
+
+    def connect(self):
+        db = original(self)
+        count = [0]
+
+        def authorize(action, *_args):
+            if action == sqlite3.SQLITE_ALTER_TABLE:
+                count[0] += 1
+                if count[0] == 2:
+                    return sqlite3.SQLITE_DENY
+            return sqlite3.SQLITE_OK
+
+        db.set_authorizer(authorize)
+        return db
+
+    monkeypatch.setattr(Outbox, "_connect", connect)
+    with pytest.raises(OutboxError) as failure:
+        Outbox(path, collector)
+    assert failure.value.code == "STATE_UNAVAILABLE"
+    with sqlite3.connect(path) as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert [row[1] for row in db.execute("PRAGMA table_info(meta)")] == ["collector_id"]
+        assert (
+            db.execute("SELECT body FROM batches").fetchone()[0] == batch.model_dump_json().encode()
+        )
