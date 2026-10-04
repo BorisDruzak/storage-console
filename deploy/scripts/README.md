@@ -56,3 +56,33 @@ Systemd unit ожидает checkout `/opt/storage-control-plane` и root-owned 
 `/etc/storage-control-plane/production.env`. Перед установкой unit подготовьте все
 внешние prerequisites. Ошибка preflight останавливает запуск; она не даёт TLS/auth/DNS
 обхода. Сообщения CLI не раскрывают env и Docker output с интерполированными секретами.
+
+## Backup и restore
+
+```bash
+bash deploy/scripts/backup-postgres.sh /etc/storage-control-plane/production.env
+bash deploy/scripts/restore-postgres.sh /etc/storage-control-plane/production.env \
+  /var/backups/storage-control-plane/backup-ARCHIVE_ID \
+  --confirm storage-control-plane/storage_console
+```
+
+Backup использует `pg_dump --format=custom` из PostgreSQL16 service, проверяет TOC,
+публикует каталог атомарно после fsync. Каталог700, dump/manifest600; manifest содержит
+проект, БД, настроенный APP_RELEASE, размер и SHA256. APP_RELEASE в manifest — значение
+конфигурации, а не заключение о совместимости схемы. Backup БД не включает TLS/env,
+роли PostgreSQL, diagnostics и внешние хранилища; их защищённое копирование отдельно.
+Не удаляйте предыдущие архивы до проверки нового restore; храните копию вне этой ВМ.
+
+Restore принимает только приватный каталог непосредственно внутри BACKUP_DIR,
+совпадающие проект/БД и checksum. Импортировать можно лишь доверенный собственный dump:
+SQL архива выполняется с правами владельца БД. После проверки останавливаются Web/API/worker,
+сохраняется отдельный safety-backup текущей БД и выполняется `pg_restore --clean --if-exists
+--single-transaction --exit-on-error --no-owner --no-acl`. Ошибка SQL откатывает транзакцию;
+успех и отказ оставляют сервисы записи остановленными. Объекты, отсутствующие в архиве,
+`--clean` не удаляет; restore не создаёт заново весь кластер. Не добавляйте посторонние
+объекты в управляемую БД.
+
+Deploy/stop/backup/restore используют общий lock. Перед restore исключите внешних писателей,
+проверьте совместимость кода со схемой восстановленного архива. Запускайте выбранный release
+через deploy только после проверки. При таймауте проверьте PostgreSQL activity и завершение
+операции: ошибка клиента сама по себе не доказывает прекращение серверной команды.
