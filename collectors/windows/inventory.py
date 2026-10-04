@@ -62,6 +62,8 @@ class Scope:
             ):
                 raise CaptureError("INVALID_SCOPE")
             parts = root[3:].rstrip("\\").split("\\") if root[3:].rstrip("\\") else []
+            if len(parts) > 64:
+                raise CaptureError("INVALID_SCOPE")
             if any(
                 not p
                 or p in {".", ".."}
@@ -73,13 +75,19 @@ class Scope:
                 raise CaptureError("INVALID_SCOPE")
             normalized.append(root[0].upper() + ":\\" + "\\".join(parts))
         folded = sorted(r.casefold().rstrip("\\") for r in normalized)
-        if any(b == a or b.startswith(a + "\\") for a, b in zip(folded, folded[1:], strict=False)):
+        if any(
+            b == a or b.startswith(a + "\\")
+            for index, a in enumerate(folded)
+            for b in folded[index + 1 :]
+        ):
             raise CaptureError("INVALID_SCOPE")
         object.__setattr__(self, "roots", tuple(normalized))
 
     @property
     def fingerprint(self) -> str:
-        values = sorted(r.casefold() for r in self.roots)
+        # Directory case can be significant on Windows. Normalize only the drive
+        # and separators; configuration changes must not reuse another scope's state.
+        values = sorted(self.roots)
         return sha256(json.dumps(values, ensure_ascii=True).encode()).hexdigest()
 
 

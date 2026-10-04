@@ -35,7 +35,7 @@ def test_scope_rejects_unsafe_or_overlapping_configuration(roots):
 
 def test_scope_normalization_fingerprint_and_repr():
     first = Scope(("c:\\private\\Reports\\", "D:\\data"))
-    second = Scope(("d:\\DATA", "C:\\PRIVATE\\reports"))
+    second = Scope(("d:\\data", "C:\\private\\Reports"))
     assert first.fingerprint == second.fingerprint
     assert len(first.fingerprint) == 64
     assert first.roots == ("C:\\private\\Reports", "D:\\data")
@@ -69,3 +69,17 @@ def test_observation_hides_metadata_and_restricts_issue_codes():
 def test_windows_provider_imports_safely_and_rejects_unsupported_runtime():
     with pytest.raises(CaptureError, match="^PLATFORM_UNSUPPORTED$"):
         list(NativeInventory().scan(Scope(("C:\\data",))))
+
+
+def test_non_adjacent_overlapping_roots_are_rejected():
+    with pytest.raises(CaptureError, match="^INVALID_SCOPE$"):
+        Scope(("C:\\a", "C:\\a-other", "C:\\a\\child"))
+
+
+def test_scope_fingerprint_preserves_case_sensitive_directory_identity():
+    assert Scope(("C:\\CaseSensitive",)).fingerprint != Scope(("C:\\casesensitive",)).fingerprint
+
+
+def test_scope_ancestor_handle_depth_is_bounded_before_native_access():
+    with pytest.raises(CaptureError, match='^INVALID_SCOPE$'):
+        Scope(('C:\\' + '\\'.join(['level']*65),))
