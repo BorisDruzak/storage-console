@@ -106,14 +106,32 @@ Files: create `tests/backend/test_collector_delivery_integration.py` and a focus
 TLS/disposable delivery acceptance helper under `tests/deployment`; update collector READMEs,
 task index/status and this plan. Keep runtime integration tests independent from browser keys.
 
-- [ ] RED actual PostgreSQL ingest firstaccept, lost response, restart and duplicate ACK with
+- [x] RED actual PostgreSQL ingest firstaccept, lost response, restart and duplicate ACK with
   one persisted effect; rotation/disable leaves batches retained and explicit refresh recovers.
-- [ ] Exercise real HTTPS with synthetic private credentials and Windows process-crash
+- [x] Exercise real HTTPS with synthetic private credentials and Windows process-crash
   durability. No traces/logs/public artifacts containing credentials or real evidence.
 - [ ] Full Linux3.13/PG16/migrations, frontend compatibility, type/package/secret/native checks;
   one fresh whole-subsystem review; Important fixes RED→GREEN in one pass.
 - [ ] Publish main, verify exact terminal required CI, record actual acceptance and remaining
   Windows/PVE/PBS/USN/pilot work. Do not mark the full goal or Wave1 complete.
+
+Task 3 execution evidence: actual Uvicorn HTTPS/API/PostgreSQL accepted inventory;
+the client subprocess exited29 after acceptance and before local ACK. Restart
+replayed unchanged bytes, received duplicate=true and retained exactly one effect
+in each of batches/volumes/objects/path history. Real credential rotation/disable
+preserved pending work and auth suspension across restart until explicit refresh.
+These three cases passed on native Windows through an encrypted connection to a
+separate disposable PostgreSQL database; the additional real diagnostic route
+case passed on Windows and Linux. No primary runtime/data or production DNS was changed.
+
+Provider-path verification found diagnostics must use `/diagnostic-bundles`;
+the previous generic TLS recorder had accepted the mirrored wrong route.
+The corrected route expectation failed before the explicit map fix and passed
+afterward; real API acceptance persists a diagnostic bundle and its correct batch kind.
+Final Linux3.13/PostgreSQL16 full backend417/deployment46/migration round trips,
+mypy78 source plus8 deployment/helper files, Ruff/OpenAPI, installed wheel/worker,
+public Gitleaks1.35MB and frontend API/type checks passed. One whole-component
+review and final publication/terminal CI remain before component acceptance.
 
 ## Rulings
 

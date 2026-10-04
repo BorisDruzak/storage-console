@@ -16,9 +16,11 @@ Wave 0B и Wave 0C могут частично выполняться парал
 - Wave 1 — source registration / heartbeat / inventory
   - [Source management plan](../superpowers/plans/2026-10-04-source-management.md)
     — API/console регистрации и ключей collectors реализованы и проверены на изолированном
-      HTTPS-стенде; durable outbox и живой inventory следуют отдельно.
+      HTTPS-стенде; общий delivery layer и живой inventory следуют отдельно.
   - [Collector durable delivery](../superpowers/plans/2026-10-04-collector-delivery.md)
-    — transactional outbox/checkpoints, strict HTTPS, restart/retry и реальная ingest-приёмка.
+    — transactional outbox/checkpoints и strict HTTPS опубликованы; реальная
+      HTTPS/PostgreSQL crash/retry/rotation приёмка и финальный обзор выполняются.
+      Живые collectors не установлены.
 - Wave 2 — USN change stream
 - Wave 3 — attribution
 - Wave 4 — operational health

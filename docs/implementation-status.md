@@ -31,6 +31,27 @@ Console опубликован в `a9012163bce77815f709790502187fdce69cf46f`;
 План: [source management](superpowers/plans/2026-10-04-source-management.md).
 Durable outbox, Windows/PVE/PBS runtime и живой inventory ещё не реализованы.
 
+## Wave 1 — общий collector delivery; финальная приёмка в работе
+
+Transactional SQLite outbox/checkpoints и strict HTTPS sender опубликованы в
+`725849a39922a655f016fc1b61396db6d24d1abd` и
+`d14258c34c1a70b7ec029555d00d93609aeadd0a`.
+[CI37184767926](https://github.com/BorisDruzak/storage-console/actions/runs/37184767926)
+завершён успешно: пять обязательных jobs, Sonar SKIPPED.
+Сохраняются byte-identical replay, FIFO stream, capacity/quarantine evidence,
+auth suspension после restart и защита от позднего lease/credential response.
+SQLite schema1→2 обновляется атомарно; токен в state не хранится.
+
+Настоящий Uvicorn HTTPS/API/PostgreSQL: client process death после server commit,
+duplicate ACK без второго inventory effect, rotation/disable и explicit refresh
+проверены на Linux3.13 и Windows. Route диагностики исправлен по published API;
+diagnostic metadata реально сохраняются. Последний Linux full417/backend и46
+deployment, миграции round-trip/check, mypy78+8, Ruff/OpenAPI/package/Gitleaks и
+frontend API/types PASS. Независимый полный обзор и итоговый CI ещё выполняются.
+Подробнее: [план](superpowers/plans/2026-10-04-collector-delivery.md),
+[интерфейсы и эксплуатационные ограничения](../collectors/common/README.md).
+Windows Service/ACL, USN и live Windows/PVE/PBS collectors/pilot остаются открытыми.
+
 ## Пользовательская авторизация — source acceptance и CI подтверждены
 
 Локальный аварийный администратор и строгий LDAPS-провайдер, сессии с DB-clock expiry,
