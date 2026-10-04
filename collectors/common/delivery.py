@@ -37,8 +37,15 @@ class Delivery:
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         randomness: Callable[[], float] = random.random,
+        prefer_heartbeat: bool = False,
+        heartbeat_burst: int = 4,
     ) -> None:
-        if transport.collector_id != outbox.collector_id:
+        if (
+            transport.collector_id != outbox.collector_id
+            or type(prefer_heartbeat) is not bool
+            or type(heartbeat_burst) is not int
+            or not 1 <= heartbeat_burst <= 100
+        ):
             raise TransportError("INVALID_CONFIG")
         self._outbox = outbox
         self._transport = transport
@@ -46,6 +53,9 @@ class Delivery:
         self._randomness = randomness
         self._generation = outbox.credential_generation()
         self._closed = False
+        self._prefer_heartbeat = prefer_heartbeat
+        self._heartbeat_burst = heartbeat_burst
+        self._heartbeat_run = 0
         self._lock = threading.Lock()
 
     def refresh_credentials(self, transport: Sender) -> None:
@@ -56,6 +66,7 @@ class Delivery:
                 raise TransportError("INVALID_CONFIG")
             self._generation = self._outbox.resume_auth()
             self._transport = transport
+            self._heartbeat_run = 0
 
     def close(self) -> None:
         with self._lock:
@@ -69,12 +80,25 @@ class Delivery:
                 self._generation != self._outbox.credential_generation()
             ):
                 return DeliveryResult("suspended", "AUTH_REQUIRED")
-            claim = self._outbox.claim(self._clock())
+            if self._prefer_heartbeat:
+                claim = self._outbox.claim(
+                    self._clock(),
+                    heartbeat_priority="first"
+                    if self._heartbeat_run < self._heartbeat_burst
+                    else "last",
+                )
+            else:
+                claim = self._outbox.claim(self._clock())
             if claim is None:
                 return DeliveryResult("idle")
             generation = self._generation
             if claim.credential_generation != generation:
                 return DeliveryResult("stale")
+            self._heartbeat_run = (
+                min(self._heartbeat_burst, self._heartbeat_run + 1)
+                if claim.domain == "heartbeat"
+                else 0
+            )
             transport = self._transport
         try:
             value = transport.send(claim)

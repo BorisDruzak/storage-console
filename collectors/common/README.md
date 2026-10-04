@@ -27,6 +27,17 @@ lease. Потеря ответа допускает byte-identical replay и `du
 сохраняет пакет в quarantine. Пакет с backoff/lease/quarantine блокирует только
 свой stream; другие streams могут продолжать отправку.
 
+Для Windows runtime `Limits` поддерживает `heartbeat_reserve_batches` и
+`heartbeat_reserve_bytes`: все остальные домены вместе не могут занять этот резерв.
+Проверки общего лимита и резерва выполняются в одной write-транзакции, включая
+retained lease/quarantine. Heartbeat подчиняется общему лимиту; переполненная очередь
+heartbeat тоже может остановить сбор. По умолчанию оба резерва равны0.
+`Delivery(..., prefer_heartbeat=True, heartbeat_burst=4)` отдаёт heartbeat не более
+четырёх последовательных попыток, после чего предоставляет очередь допустимому
+пакету другого домена. Если такой пакет отсутствует, heartbeat продолжает доставку.
+`Outbox.claim(..., heartbeat_priority='normal'|'first'|'last')` меняет только порядок
+между streams; более ранний retained пакет своего stream нельзя обойти.
+
 401/403 сохраняют auth suspension после перезапуска. Новый transport сам по себе
 не возобновляет очередь: оператор должен явно вызвать `refresh_credentials(new_transport)`.
 Идентичность collector UUID должна совпадать; автоматической выдачи ключа нет.

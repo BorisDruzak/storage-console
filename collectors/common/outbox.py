@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256
 from pathlib import Path
+from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
@@ -86,6 +87,8 @@ class Limits:
     max_receipts: int = 4096
     lease_seconds: int = 60
     busy_timeout_seconds: int = 5
+    heartbeat_reserve_batches: int = 0
+    heartbeat_reserve_bytes: int = 0
 
     def __post_init__(self) -> None:
         bounds = (
@@ -96,6 +99,8 @@ class Limits:
             (self.max_receipts, 1, 100000),
             (self.lease_seconds, 30, 3600),
             (self.busy_timeout_seconds, 1, 30),
+            (self.heartbeat_reserve_batches, 0, self.max_retained_batches - 1),
+            (self.heartbeat_reserve_bytes, 0, self.max_retained_bytes - 1),
         )
         if any(type(value) is not int or not low <= value <= high for value, low, high in bounds):
             raise OutboxError("INVALID_LIMITS")
@@ -342,11 +347,21 @@ class Outbox:
             ).fetchone()
             if (current[0] if current else 0) != expected_revision:
                 raise OutboxError("CHECKPOINT_CONFLICT")
-            count, size = db.execute(
-                "SELECT count(*), coalesce(sum(length(body)),0) FROM batches"
+            count, size, data_count, data_size = db.execute(
+                "SELECT count(*), coalesce(sum(length(body)),0), "
+                "coalesce(sum(CASE WHEN domain!='heartbeat' THEN 1 ELSE 0 END),0), "
+                "coalesce(sum(CASE WHEN domain!='heartbeat' THEN length(body) ELSE 0 END),0) "
+                "FROM batches"
             ).fetchone()
             if count >= self.limits.max_retained_batches or (
                 size + len(body) > self.limits.max_retained_bytes
+            ):
+                raise OutboxError("CAPACITY")
+            if domain != "heartbeat" and (
+                data_count
+                >= self.limits.max_retained_batches - self.limits.heartbeat_reserve_batches
+                or data_size + len(body)
+                > self.limits.max_retained_bytes - self.limits.heartbeat_reserve_bytes
             ):
                 raise OutboxError("CAPACITY")
             db.execute(
@@ -384,7 +399,16 @@ class Outbox:
             (self.limits.max_receipts,),
         )
 
-    def claim(self, now: datetime) -> Claim | None:
+    def claim(
+        self, now: datetime, *, heartbeat_priority: Literal["normal", "first", "last"] = "normal"
+    ) -> Claim | None:
+        if heartbeat_priority not in ("normal", "first", "last"):
+            raise OutboxError("INVALID_PRIORITY")
+        ordering = {
+            "normal": "b.seq",
+            "first": "CASE WHEN b.domain='heartbeat' THEN 0 ELSE 1 END, b.seq",
+            "last": "CASE WHEN b.domain='heartbeat' THEN 1 ELSE 0 END, b.seq",
+        }[heartbeat_priority]
         stamp = _time(now)
         with self._transaction() as db:
             suspended, generation = self._auth(db)
@@ -394,7 +418,9 @@ class Outbox:
                 "SELECT b.* FROM batches b WHERE state='pending' AND next_attempt<=? "
                 "AND (lease_id IS NULL OR lease_until<=?) "
                 "AND NOT EXISTS(SELECT 1 FROM batches earlier "
-                "WHERE earlier.stream=b.stream AND earlier.seq<b.seq) ORDER BY b.seq LIMIT 1",
+                "WHERE earlier.stream=b.stream AND earlier.seq<b.seq) ORDER BY "
+                + ordering
+                + " LIMIT 1",
                 (stamp, stamp),
             ).fetchone()
             if row is None:
