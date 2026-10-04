@@ -77,7 +77,8 @@ def test_fixed_domain_route_preserves_claim_bytes(authorities, servers, domain):
         .kind
         == "accepted"
     )
-    assert server.requests[0]["path"] == "/api/v1/ingest/" + domain
+    route = "diagnostic-bundles" if domain == "diagnostics" else domain
+    assert server.requests[0]["path"] == "/api/v1/ingest/" + route
     assert server.requests[0]["body"] == claim.body
 
 

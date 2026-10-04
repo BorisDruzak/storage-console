@@ -18,19 +18,17 @@ from uuid import UUID
 from .outbox import Claim
 
 _WORKER_PATH = Path(__file__).with_name("_https_worker.py").absolute()
-_DOMAINS = frozenset(
-    {
-        "heartbeat",
-        "inventory",
-        "changes",
-        "telemetry",
-        "events",
-        "acl",
-        "recovery",
-        "hygiene",
-        "diagnostics",
-    }
-)
+_ROUTES = {
+    "heartbeat": "heartbeat",
+    "inventory": "inventory",
+    "changes": "changes",
+    "telemetry": "telemetry",
+    "events": "events",
+    "acl": "acl",
+    "recovery": "recovery",
+    "hygiene": "hygiene",
+    "diagnostics": "diagnostic-bundles",
+}
 _RETRY_CODES = frozenset(
     {"NETWORK", "TLS", "TIMEOUT", "RATE_LIMITED", "SERVER_ERROR", "INVALID_RECEIPT"}
 )
@@ -145,7 +143,7 @@ class Transport:
     def send(self, claim: Claim) -> DeliveryOutcome:
         try:
             if (
-                claim.domain not in _DOMAINS
+                claim.domain not in _ROUTES
                 or not isinstance(claim.body, bytes)
                 or (not 0 < len(claim.body) <= 16 * 1024**2)
             ):
@@ -161,7 +159,7 @@ class Transport:
             return DeliveryOutcome("quarantined", code="HTTP_REJECTED")
         payload = json.dumps(
             {
-                "url": self.origin + "/api/v1/ingest/" + claim.domain,
+                "url": self.origin + "/api/v1/ingest/" + _ROUTES[claim.domain],
                 "ca_data": self._ca_data,
                 "token": self._token,
                 "timeout": self._timeout,
