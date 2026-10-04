@@ -87,6 +87,15 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.3 git /repo --redact --exit-code 1
 
+  production-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - name: Disposable production TLS and backup acceptance
+        run: PYTHONPATH=. python tests/deployment/smoke_production.py
+
   sonar:
     if: vars.SONAR_HOST_URL != ''
     needs: [backend, frontend]

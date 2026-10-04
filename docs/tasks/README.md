@@ -7,6 +7,8 @@
 3. wave0-c-web-ru.md
 4. wave0-d-deployment.md
 
+Production deployment: [русский runbook](../deployment/runbook-ru.md).
+
 Wave 0B и Wave 0C могут частично выполняться параллельно только после Wave 0A.
 
 ## Далее
