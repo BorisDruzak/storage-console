@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**Stage A BLOCKED на обязательном exact-main CI. Переход к B/C запрещён.**
+**GATE A PASS на принятом runtime main SHA ниже. B/C ещё не начаты.**
 
 ## Known baseline
 
@@ -16,37 +16,45 @@
 
 ## Stage A — main and operating MVP
 
-GATE A: BLOCKED — нет terminal PASS обязательного exact-main CI.
+GATE A: PASS
 
 ~~~text
-Source SHA: e65c04863a4311e478b0d08218603add412e94a8
-Merged main SHA: e65c04863a4311e478b0d08218603add412e94a8
-Exact push CI run: https://github.com/BorisDruzak/storage-console/actions/runs/37681158835
+Source SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776
+Merged main SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776 (PR #9)
+Exact push CI run: https://github.com/BorisDruzak/storage-console/actions/runs/37686825905
 Tests: Python 3.13/PostgreSQL 16: 590 passed, 50 platform/integration skips;
        deployment 54 passed; Ruff, mypy (92+6 files), OpenAPI drift,
        upgrade/check/downgrade/upgrade/check PASS in isolated test schema.
        Frontend: 121 Vitest + 12 Playwright PASS; API generation check,
        lint/i18n negative control, TypeScript strict and Vite build PASS.
-Central deployed SHA: f12b345ecd660618fce35f11ff4f3fb0dc05a529
-Backup/rollback evidence: pre-deploy PostgreSQL custom archive checked with
-       pg_restore --list and SHA256; external private copy hash/size verified.
-       Config rollback copy and previous release/images preserved.
+       Exact merged-main CI independently repeats full backend/frontend,
+       Windows installed-wheel/CLI (14), Compose, production and secret gates.
+Central deployed SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776
+Backup/rollback evidence: fresh pre/post-deploy PostgreSQL custom archives
+       checked with pg_restore --list and SHA256; both external private copies
+       hash/size verified. Config rollback copies and previous release/images
+       preserved. Production DB/state/volumes/credentials retained.
 Real Overview/capacity/inventory proof: fresh authenticated HTTPS API + native
        Chromium desktop/mobile/reload PASS; 1 source, 1 NTFS volume, 10146 objects;
        heartbeat HEALTHY, inventory COMPLETE after >5 minutes within 7200s TTL;
        measured capacity totals/percentage/worst-volume state verified;
        integrity/domains/overall UNKNOWN, default Asia/Yekaterinburg and saved UTC;
        no page/console errors. Raw evidence remains private.
-Issue #5 state/evidence: OPEN; awaiting exact-main CI before reconciliation.
-Issue #6 state/evidence: OPEN; awaiting exact-main CI before reconciliation.
-Exceptions/Sonar: backend/windows-pilot/compose-smoke/production-smoke/secrets
-       SUCCESS; frontend IN_PROGRESS at Chromium installation; E2E pending.
-       Sonar not terminal in this run; adjacent accepted main runs report
-       SKIPPED, never counted as PASS for the current run.
+Issue #5 state/evidence: CLOSED; https://github.com/BorisDruzak/storage-console/issues/5#issuecomment-6046967331
+Issue #6 state/evidence: CLOSED; https://github.com/BorisDruzak/storage-console/issues/6#issuecomment-6046968071
+Exceptions/Sonar: six required jobs terminal SUCCESS; Sonar SKIPPED (external
+       configuration absent), not reported as a successful Quality Gate.
 Operator confirmation: previous live operator acceptance documented in
        docs/implementation-status.md; repeated central/browser observation
        on 2026-10-08 (Asia/Yekaterinburg), without FILESERVER changes.
-Next stage authorized: NO
+       Repeated live checks were performed after the main deployment;
+       a subsequent HEALTHY heartbeat proves continued real ingestion.
+Pending/quarantine: collector state was not reopened or changed by Stage A;
+       no new live local queue-status claim; current central freshness verified.
+Installed collector package: unchanged; no package upgrade/re-enrollment.
+Known limits: Service/reboot and USN not implemented or accepted by Stage A.
+Next stage authorized: NO until final documentation publication CI is terminal
+       PASS; then YES. Source/runtime acceptance above is already proved.
 ~~~
 
 Stage A independent read-only source review: no Critical/Important findings.
@@ -64,30 +72,36 @@ dashboard checks: 7 passed/12 PostgreSQL skips; полный PostgreSQL regressi
 выше выполнялся отдельно на целевом Python 3.13, без этих portable skips.
 
 PR #7 MERGED at `07fbb9fdc31603a6309887684805ffb98ec5a9db`; both that revision
-and current deployed `f12b345…` are ancestors of exact main. The later main
+and pre-deploy runtime `f12b345…` are ancestors of exact main. The later main
 commits through `e65c048…` only add delivery-train documentation. Fresh runtime
 inspection confirmed OCI image/container revision, all four healthy services,
 strict HTTPS/redirect, anonymous read rejection, Alembic check and inventory TTL.
-Update to exact main and post-deploy backup are pending terminal source CI.
+Safe update to accepted main `dda125d…` completed through the existing runbook
+after verified backup. Post-deploy revision/image/health/TLS/auth/Alembic/7200s
+TTL checks, fresh heartbeat, preserved identities and repeated strict-TLS browser
+acceptance all PASS. Pre/post archives and external copies verified separately.
 
-### Exact blocker and resumption
+### Resolution of the original CI wait
 
-At the checkpoint, main push run `37681158835` still reports frontend
-`IN_PROGRESS` on `npx playwright install --with-deps chromium`, without a
-terminal result. GitHub does not yet expose that running job's final log.
-Do not infer a download/network failure or weaken/skip the installation gate.
-Local Playwright PASS does not replace exact-main CI. Draft Stage A
-[PR #9](https://github.com/BorisDruzak/storage-console/pull/9) preserves evidence;
-its CI also must be accepted on its final head, not on an earlier revision.
+The original `e65c048…` main run `37681158835` remained live at Chromium
+installation when the initial checkpoint was published. It was not declared
+failed, cancelled or restarted solely because observation elapsed. Local tests
+did not replace its missing terminal result.
 
-Required next action: obtain terminal results of main push run `37681158835`.
-If it fails, inspect its actual failure log, reproduce the cause and apply only
-a scoped RED→GREEN correction or justified rerun; preserve all six required jobs.
-If it succeeds, safely update central to accepted main after rechecking backup,
-verify exact deployed image/container revision, strict HTTPS/auth/migration and
-repeat live browser checks; create/verify post-deploy and external backup copies.
-Only then reconcile Issues #5/#6 with evidence, finish the Stage A PR and verify
-CI on its exact merged main SHA before marking GATE A PASS.
+Stage A [PR #9](https://github.com/BorisDruzak/storage-console/pull/9) final head
+`caca737b3be28d0171db323fde300ccf32519bdd` passed all six jobs in
+[PR CI 37684335711](https://github.com/BorisDruzak/storage-console/actions/runs/37684335711).
+It was reviewed and merged normally into `dda125d…`; the trees are identical.
+The subsequent **push** CI on that exact merged main SHA completed SUCCESS
+for all six mandatory jobs, with Sonar SKIPPED. No check was disabled and no
+runtime code change was needed for Stage A. Deployment and issue reconciliation
+followed that exact-main result, not a substitute PR-only result.
+
+Ruling: Source/deployed SHA above identifies the accepted runtime. Final
+documentation-only publication has its own immutable PR head/merge checks;
+verify those before starting B, without rewriting acceptance merely to reference
+the commit that contains its own text. Do not claim central was deployed to a
+later documentation revision unless it was actually observed.
 
 Installed collector package/state and local pending/quarantine were not changed
 or independently reopened during Stage A. Live FILESERVER freshness and inventory
