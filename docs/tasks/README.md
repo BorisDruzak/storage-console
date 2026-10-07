@@ -49,3 +49,12 @@ Wave 0B и Wave 0C могут частично выполняться парал
 Операторский путь: [Windows live pilot runbook](../pilot/windows-live-pilot-ru.md).
 CLI/wheel и disposable Windows → HTTPS → PostgreSQL → русская Web Console реализованы;
 закрытие MVP checkpoint требует operator acceptance реального FILESERVER по checklist.
+
+## MVP-PILOT-002 — использовать уже полученный live inventory
+
+После operator acceptance MVP-PILOT-001 выполнить:
+
+1. `mvp-pilot-002-inventory-dashboard.md` — исправить inventory freshness, показать реальную ёмкость на Overview, оставить filesystem integrity честно UNKNOWN и включить `Asia/Yekaterinburg` по умолчанию.
+
+До завершения MVP-PILOT-002 не переходить автоматически к новым collectors/USN/Windows Service.
+
