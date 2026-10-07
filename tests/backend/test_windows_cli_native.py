@@ -28,8 +28,10 @@ def installed_cli(installed_python):
 def test_installed_wheel_console_entrypoint_has_four_pilot_commands(installed_cli, tmp_path):
     result = subprocess.run(
         [str(installed_cli), "--help"], capture_output=True, timeout=15, cwd=tmp_path,
+        env=dict(os.environ, PYTHONIOENCODING="ascii"),
     )
     assert result.returncode == 0 and not result.stderr
+    assert "Операторский Windows pilot" in result.stdout.decode("utf-8")
     for name in (b"activate", b"status", b"inventory-once", b"run"):
         assert name in result.stdout
 

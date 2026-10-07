@@ -267,6 +267,12 @@ def _execute(args: argparse.Namespace, stop: threading.Event) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    # Redirected Windows streams inherit the host code page, which may not
+    # represent Russian operator messages. Keep console and captured output UTF-8.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8")
     stop = threading.Event()
     previous = signal.getsignal(signal.SIGINT)
     try:
