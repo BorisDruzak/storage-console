@@ -58,3 +58,16 @@ CLI/wheel и disposable Windows → HTTPS → PostgreSQL → русская Web 
 
 До завершения MVP-PILOT-002 не переходить автоматически к новым collectors/USN/Windows Service.
 
+## Controlled MVP delivery train — после MVP-PILOT-002
+
+Следующий **единый** task:
+
+- docs/tasks/mvp-003-004-three-stage-delivery-train.md — три обязательные стадии:
+  A. Стабилизация/CI/main и operator acceptance;
+  B. Windows Service/autostart/reboot acceptance;
+  C. NTFS USN → real Activity.
+- docs/acceptance/mvp-003-004-execution-ledger.md — журнал SHA, RED→GREEN, CI и operator checkpoints.
+
+Переход A→B→C строго по PASS gates. Реальный FILESERVER не перезагружать без
+отдельного явного согласия оператора. USN допускается только read-only;
+нет автоматических ACL/SMB/audit policy изменений. По завершении Stage C — STOP.
