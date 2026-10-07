@@ -46,3 +46,6 @@ Wave 0B и Wave 0C могут частично выполняться парал
 
 До его operator acceptance не переходить автоматически к Windows Service, USN, PVE/PBS, ACL, diagnostics или Discovery.
 
+Операторский путь: [Windows live pilot runbook](../pilot/windows-live-pilot-ru.md).
+CLI/wheel и disposable Windows → HTTPS → PostgreSQL → русская Web Console реализованы;
+закрытие MVP checkpoint требует operator acceptance реального FILESERVER по checklist.

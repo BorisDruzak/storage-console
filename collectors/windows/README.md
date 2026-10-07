@@ -9,7 +9,10 @@ CA сохраняется отдельно для каждой version. `configu
 binding в SQLite schema3 и не снимает сохранённый auth suspension при перезапуске.
 Сбой между активацией БД и заменой config требует повторной настройки оператором.
 Изменение identity/scope отклоняется; backlog никогда не удаляется автоматически.
-CLI, scheduler и установленная SCM-служба пока остаются следующими задачами.
+Операторский CLI установлен через wheel: `storage-collector activate`, `status`,
+`inventory-once`, `run`. Первый live pilot выполняется по
+[русскому runbook](../../docs/pilot/windows-live-pilot-ru.md).
+Установленная SCM-служба остаётся вне MVP-PILOT-001.
 
 Реализованы native metadata provider и bounded producer для Wave1. Они собирают
 heartbeat, identity/filesystem/capacity/mount aliases томов и metadata файлов/каталогов
