@@ -8,6 +8,7 @@ x-runtime: &runtime
       APP_RELEASE: ${APP_RELEASE:?Set exact Git revision}
   environment: &environment
     DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-storage_console}:${POSTGRES_PASSWORD:?Set hex POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-storage_console}
+    INVENTORY_STALE_SECONDS: ${INVENTORY_STALE_SECONDS:-7200}
     APP_ENV: production
     APP_RELEASE: ${APP_RELEASE:?Set exact Git revision}
     SENTRY_DSN: ${SENTRY_DSN:-}

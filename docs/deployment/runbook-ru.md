@@ -5,6 +5,16 @@
 и Compose-проект `storage-control-plane`. Реальные DNS, SSH, сертификаты, пароли и DSN
 хранятся вне Git. Перед выполнением замените значения примера своими.
 
+Inventory freshness настраивается отдельно от heartbeat через
+`INVENTORY_STALE_SECONDS` (default `7200`, допустимо `1..604800` секунд).
+Production и development Compose передают setting API. Он определяет quality
+томов/общих папок и срок HTTP evidence; cadence источника отвечает за heartbeat.
+Ёмкость Overview включает только актуальные полные измерения томов с total > 0;
+состояние определяется худшей заполненностью (70/80/90%), а процент — суммой
+использованного / суммой capacity. Исключённые тома видны отдельным count.
+Миграция БД не нужна. Новые настройки браузера используют `Asia/Yekaterinburg`;
+сохранённый явно UTC или другой IANA timezone сохраняется.
+
 ## 1. Предварительные условия
 
 Ubuntu24.04, минимум4CPU,16GiB физической RAM (preflight требует15GiB usable),

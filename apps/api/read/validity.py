@@ -6,6 +6,7 @@ from fastapi import Response
 from sqlalchemy import func, select
 from sqlalchemy.engine import Connection, RowMapping
 
+from .inventory import inventory_validity
 from .overview import domain_validity
 from .sources import source_data
 
@@ -26,8 +27,15 @@ def source_validity(connection: Connection) -> float | None:
     return float(value) if value is not None else None
 
 
-def overview_validity(connection: Connection, response: Response) -> None:
-    stamp(response, source_validity(connection), domain_validity(connection))
+def overview_validity(
+    connection: Connection, response: Response, now: datetime, stale_seconds: int
+) -> None:
+    stamp(
+        response,
+        source_validity(connection),
+        domain_validity(connection),
+        inventory_validity(connection, now, stale_seconds),
+    )
 
 
 def rows_validity(response: Response, rows: Sequence[RowMapping]) -> None:
@@ -41,10 +49,13 @@ def rows_validity(response: Response, rows: Sequence[RowMapping]) -> None:
     )
 
 
-def storage_validity(response: Response, rows: Sequence[RowMapping], now: datetime) -> None:
+def storage_validity(
+    response: Response, rows: Sequence[RowMapping], now: datetime, stale_seconds: int
+) -> None:
     remaining = [
-        row["expected_cadence_seconds"] - (now - row["last_seen_at"]).total_seconds()
-        for row in rows
+        stale_seconds - (now - row["last_seen_at"]).total_seconds()
         if row["last_seen_at"] <= now
+        else (row["last_seen_at"] - now).total_seconds()
+        for row in rows
     ]
     stamp(response, *(value for value in remaining if value >= 0))

@@ -9,7 +9,7 @@ import { timestamp } from './components/ReadState';
 afterEach(()=>{vi.restoreAllMocks();savePreferences({locale:'ru-RU',timeZone:'UTC'});localStorage.clear();window.dispatchEvent(new StorageEvent('storage',{key:null}));window.location.hash='';vi.unstubAllGlobals();});
 test.each(['{bad','null','[]','{"locale":"invalid","timeZone":"invalid"}'])('invalid stored preferences safely recover: %s',value=>{
   localStorage.setItem(preferencesKey,value);
-  expect(getPreferences()).toEqual({locale:'ru-RU',timeZone:'UTC'});
+  expect(getPreferences()).toEqual({locale:'ru-RU',timeZone:'Asia/Yekaterinburg'});
 });
 test('timestamp follows configured timezone and DST and rejects invalid dates',()=>{
   savePreferences({locale:'ru-RU',timeZone:'Europe/Berlin'});

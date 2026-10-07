@@ -89,7 +89,18 @@
     "staleSources": "Stale sources: {{count}}",
     "unknownSources": "Without current evidence: {{count}}",
     "lastReceived": "Latest receipt",
-    "oldestEvent": "Earliest known event"
+    "oldestEvent": "Earliest known event",
+    "capacityMeasured": "State from measured utilization; not overall storage health",
+    "used": "Used",
+    "usedPercent": "Utilization",
+    "currentVolumes": "Volumes with current capacity: {{count}} of {{total}}",
+    "unavailableVolumes": "Volumes without current capacity: {{count}}",
+    "latestInventory": "Latest inventory",
+    "filesystemTitle": "Filesystem {{types}}",
+    "detectedVolumes": "Detected volumes: {{count}}",
+    "filesystemTypes": "Filesystem types",
+    "integrityUnavailable": "Filesystem integrity evidence is not collected yet",
+    "inventoryFacts": "Observed inventory facts; freshness does not establish integrity"
   },
   "domains": {
     "TELEMETRY": "Telemetry",
@@ -136,8 +147,8 @@
     "identity": "Persistent identity",
     "path": "Path",
     "aliases": "Mount aliases",
-    "total": "Total bytes",
-    "free": "Free bytes",
+    "total": "Total",
+    "free": "Free",
     "quality": "Data quality"
   },
   "quality": {
@@ -361,5 +372,12 @@
     "listFailed": "Could not load collectors.",
     "key": "Collector key",
     "pending": "Request in progress"
+  },
+  "bytes": {
+    "B": "B",
+    "KiB": "KiB",
+    "MiB": "MiB",
+    "GiB": "GiB",
+    "TiB": "TiB"
   }
 }

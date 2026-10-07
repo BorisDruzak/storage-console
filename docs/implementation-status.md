@@ -1,5 +1,26 @@
 # Статус реализации
 
+## MVP-PILOT-002 — inventory dashboard (Issue #6)
+
+Реализован отдельный central `inventory_stale_seconds` (default 7200, 1..604800):
+volume/share quality и HTTP evidence не используют heartbeat cadence. Overview
+расширен typed capacity/inventory summaries; OpenAPI, generated TS и standalone
+validators обновлены. Totals включают только current complete capacity с total > 0,
+state определяется худшим томом по frozen thresholds 70/80/90%; excluded count виден.
+Filesystem inventory показывает типы/число томов/время без вывода о целостности.
+Domain health engine и overall semantics сохранены; новые collectors не добавлены.
+Общий IEC formatter применяется на Overview и в таблице томов. Новый browser profile
+использует Asia/Yekaterinburg, явно сохранённый UTC сохраняется.
+
+Regression покрывает отдельную freshness, границы capacity, worst volume, отсутствие/
+stale/partial/future/нулевую capacity, sums и независимость overall. Web проверки:
+capacity/filesystem UNKNOWN, i18n, IEC, timezone; Playwright desktop/mobile — Overview,
+volumes, reload и explicit UTC. CI и live acceptance фиксируются отдельно:
+deployment в рамках Issue #6 не выполняется, live operator acceptance пока не проверен.
+Операторский checklist: [Windows live pilot](pilot/windows-live-pilot-ru.md#10-проверка-mvp-pilot-002-на-уже-подключённом-fileserver).
+
+После CI — STOP; Windows Service, USN и новые providers остаются вне этой задачи.
+
 ## Wave 1 — управление источниками в API и console; runtime в работе
 
 Реализованы регистрация FILESERVER/PVE/PBS с неизменяемым UUID/natural identity,

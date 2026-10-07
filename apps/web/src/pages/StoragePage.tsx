@@ -5,6 +5,7 @@ import { queries } from '../api/client';
 import { Empty, ReadState } from '../components/ReadState';
 import { link, useRoute } from '../navigation';
 import { Pager, SourcesPage } from './SourcesPage';
+import { formatBytes } from '../formatBytes';
 
 const tabs = ['fileserver', 'volumes', 'smb', 'dfs', 'fsrm', 'vss', 'pve', 'network'] as const;
 function SourceFilter({ source, tab }: { source: string; tab: string }) {
@@ -30,7 +31,7 @@ function Volumes({ shares }: { shares: boolean }) {
       <th scope="col">{t('storage.name')}</th><th scope="col">{t(shares ? 'storage.path' : 'storage.aliases')}</th>
       {!shares ? <><th scope="col">{t('storage.total')}</th><th scope="col">{t('storage.free')}</th></> : null}
       <th scope="col">{t('storage.quality')}</th>
-    </tr></thead><tbody>{shares ? shareData.data?.items.map(item => <tr key={item.id}><td>{item.name}</td><td><code>{item.relative_path}</code></td><td>{t(`quality.${item.quality}`)}</td></tr>) : volumes.data?.items.map(item => <tr key={item.id}><td>{item.label ?? item.unique_identity}<small><code>{item.unique_identity}</code></small><small><code>{item.filesystem}</code></small></td><td><code>{item.mount_aliases.join(', ') || t('common.unavailable')}</code></td><td>{item.total_bytes?.toLocaleString(i18n.language) ?? t('common.unavailable')}</td><td>{item.free_bytes?.toLocaleString(i18n.language) ?? t('common.unavailable')}</td><td>{t(`quality.${item.quality}`)}</td></tr>)}</tbody></table></div> : <Empty />}
+    </tr></thead><tbody>{shares ? shareData.data?.items.map(item => <tr key={item.id}><td>{item.name}</td><td><code>{item.relative_path}</code></td><td>{t(`quality.${item.quality}`)}</td></tr>) : volumes.data?.items.map(item => <tr key={item.id}><td>{item.label ?? item.unique_identity}<small><code>{item.unique_identity}</code></small><small><code>{item.filesystem}</code></small></td><td><code>{item.mount_aliases.join(', ') || t('common.unavailable')}</code></td><td>{formatBytes(item.total_bytes,i18n.language,t)}</td><td>{formatBytes(item.free_bytes,i18n.language,t)}</td><td>{t(`quality.${item.quality}`)}</td></tr>)}</tbody></table></div> : <Empty />}
     <Pager total={query.data.total} offset={route.offset} />
   </> : null}</ReadState>;
 }

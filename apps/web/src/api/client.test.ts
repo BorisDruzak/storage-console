@@ -4,7 +4,7 @@ import { QueryClient } from '@tanstack/react-query';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const overview = {
-  overall_state: 'UNKNOWN', freshness: {state:'UNKNOWN',source_count:0,current_source_count:0,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null},
+  capacity:{state:'UNKNOWN',total_bytes:null,used_bytes:null,free_bytes:null,used_percent:null,volume_count:0,current_volume_count:0,unavailable_volume_count:0,latest_inventory_at:null},inventory:{latest_inventory_at:null,volume_count:0,filesystem_types:[],filesystem_objects:0},overall_state: 'UNKNOWN', freshness: {state:'UNKNOWN',source_count:0,current_source_count:0,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null},
   evaluated_at: '2026-10-04T00:00:00Z', domains: [],
   counts: { sources: 0, volumes: 0, shares: 0, filesystem_objects: 0 },
 };

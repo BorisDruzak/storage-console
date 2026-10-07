@@ -240,7 +240,7 @@ def test_volume_share_serialization_filter_and_stale_quality(authenticated_setup
     assert share["last_seen_at"].endswith("Z")
     with engine.begin() as connection:
         connection.execute(
-            update(volumes).values(last_seen_at=datetime.now(UTC) - timedelta(hours=1))
+            update(volumes).values(last_seen_at=datetime.now(UTC) - timedelta(hours=3))
         )
     assert client.get("/api/v1/volumes").json()["items"][0]["quality"] == "STALE"
     for route in ["volumes", "shares"]:

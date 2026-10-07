@@ -231,6 +231,30 @@ export interface components {
             /** Detail */
             detail: string;
         };
+        /** CapacitySummary */
+        CapacitySummary: {
+            /** Current Volume Count */
+            current_volume_count: number;
+            /** Free Bytes */
+            free_bytes: number | null;
+            /** Latest Inventory At */
+            latest_inventory_at: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "UNKNOWN" | "HEALTHY" | "OBSERVE" | "WARNING" | "CRITICAL";
+            /** Total Bytes */
+            total_bytes: number | null;
+            /** Unavailable Volume Count */
+            unavailable_volume_count: number;
+            /** Used Bytes */
+            used_bytes: number | null;
+            /** Used Percent */
+            used_percent: number | null;
+            /** Volume Count */
+            volume_count: number;
+        };
         /** CollectorCredential */
         CollectorCredential: {
             /**
@@ -405,6 +429,17 @@ export interface components {
             /** Unknown Source Count */
             unknown_source_count: number;
         };
+        /** InventorySummary */
+        InventorySummary: {
+            /** Filesystem Objects */
+            filesystem_objects: number;
+            /** Filesystem Types */
+            filesystem_types: string[];
+            /** Latest Inventory At */
+            latest_inventory_at: string | null;
+            /** Volume Count */
+            volume_count: number;
+        };
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -422,6 +457,7 @@ export interface components {
         };
         /** Overview */
         Overview: {
+            capacity: components["schemas"]["CapacitySummary"];
             counts: components["schemas"]["Counts"];
             /** Domains */
             domains: components["schemas"]["DomainHealth"][];
@@ -431,6 +467,7 @@ export interface components {
              */
             evaluated_at: string;
             freshness: components["schemas"]["FreshnessSummary"];
+            inventory: components["schemas"]["InventorySummary"];
             /**
              * Overall State
              * @enum {string}

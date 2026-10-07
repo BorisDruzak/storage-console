@@ -5,7 +5,7 @@ test('expired healthy evidence stays hidden until an identical response is succe
   let refreshAllowed=true;
   await page.route('**/api/v1/overview',async route=>{
     if(!refreshAllowed) return;
-    await route.fulfill({headers:{'X-Evidence-Valid-For-Ms':'10000','Cache-Control':'no-store'},contentType:'application/json',body:JSON.stringify({overall_state:'HEALTHY',freshness:{state:'HEALTHY',source_count:1,current_source_count:1,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null},evaluated_at:'2026-10-04T00:00:00Z',domains:[],counts:{sources:1,volumes:0,shares:0,filesystem_objects:0}})});
+    await route.fulfill({headers:{'X-Evidence-Valid-For-Ms':'10000','Cache-Control':'no-store'},contentType:'application/json',body:JSON.stringify({capacity:{state:'UNKNOWN',total_bytes:null,used_bytes:null,free_bytes:null,used_percent:null,volume_count:0,current_volume_count:0,unavailable_volume_count:0,latest_inventory_at:null},inventory:{latest_inventory_at:null,volume_count:0,filesystem_types:[],filesystem_objects:0},overall_state:'HEALTHY',freshness:{state:'HEALTHY',source_count:1,current_source_count:1,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null},evaluated_at:'2026-10-04T00:00:00Z',domains:[],counts:{sources:1,volumes:0,shares:0,filesystem_objects:0}})});
   });
   await page.goto('/');
   await expect(page.getByText('Исправно',{exact:true}).first()).toBeVisible();
@@ -20,7 +20,7 @@ test('expired healthy evidence stays hidden until an identical response is succe
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/ready', route => route.fulfill({contentType:'application/json',body:'{"status":"ok"}'}));
-  await page.route('**/api/v1/**', route => route.fulfill({ headers:{'X-Evidence-Valid-For-Ms':'35000','Cache-Control':'no-store'}, contentType: 'application/json', body: JSON.stringify(route.request().url().includes('/auth/me') ? {id:'6a83a99d-247d-4e58-8c49-089c703ab42d',username:'synthetic-shell-viewer',roles:['viewer']} : route.request().url().includes('/overview') ? { overall_state: 'UNKNOWN', freshness: {state:'UNKNOWN',source_count:0,current_source_count:0,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null}, evaluated_at: '2026-10-04T00:00:00Z', counts: {sources:0,volumes:0,shares:0,filesystem_objects:0}, domains: [] } : {items:[],total:0,limit:50,offset:0}) }));
+  await page.route('**/api/v1/**', route => route.fulfill({ headers:{'X-Evidence-Valid-For-Ms':'35000','Cache-Control':'no-store'}, contentType: 'application/json', body: JSON.stringify(route.request().url().includes('/auth/me') ? {id:'6a83a99d-247d-4e58-8c49-089c703ab42d',username:'synthetic-shell-viewer',roles:['viewer']} : route.request().url().includes('/overview') ? { capacity:{state:'UNKNOWN',total_bytes:null,used_bytes:null,free_bytes:null,used_percent:null,volume_count:0,current_volume_count:0,unavailable_volume_count:0,latest_inventory_at:null},inventory:{latest_inventory_at:null,volume_count:0,filesystem_types:[],filesystem_objects:0},overall_state: 'UNKNOWN', freshness: {state:'UNKNOWN',source_count:0,current_source_count:0,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null}, evaluated_at: '2026-10-04T00:00:00Z', counts: {sources:0,volumes:0,shares:0,filesystem_objects:0}, domains: [] } : {items:[],total:0,limit:50,offset:0}) }));
 });
 
 test('Russian shell retains unknown storage health across navigation', async ({ page }) => {
@@ -180,7 +180,7 @@ test('settings persist locale/timezone, restore invalid storage and support keyb
   await expect(page.getByRole('heading',{name:'Обзор',exact:true})).toBeFocused();
   for(const [width,height] of [[1280,900],[390,844]]){
     await page.setViewportSize({width,height});await page.goto('/#settings');
-    await expect(page.getByLabel('Часовой пояс')).toHaveValue('UTC');
+    await expect(page.getByLabel('Часовой пояс')).toHaveValue('Asia/Yekaterinburg');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.screenshot({path:testInfo.outputPath(`settings-${width}.png`),fullPage:true});
   }

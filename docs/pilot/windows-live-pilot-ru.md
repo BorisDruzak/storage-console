@@ -220,3 +220,33 @@ Remove-Item -LiteralPath $ActualState -Recurse -Force
 volume/collector identities, keys, config/ciphertext/outbox, CA private keys, screenshots
 с реальными данными или diagnostic payload. Issue не закрывается только по source/CI tests.
 После этой проверки STOP; следующий scope определяется отдельно.
+
+## 10. Проверка MVP-PILOT-002 на уже подключённом FILESERVER
+
+После отдельного согласованного deployment версии с MVP-PILOT-002:
+
+1. Откройте console в новом/чистом browser profile. Default locale ru-RU,
+   timezone `Asia/Yekaterinburg` (+05); сохранённые preferences не перезаписываются.
+2. При работающем foreground collector откройте Overview: sources, volumes и
+   filesystem objects > 0, heartbeat freshness актуальна. Карточка «Ёмкость»
+   показывает реальные used/free/total в IEC, процент, current/total volumes,
+   count без актуальной ёмкости и время последней инвентаризации.
+3. Проверьте состояние по худшему current volume: <70% «Исправно», 70–<80%
+   «Наблюдение», 80–<90% «Предупреждение», >=90% «Критично». Summary percentage
+   рассчитан по суммарным bytes и может быть ниже заполненности худшего тома.
+4. В «Состояние хранилища» → «Тома» проверьте существующий DATA volume:
+   filesystem и mount alias сохранены, total/free читаемые, quality «Полные данные»
+   пока inventory младше `INVENTORY_STALE_SECONDS` (default 2 часа), даже через
+   пять минут после inventory при heartbeat cadence 60 секунд.
+5. Overview filesystem показывает NTFS, число томов и inventory time, но integrity
+   остаётся «Нет данных». Неподдерживаемые domains и overall без evidence не зелёные.
+6. Reload сохраняет данные. В «Настройки» выберите UTC, сохраните и повторите reload:
+   время станет UTC и preference сохранится. DB timestamps по-прежнему UTC.
+
+При stale/partial/unavailable inventory его capacity исключается из current totals.
+Если ни одного пригодного измерения нет, capacity «Нет данных», bytes не определены.
+HTTP evidence остаётся ограниченным максимум 35 секундами; истёкший ответ требует
+refresh, даже если inventory policy составляет 2 часа. Не останавливайте и не
+перенастраивайте live collector ради этой проверки.
+
+Source/CI acceptance не заменяет live operator acceptance после deployment.

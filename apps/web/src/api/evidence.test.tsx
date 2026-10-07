@@ -23,7 +23,7 @@ test('request elapsed time consumes validity without trusting the wall clock',as
 });
 test('expired cached data hides healthy children even while refetch remains unresolved',async()=>{
   const i18n=await createI18n();
-  const value={overall_state:'HEALTHY',freshness:{state:'HEALTHY',source_count:1,current_source_count:1,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null},evaluated_at:'2026-10-04T00:00:00Z',domains:[],counts:{sources:1,volumes:0,shares:0,filesystem_objects:0}};
+  const value={capacity:{state:'UNKNOWN',total_bytes:null,used_bytes:null,free_bytes:null,used_percent:null,volume_count:0,current_volume_count:0,unavailable_volume_count:0,latest_inventory_at:null},inventory:{latest_inventory_at:null,volume_count:0,filesystem_types:[],filesystem_objects:0},overall_state:'HEALTHY',freshness:{state:'HEALTHY',source_count:1,current_source_count:1,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null},evaluated_at:'2026-10-04T00:00:00Z',domains:[],counts:{sources:1,volumes:0,shares:0,filesystem_objects:0}};
   vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify(value),{headers:{'X-Evidence-Valid-For-Ms':'500'}})));
   const data=await api.overview();
   const query={data,isPending:false,isError:false,refetch:()=>new Promise(()=>{})};

@@ -1,7 +1,7 @@
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, Field
 
 from .common import Contract, HealthState, NonNegative, Quality
 
@@ -81,10 +81,34 @@ class FreshnessSummary(Contract):
     oldest_event_at: AwareDatetime | None
 
 
+CapacityState = Literal["UNKNOWN", "HEALTHY", "OBSERVE", "WARNING", "CRITICAL"]
+
+
+class CapacitySummary(Contract):
+    state: CapacityState
+    total_bytes: NonNegative | None
+    used_bytes: NonNegative | None
+    free_bytes: NonNegative | None
+    used_percent: float | None = Field(ge=0, le=100)
+    volume_count: NonNegative
+    current_volume_count: NonNegative
+    unavailable_volume_count: NonNegative
+    latest_inventory_at: AwareDatetime | None
+
+
+class InventorySummary(Contract):
+    latest_inventory_at: AwareDatetime | None
+    volume_count: NonNegative
+    filesystem_types: list[str]
+    filesystem_objects: NonNegative
+
+
 class Overview(Domains):
     counts: Counts
     overall_state: HealthState
     freshness: FreshnessSummary
+    capacity: CapacitySummary
+    inventory: InventorySummary
 
 
 class Volume(Contract):

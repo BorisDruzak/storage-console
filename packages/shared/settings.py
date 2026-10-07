@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     worker_interval_seconds: int = Field(default=5, ge=1)
     worker_stale_seconds: int = Field(default=30, ge=2)
     max_ingest_bytes: int = Field(default=16 * 1024 * 1024, ge=1024, le=64 * 1024 * 1024)
+    inventory_stale_seconds: int = Field(default=7200, ge=1, le=604800)
     auth_config_file: str = ""
     app_origin: str = ""
 

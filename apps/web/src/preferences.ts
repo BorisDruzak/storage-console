@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 export const preferencesKey='storage-console.preferences.v1';
 export interface Preferences {locale:'ru-RU' | 'en-US';timeZone:string}
-const defaults:Preferences={locale:'ru-RU',timeZone:'UTC'};
+const defaults:Preferences={locale:'ru-RU',timeZone:'Asia/Yekaterinburg'};
 let cachedRaw:string | null | undefined;
 let cached:Preferences=defaults;
 let temporary:Preferences | null=null;
@@ -21,7 +21,7 @@ export function getPreferences():Preferences {
       const data:unknown=JSON.parse(raw);
       if (data && typeof data==='object' && !Array.isArray(data)) {
         const value=data as Record<string,unknown>;
-        cached={locale:value.locale==='en-US'?'en-US':'ru-RU',timeZone:typeof value.timeZone==='string'&&validTimeZone(value.timeZone)?value.timeZone:'UTC'};
+        cached={locale:value.locale==='en-US'?'en-US':'ru-RU',timeZone:typeof value.timeZone==='string'&&validTimeZone(value.timeZone)?value.timeZone:defaults.timeZone};
       }
     } catch { /* Corrupt preferences recover to safe defaults. */ }
   }

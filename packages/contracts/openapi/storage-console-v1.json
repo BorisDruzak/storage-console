@@ -927,6 +927,117 @@
         "title": "BatchEnvelope[TelemetryRecord]",
         "type": "object"
       },
+      "CapacitySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "current_volume_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Current Volume Count",
+            "type": "integer"
+          },
+          "free_bytes": {
+            "anyOf": [
+              {
+                "maximum": 9.223372036854776e+18,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free Bytes"
+          },
+          "latest_inventory_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Inventory At"
+          },
+          "state": {
+            "enum": [
+              "UNKNOWN",
+              "HEALTHY",
+              "OBSERVE",
+              "WARNING",
+              "CRITICAL"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "total_bytes": {
+            "anyOf": [
+              {
+                "maximum": 9.223372036854776e+18,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Bytes"
+          },
+          "unavailable_volume_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Unavailable Volume Count",
+            "type": "integer"
+          },
+          "used_bytes": {
+            "anyOf": [
+              {
+                "maximum": 9.223372036854776e+18,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used Bytes"
+          },
+          "used_percent": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used Percent"
+          },
+          "volume_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Volume Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "state",
+          "total_bytes",
+          "used_bytes",
+          "free_bytes",
+          "used_percent",
+          "volume_count",
+          "current_volume_count",
+          "unavailable_volume_count",
+          "latest_inventory_at"
+        ],
+        "title": "CapacitySummary",
+        "type": "object"
+      },
       "ChangeRecord": {
         "additionalProperties": false,
         "properties": {
@@ -1954,6 +2065,50 @@
         "title": "HygieneRecord",
         "type": "object"
       },
+      "InventorySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "filesystem_objects": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Filesystem Objects",
+            "type": "integer"
+          },
+          "filesystem_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Filesystem Types",
+            "type": "array"
+          },
+          "latest_inventory_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Inventory At"
+          },
+          "volume_count": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Volume Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "latest_inventory_at",
+          "volume_count",
+          "filesystem_types",
+          "filesystem_objects"
+        ],
+        "title": "InventorySummary",
+        "type": "object"
+      },
       "LargeFileSample": {
         "additionalProperties": false,
         "properties": {
@@ -2020,6 +2175,9 @@
       "Overview": {
         "additionalProperties": false,
         "properties": {
+          "capacity": {
+            "$ref": "#/components/schemas/CapacitySummary"
+          },
           "counts": {
             "$ref": "#/components/schemas/Counts"
           },
@@ -2037,6 +2195,9 @@
           },
           "freshness": {
             "$ref": "#/components/schemas/FreshnessSummary"
+          },
+          "inventory": {
+            "$ref": "#/components/schemas/InventorySummary"
           },
           "overall_state": {
             "enum": [
@@ -2056,7 +2217,9 @@
           "evaluated_at",
           "counts",
           "overall_state",
-          "freshness"
+          "freshness",
+          "capacity",
+          "inventory"
         ],
         "title": "Overview",
         "type": "object"

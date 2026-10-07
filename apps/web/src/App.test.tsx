@@ -27,7 +27,7 @@ test('volume capacity follows the console language instead of browser defaults',
   const volume={id:'6a83a99d-247d-4e58-8c49-089c703ab42d',source_node_id:'6a83a99d-247d-4e58-8c49-089c703ab42e',unique_identity:'synthetic-volume',filesystem:'NTFS',label:'Отчёты',total_bytes:1234567,free_bytes:765432,first_seen_at:'2026-10-04T00:00:00Z',last_seen_at:'2026-10-04T00:00:00Z',mount_aliases:[],quality:'COMPLETE'};
   vi.stubGlobal('fetch',vi.fn((url:string)=>Promise.resolve(new ReadResponse(JSON.stringify(url==='/ready'?{status:'ok'}:url.includes('/overview')?emptyOverview:{...emptyPage,items:[volume],total:1})))));
   await show();
-  try {expect(await screen.findByText('1 234 567')).toBeInTheDocument();expect(await screen.findByText('NTFS')).toBeInTheDocument();} finally {formatter.mockRestore();}
+  try {expect(await screen.findByText('1,18 МиБ')).toBeInTheDocument();expect(await screen.findByText('NTFS')).toBeInTheDocument();} finally {formatter.mockRestore();}
 });
 
 test('Russian navigation and empty storage never indicate healthy', async () => {
@@ -50,7 +50,7 @@ test('failed readiness displays error with a retry action', async () => {
   vi.unstubAllGlobals();
 });
 
-const emptyOverview = { overall_state: 'UNKNOWN', freshness: {state:'UNKNOWN',source_count:0,current_source_count:0,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null}, evaluated_at: '2026-10-04T00:00:00Z', counts: { sources: 0, volumes: 0, shares: 0, filesystem_objects: 0 }, domains: [] };
+const emptyOverview = { capacity:{state:'UNKNOWN',total_bytes:null,used_bytes:null,free_bytes:null,used_percent:null,volume_count:0,current_volume_count:0,unavailable_volume_count:0,latest_inventory_at:null},inventory:{latest_inventory_at:null,volume_count:0,filesystem_types:[],filesystem_objects:0},overall_state: 'UNKNOWN', freshness: {state:'UNKNOWN',source_count:0,current_source_count:0,stale_source_count:0,unknown_source_count:0,last_received_at:null,oldest_event_at:null}, evaluated_at: '2026-10-04T00:00:00Z', counts: { sources: 0, volumes: 0, shares: 0, filesystem_objects: 0 }, domains: [] };
 const emptyPage = { items: [], total: 0, limit: 50, offset: 0 };
 function mockApi() {
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new ReadResponse(JSON.stringify(url === '/ready' ? {status:'ok'} : url.includes('/overview') ? emptyOverview : emptyPage)))));
@@ -107,13 +107,13 @@ test('deep links restore sources and bounded offset from URL', async () => {
   expect(screen.getByRole('heading', { name: 'Обзор' })).toBeInTheDocument();
 });
 
-test('overview renders persisted critical domain and unknown coverage', async () => {
+test('overview preserves critical overall findings while inventory capacity stays unknown', async () => {
   const data = { ...emptyOverview, overall_state: 'CRITICAL', domains: [{ domain: 'CAPACITY', state: 'CRITICAL', source_count: 2, covered_source_count: 1, unknown_source_count: 1 }] };
   vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new ReadResponse(JSON.stringify(url === '/ready' ? {status:'ok'} : data)))));
   await show();
-  expect(await screen.findAllByText('Критично')).toHaveLength(2);
+  expect(await screen.findAllByText('Критично')).toHaveLength(1);
   expect(screen.getByRole('heading', { name: 'Ёмкость' })).toBeInTheDocument();
-  expect(screen.getByText('Нет актуальных данных: 1 из 2')).toBeInTheDocument();
+  expect(screen.getByText('Томов без актуальной ёмкости: 0')).toBeInTheDocument();
 });
 
 test('read errors remain errors while readiness is available', async () => {

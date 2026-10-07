@@ -60,7 +60,7 @@ def create_app(
     application.state.user_auth = user_auth
     application.include_router(auth_router())
     application.include_router(ingest_router(database))
-    application.include_router(read_router(database))
+    application.include_router(read_router(database, config.inventory_stale_seconds))
     application.include_router(source_router(database))
     application.add_middleware(IngestBodyLimit, max_bytes=config.max_ingest_bytes)
     application.add_middleware(AuthTransport)

@@ -25,6 +25,7 @@ from packages.shared.models.core import (
     volumes,
 )
 
+from .inventory import summaries
 from .overview import domain_health, freshness_summary, overall_state
 from .sources import database_time, freshness, require_source, snapshot, source, source_data
 from .storage import share, volume
@@ -34,7 +35,7 @@ Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0, le=1000000)]
 
 
-def router(engine: Engine) -> APIRouter:
+def router(engine: Engine, inventory_stale_seconds: int = 7200) -> APIRouter:
     result = APIRouter(
         prefix="/api/v1",
         tags=["read"],
@@ -64,7 +65,11 @@ def router(engine: Engine) -> APIRouter:
                 for table in (source_nodes, volumes, shares, filesystem_objects)
             }
             domains = domain_health(connection)
-            overview_validity(connection, response)
+            now = database_time(connection)
+            capacity, inventory = summaries(
+                connection, now, inventory_stale_seconds, counts["filesystem_objects"]
+            )
+            overview_validity(connection, response, now, inventory_stale_seconds)
             return Overview(
                 counts=Counts(
                     sources=counts["source_nodes"],
@@ -75,13 +80,17 @@ def router(engine: Engine) -> APIRouter:
                 domains=domains,
                 overall_state=overall_state(domains),
                 freshness=freshness_summary(connection),
-                evaluated_at=database_time(connection),
+                evaluated_at=now,
+                capacity=capacity,
+                inventory=inventory,
             )
 
     @result.get("/health/domains")
     def health_domains(response: Response) -> Domains:
         with snapshot(engine) as connection:
-            overview_validity(connection, response)
+            overview_validity(
+                connection, response, database_time(connection), inventory_stale_seconds
+            )
             return Domains(
                 domains=domain_health(connection), evaluated_at=database_time(connection)
             )
@@ -122,7 +131,7 @@ def router(engine: Engine) -> APIRouter:
         response: Response, limit: Limit = 50, offset: Offset = 0, source_id: UUID | None = None
     ) -> Page[Volume]:
         with snapshot(engine) as connection:
-            query = select(volumes, source_nodes.c.expected_cadence_seconds).join(source_nodes)
+            query = select(volumes)
             count = select(func.count()).select_from(volumes)
             if source_id is not None:
                 require_source(connection, source_id)
@@ -149,9 +158,12 @@ def router(engine: Engine) -> APIRouter:
                     .order_by(volume_aliases.c.volume_id, volume_aliases.c.alias)
                 ):
                     aliases.setdefault(volume_id, []).append(alias)
-            storage_validity(response, rows, now)
+            storage_validity(response, rows, now, inventory_stale_seconds)
             return Page[Volume](
-                items=[volume(row, now, aliases.get(row["id"], [])) for row in rows],
+                items=[
+                    volume(row, now, aliases.get(row["id"], []), inventory_stale_seconds)
+                    for row in rows
+                ],
                 total=connection.scalar(count) or 0,
                 limit=limit,
                 offset=offset,
@@ -162,7 +174,7 @@ def router(engine: Engine) -> APIRouter:
         response: Response, limit: Limit = 50, offset: Offset = 0, source_id: UUID | None = None
     ) -> Page[Share]:
         with snapshot(engine) as connection:
-            query = select(shares, source_nodes.c.expected_cadence_seconds).join(source_nodes)
+            query = select(shares)
             count = select(func.count()).select_from(shares)
             if source_id is not None:
                 require_source(connection, source_id)
@@ -176,9 +188,9 @@ def router(engine: Engine) -> APIRouter:
                 .all()
             )
             now = database_time(connection)
-            storage_validity(response, rows, now)
+            storage_validity(response, rows, now, inventory_stale_seconds)
             return Page[Share](
-                items=[share(row, now) for row in rows],
+                items=[share(row, now, inventory_stale_seconds) for row in rows],
                 total=connection.scalar(count) or 0,
                 limit=limit,
                 offset=offset,

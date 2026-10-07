@@ -13,8 +13,8 @@ def quality(at: datetime, now: datetime, cadence: int) -> Quality:
     return "COMPLETE" if (now - at).total_seconds() <= cadence else "STALE"
 
 
-def volume(row: RowMapping, now: datetime, aliases: list[str]) -> Volume:
-    result_quality = quality(row["last_seen_at"], now, row["expected_cadence_seconds"])
+def volume(row: RowMapping, now: datetime, aliases: list[str], stale_seconds: int) -> Volume:
+    result_quality = quality(row["last_seen_at"], now, stale_seconds)
     if result_quality == "COMPLETE" and (row["total_bytes"] is None or row["free_bytes"] is None):
         result_quality = "PARTIAL"
     return Volume.model_validate(
@@ -30,9 +30,9 @@ def volume(row: RowMapping, now: datetime, aliases: list[str]) -> Volume:
     )
 
 
-def share(row: RowMapping, now: datetime) -> Share:
+def share(row: RowMapping, now: datetime, stale_seconds: int) -> Share:
     values = {key: row[key] for key in Share.model_fields if key != "quality"}
     values["quality"] = cast(
-        str, quality(row["last_seen_at"], now, row["expected_cadence_seconds"])
+        str, quality(row["last_seen_at"], now, stale_seconds)
     )
     return Share.model_validate(values)
