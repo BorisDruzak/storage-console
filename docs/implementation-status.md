@@ -15,11 +15,30 @@ Domain health engine и overall semantics сохранены; новые collect
 Regression покрывает отдельную freshness, границы capacity, worst volume, отсутствие/
 stale/partial/future/нулевую capacity, sums и независимость overall. Web проверки:
 capacity/filesystem UNKNOWN, i18n, IEC, timezone; Playwright desktop/mobile — Overview,
-volumes, reload и explicit UTC. CI и live acceptance фиксируются отдельно:
-deployment в рамках Issue #6 не выполняется, live operator acceptance пока не проверен.
+volumes, reload и explicit UTC.
+
+Runtime revision: `f12b345ecd660618fce35f11ff4f3fb0dc05a529` (feature
+`9624d6fff62429709ec3f291ebe9bc62062609c7`, затем deployment parser для bounded
+`INVENTORY_STALE_SECONDS`). [CI37674102372](https://github.com/BorisDruzak/storage-console/actions/runs/37674102372)
+успешен: шесть обязательных jobs; backend 590 passed/50 skipped, frontend 121,
+Playwright 12. Sonar SKIPPED: не настроен.
+
+Central pilot обновлён после CI. До переключения проверен PostgreSQL backup и
+сохранена копия вне ВМ; предыдущие checkout/env оставлены для rollback. Exact
+revision/image checks, HTTPS/redirect, четыре healthy services, `alembic check`
+и runtime `inventory_stale_seconds=7200` подтверждены.
+
+Live operator acceptance на существующем FILESERVER: PASS. Реальные authenticated read
+APIs и Chromium со strict TLS, без mocks: Overview/Volumes на desktop и mobile, reload,
+default Asia/Yekaterinburg и сохранённый UTC; console/page errors = 0. Inventory старше
+пяти минут остаётся COMPLETE. Capacity вычислена по реальным current данным; filesystem
+inventory виден, integrity и overall остаются UNKNOWN. Source identity, volume
+identity/mount aliases и ненулевые object counts сохранены. Collector/runtime
+configuration не менялись; новые providers не добавлены. Скриншоты и сырые runtime
+evidence хранятся отдельно от публичного репозитория.
 Операторский checklist: [Windows live pilot](pilot/windows-live-pilot-ru.md#10-проверка-mvp-pilot-002-на-уже-подключённом-fileserver).
 
-После CI — STOP; Windows Service, USN и новые providers остаются вне этой задачи.
+После deployment/live acceptance — STOP; Windows Service, USN и новые providers остаются вне этой задачи.
 
 ## Wave 1 — управление источниками в API и console; runtime в работе
 
