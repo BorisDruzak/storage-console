@@ -9,7 +9,12 @@ source review пройдены. Central обновлён через runbook по
 exact images/revision, TLS/auth/redirect, Alembic check, продолжение heartbeat,
 реальные inventory/capacity/UNKNOWN, desktop/mobile/reload/timezone проверены.
 Pre/post-deploy backup и внешние копии проверены; rollback сохранён.
-Issues #5/#6 закрыты с evidence. Windows Service и USN ещё не начаты.
+Issues #5/#6 закрыты с evidence. Stage B / Windows Service реализован:
+native SCM wrapper, lifecycle CLI, LocalSystem и installed-wheel negative/native
+проверки; полный frozen-source regression и независимый review завершены.
+Publication/exact-SHA CI и live gates ещё не завершены; GATE B BLOCKED.
+USN / Stage C не начат. Operator checklist:
+[Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
 Перезагрузка реального FILESERVER требует отдельного явного разрешения.

@@ -14,6 +14,15 @@ binding в SQLite schema3 и не снимает сохранённый auth sus
 [русскому runbook](../../docs/pilot/windows-live-pilot-ru.md).
 Установленная SCM-служба остаётся вне MVP-PILOT-001.
 
+Issue #8 / Stage B добавляет native SCM host над тем же `Runtime` и operator
+команды `service install/start/status/stop/uninstall`. Protected state/UUID/DPAPI,
+CA, credential binding и outbox сохраняются; service status читает SCM без
+runtime lock. LocalSystem, delayed start и один bounded crash restart описаны в
+[service runbook](../../docs/pilot/windows-service-ru.md).
+Gate/CI/live acceptance фиксируются отдельно в
+[execution ledger](../../docs/acceptance/mvp-003-004-execution-ledger.md).
+Это не разрешение live handover или reboot и не начало Stage C.
+
 Реализованы native metadata provider и bounded producer для Wave1. Они собирают
 heartbeat, identity/filesystem/capacity/mount aliases томов и metadata файлов/каталогов
 в explicitly configured local roots. Данные идут через существующий

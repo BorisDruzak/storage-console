@@ -45,6 +45,12 @@ class Parser(argparse.ArgumentParser):
 def _parser() -> Parser:
     parser = Parser(prog="storage-collector", description="Операторский Windows pilot")
     commands = parser.add_subparsers(dest="command", required=True)
+    service = commands.add_parser("service", help="Управлять Windows-службой collector")
+    actions = service.add_subparsers(dest="action", required=True)
+    for action in ("install", "start", "status", "stop", "uninstall"):
+        child = actions.add_parser(action)
+        child.add_argument("--state", default=DEFAULT_STATE if action == "install" else None,
+                           help="Каталог состояния; lifecycle по умолчанию читает регистрацию SCM")
     for command in ("activate", "status", "inventory-once", "run"):
         child = commands.add_parser(command, help={
             "activate": "Активировать защищённое состояние",
@@ -212,6 +218,8 @@ def inventory_once(
 def _execute(args: argparse.Namespace, stop: threading.Event) -> int:
     if not _windows():
         raise SecurityError("PLATFORM_UNSUPPORTED")
+    if args.command == "service":
+        return service_command(args)
     if args.command == "activate":
         scope = _scope(args.root, args.state)
         _validate_root(scope)
@@ -266,6 +274,50 @@ def _execute(args: argparse.Namespace, stop: threading.Event) -> int:
         return 0 if result.complete else (130 if stop.is_set() else 1)
 
 
+def service_command(args: argparse.Namespace) -> int:
+    from ._scm_native import NativeBackend
+    from .scm import ServiceManager, ServiceSpec
+    from .service_installation import validate_installation
+
+    backend = NativeBackend()
+    spec = ServiceSpec(sys.executable, args.state or DEFAULT_STATE)
+    if args.state is None:
+        registered = backend.query(spec)
+        if registered is not None:
+            spec = ServiceSpec.registered(sys.executable, registered.command)
+    manager = ServiceManager(spec, backend)
+    before = manager.status()
+    if args.action == "install" and before is None:
+        validate_installation()
+        # Only inspect an already-enrolled state. Installation never activates,
+        # creates an outbox, clears suspended authentication or changes its ACL.
+        with ProtectedState(Path(args.state), read_only=True) as state:
+            config = _read(state)
+            state.read(config.ca_name, 128 * 1024)
+            state.validate_file("outbox.sqlite3")
+            box = Outbox(state.root / "outbox.sqlite3", config.collector_id,
+                         config.settings.limits(), read_only=True)
+            if box.credential_binding() != config.credential_version:
+                raise SecurityError("CREDENTIAL_MISMATCH")
+    if args.action == "uninstall":
+        manager.uninstall()
+        print("Регистрация службы удалена; защищённое состояние сохранено")
+        return 0
+    status = manager.status() if args.action == "status" else getattr(manager, args.action)()
+    if status is None:
+        print("Служба не установлена")
+        return 0
+    if args.action == "start" and before is not None and before.state == "RUNNING":
+        print("Служба уже работает")
+    if args.action == "install" and before is not None:
+        print("Служба уже установлена; регистрация и state сохранены")
+    print(f"Служба: {manager.spec.name}; SCM: {status.state}; PID: {status.pid}")
+    print("Автозапуск: отключён" if status.start_type == 4 else "Автозапуск: Automatic (Delayed)")
+    print("Учётная запись службы: LocalSystem; recovery: один restart после 10 секунд")
+    print("SCM-статус процесса не подтверждает freshness или доставку данных")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     # Redirected Windows streams inherit the host code page, which may not
     # represent Russian operator messages. Keep console and captured output UTF-8.
@@ -285,6 +337,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     except (SecurityError, CaptureError, OutboxError, TransportError) as error:
         print(f"Ошибка: {error.code}", file=sys.stderr)
+        if error.code == "STATE_BUSY":
+            print("Состояние занято действующим collector. Для перехода на службу "
+                  "нужна контролируемая остановка foreground runtime.", file=sys.stderr)
+        if error.code == "SERVICE_RECOVERY_PENDING":
+            print("После сбоя SCM может ожидать recovery restart; остановка ещё не подтверждена.",
+                  file=sys.stderr)
+        if error.code == "SERVICE_START_FAILED":
+            print("Служба не запущена. Проверьте machine code в Application Event Log "
+                  "и завершение foreground runtime.", file=sys.stderr)
         return 1
     except (OSError, ValueError):
         print("Ошибка: CONFIG_OR_STATE_INVALID", file=sys.stderr)

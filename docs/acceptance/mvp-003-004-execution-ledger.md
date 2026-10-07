@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS на принятом runtime main SHA ниже. B/C ещё не начаты.**
+**GATE A PASS. Stage B начат после terminal CI финальной публикации A; C не начат.**
 
 ## Known baseline
 
@@ -53,8 +53,10 @@ Pending/quarantine: collector state was not reopened or changed by Stage A;
        no new live local queue-status claim; current central freshness verified.
 Installed collector package: unchanged; no package upgrade/re-enrollment.
 Known limits: Service/reboot and USN not implemented or accepted by Stage A.
-Next stage authorized: NO until final documentation publication CI is terminal
-       PASS; then YES. Source/runtime acceptance above is already proved.
+Documentation publication: PR #10 merged at ef78111c0d2e8f971cb16f7b64a40c3f7cffd716;
+       exact push CI https://github.com/BorisDruzak/storage-console/actions/runs/37688827452
+       terminal SUCCESS for all six jobs, Sonar SKIPPED.
+Next stage authorized: YES (B only; C still requires GATE B PASS).
 ~~~
 
 Stage A independent read-only source review: no Critical/Important findings.
@@ -107,16 +109,121 @@ Installed collector package/state and local pending/quarantine were not changed
 or independently reopened during Stage A. Live FILESERVER freshness and inventory
 were observed through the central API/browser. No FILESERVER SSH session, service
 lifecycle, reboot, ACL/SMB/audit-policy/USN configuration changes were performed.
-Stages B/C have not started. No approval request for FILESERVER reboot is made
+No Stage C work has started. No approval request for FILESERVER reboot is made
 before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: PENDING
+GATE B: BLOCKED — publication/exact-SHA CI and approved live handover/reboot pending
+
+Baseline: `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`, exact main push CI
+`37688827452` terminal SUCCESS (six jobs, Sonar SKIPPED). Deployed central
+baseline remains `dda125d08f97fac78ccea466ec89fd0ad6f79776`, live accepted.
+Scope/negative tests/risks and ordered execution:
+[Stage B plan](../superpowers/plans/2026-10-08-windows-service-stage-b.md).
+Design/RED phase; no real FILESERVER service installation or reboot authorized
+or performed by this checkpoint.
+
+Implementation verified before publication (not a gate verdict): native own-process SCM adapter,
+thin dispatcher over existing Runtime, lifecycle CLI and read-only privileged
+installation validation. LocalSystem/delayed start/one crash restart configured;
+existing state/binding/auth suspension preserved. No new runtime dependency.
+
+RED observed: service verbs rejected by old CLI; queued crash recovery falsely
+reported as operator stop; external `.pth` dependency skipped by installation
+checks; a nested venv's ancestor cache skipped the base interpreter; failed cleanup
+could wait on a non-daemon thread; BaseException leaked across a ctypes callback.
+Targeted corrections GREEN (32 lifecycle tests at this
+checkpoint). Failed registration uninstall has a separate deletion path.
+
+Verification history and final frozen-source evidence:
+- Linux immutable source archive v1: SHA256
+  `6b0b4055c6935f8e972381d7fca0303aa966bf5a156fc525eece401adb69ce2d`;
+  Python 3.13/PostgreSQL 16 backend 615 passed / 56 skipped, deployment 54 passed;
+  Ruff, mypy (96 + 6 source files), OpenAPI, migration upgrade/check/round-trip
+  passed. Later corrections require the final full regression.
+- Unchanged frontend tree: api:check, lint/i18n negative control, typecheck,
+  121 Vitest tests, build and 12 Playwright tests passed.
+- Owned local synthetic Windows fixtures (Python 3.14; target 3.13 still requires
+  Windows CI): queried SCM configuration, disabled/idempotent registration,
+  foreground lock rejection, actual LocalSystem token/DPAPI/strict TLS,
+  outage/replay, stop/start binding/checkpoints, auth suspension preservation,
+  one crash restart/no storm passed in targeted runs. Actual service → strict
+  HTTPS API → isolated PostgreSQL persisted heartbeat and inventory. A fresh
+  protected installed wheel outside checkout passed the operator CLI lifecycle
+  including repeated install/start/status/stop/uninstall; config/binding retained.
+- Immutable v2 follow-up: Linux Python 3.13/PostgreSQL 16 backend 620 passed /
+  58 skipped; deployment 54 passed; quality checks and migration round-trip passed.
+  Archive SHA256 `a55fc61ed01c22517fbd24f22458f7763386e45c5ce3b5d36ad61ff9e7a5f115`.
+  Windows collector/native regression 314 passed / 5 skipped. The subsequent
+  registered-custom-state CLI correction requires another final full regression.
+- Installed-wheel rollback to accepted Stage A package (public source
+  `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`) passed: service uninstall, previous
+  wheel restore, foreground heartbeat, unchanged config/binding/checkpoints.
+  Test-fixture dependency copying initially omitted pip's vendor directory; RED
+  corrected and actual operator lifecycle/rollback GREEN (1 passed, 54.35 s).
+- Extra optional Windows Python 3.14 all-backend run: 1 failed / 376 passed /
+  13 skipped. Existing read-validity test's two-second window expired over remote
+  PostgreSQL. Failure reproduced on Stage A source; API/test unchanged by B.
+  Required Linux target full regression passed; this extra run is not represented
+  as a success. No unrelated API change made to hide the timing failure.
+- Independent fresh-context whole-stage review: no verified Critical/Important
+  findings in all 13 files; reviewer ran 32 portable lifecycle tests and checked
+  diff whitespace. Reviewer did not execute native/production acceptance.
+- Final immutable v3 source archive: SHA256
+  `a7319f5978c6d24404a2e7b7b8605abdf7e33b47052ac9e0f69792f1455a1129`.
+  Python 3.13.16/PostgreSQL 16 full backend 622 passed / 58 skipped /
+  59 warnings (296.10 s); deployment 54 passed. Ruff, mypy (96 + 6), OpenAPI,
+  migration upgrade/check/downgrade/upgrade/check passed; Gitleaks 8.24.3 found
+  no leaks. Linux skips are native Windows checks, covered by Windows acceptance.
+  Final Windows collector/native regression completed successfully: 316 passed /
+  5 skipped, two dependency deprecation warnings. SKIP: POSIX ACL/symlink/owner
+  checks (4), unsupported-platform negative test on Windows (1). All new native
+  SCM checks executed. No owned fixture services remain after cleanup.
+- Publication candidate: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11),
+  branch `codex/issue8-stage-b-service` → `main`, implementation source
+  `00d66e179a6e0c73aff79c5d83e2b7ab78a67925`.
+  [Exact head CI 37700362175](https://github.com/BorisDruzak/storage-console/actions/runs/37700362175)
+  FAILED: backend/frontend/compose-smoke/production-smoke/secrets succeeded;
+  Windows protected-interpreter fixture rejected setup-python's root
+  `python3.exe` reparse alias. Sonar SKIPPED (external configuration absent).
+  Narrow fixture correction skips only unused root versioned aliases; actual
+  `python.exe`/all other reparse points remain rejected. Independent correction
+  review found no Important defect; final v4 regression and replacement head CI
+  still required. No live CI job was cancelled/restarted on an observer timeout.
+  Setup-python alias configuration reproduced in a new owned interpreter source
+  with both versioned symlinks: exact-artifact lifecycle/rollback GREEN
+  (1 passed, 60.90 s). Actual base interpreter and existing ACLs untouched.
+- Post-correction immutable v4 source archive SHA256:
+  `f773b689a9a075f66091ab1fd231c710acb19baa828d9d05d307deba15810c81`.
+  Full Linux Python 3.13.16/PostgreSQL 16 backend 622 passed / 58 skipped /
+  59 warnings (296.00 s); deployment 54 passed; Ruff/mypy/OpenAPI and migration
+  round-trip/check passed. Gitleaks 8.24.3 found no leaks. Complete Windows
+  collector/native follow-up: 316 passed / 5 skipped / 2 warnings (565.64 s).
+  SKIP reasons unchanged: four POSIX checks and one unsupported-platform test.
+  No owned fixture service registration remains. Code/tests/CI equal v4 frozen
+  bytes; only this evidence text was updated after regression.
+- Python 3.13-built candidate wheel `0.1.0`, source `00d66e179a6e0c73aff79c5d83e2b7ab78a67925`:
+  SHA256 `0b6b8c8d053199b52f61558f802e30d093ff79bb11ab709aeccb977990394485`.
+  All 98 Python modules equal committed source bytes. Rollback wheel from accepted
+  Stage A `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`: SHA256
+  `788790267ccf99fdf7ba0843c2219cc0a4d865cf629b929b673a39d439457857`.
+  These exact artifact files passed owned installed-wheel CLI lifecycle → uninstall
+  → previous wheel → foreground rollback (1 passed, 56.08 s), config/binding kept.
+  Artifacts are candidates until accepted source ancestry/exact-main CI verified;
+  neither artifact has been installed on FILESERVER.
+- No native reboot or FILESERVER live handover performed. Synthetic fixtures
+  create only their own private objects/registrations, not existing ACL changes.
+
+Operator checklist/rollback:
+[Windows Service](../pilot/windows-service-ru.md).
+Next: separate draft PR/exact SHA CI/merge CI → concrete operator approvals and
+live acceptance. Full frozen-source regression and independent review completed.
+Stage C remains unauthorized until GATE B PASS.
 
 ~~~text
-PR:
-Source SHA:
+PR: https://github.com/BorisDruzak/storage-console/pull/11 (draft before corrected-head CI)
+Source SHA: 00d66e179a6e0c73aff79c5d83e2b7ab78a67925 (runtime implementation)
 Merged SHA:
 Exact push CI:
 Installed wheel SHA/version:
