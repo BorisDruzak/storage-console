@@ -10,6 +10,14 @@ native SCM adapter and privileged CLI with separate foreground testing mode.
 **Tech Stack:** Python3.13, existing SQLite/Pydantic, Windows ctypes; no new dependencies.
 **Spec:** `docs/superpowers/specs/2026-10-04-windows-runtime.md`.
 
+## Checkpoint status — 2026-10-07
+
+Tasks 1 and 2 are committed. Task 3 has a foreground scheduler, bounded capacity
+waits and an isolated installed capture worker with owned-process termination.
+This is an implementation checkpoint; Task 3 acceptance remains in progress.
+Task 4 (SCM host, CLI, final review and release checks) has not started.
+Installed-service, reboot, live-pilot and performance acceptance remain open.
+
 ## Global constraints
 
 - Preserve retained bodies/digests/checkpoints and default general delivery behaviour.

@@ -54,6 +54,12 @@ def test_settings_reject_unsafe_or_ambiguous_bounds(settings):
         configuration.RuntimeSettings(**settings)
 
 
+def test_stop_budget_accounts_for_several_database_transactions():
+    with pytest.raises(ValidationError):
+        configuration.RuntimeSettings(busy_seconds=5, stop_seconds=30)
+    assert configuration.RuntimeSettings(busy_seconds=1).stop_seconds == 30
+
+
 @pytest.mark.skipif(os.name != "nt", reason="Native protected configuration")
 def test_activation_restart_revocation_and_explicit_new_version(tmp_path, authorities):
     collector = uuid4()

@@ -10,6 +10,16 @@ from collectors.windows import security
 pytestmark = pytest.mark.skipif(os.name != "nt", reason="Native Windows security")
 
 
+def test_capture_child_state_requires_a_live_parent_lock(tmp_path):
+    path = tmp_path / str(uuid4())
+    with security.ProtectedState(path, create=True):
+        with security.ProtectedState(path, _child=True) as child:
+            assert child.root == path
+    with pytest.raises(security.SecurityError, match="^STATE_INVALID$"):
+        with security.ProtectedState(path, _child=True):
+            pass
+
+
 def test_temporary_cleanup_failure_is_a_fixed_code(tmp_path, monkeypatch):
     original = Path.unlink
 

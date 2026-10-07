@@ -45,6 +45,9 @@ a finite burst, then gives eligible data a turn. Configuration defaults: heartbe
 outbox2048 batches/512MiB with32 heartbeat slots/64KiB reserved. Validated settings
 may tighten these limits; transport deadline must fit the stop grace with DB wait
 and child termination allowances. No overlapping scans or busy polling.
+The runtime SQLite busy deadline defaults to1s. Stop-budget validation includes
+eight possible DB waits across scheduling/delivery plus child reaping overhead;
+the general outbox default stays unchanged.
 
 Native capture runs in an owned subprocess so a blocked filesystem API cannot
 prevent bounded stop. Child stdin carries only capture configuration, no token;

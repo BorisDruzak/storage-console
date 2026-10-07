@@ -1,5 +1,7 @@
 """Bounded observations into the transactional outbox, without native cursor claims."""
 
+import math
+import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -32,6 +34,7 @@ def _outbox_failure(error: OutboxError) -> str:
         "CAPACITY": "CAPACITY",
         "CHECKPOINT_CONFLICT": "STATE_MISMATCH",
         "INVALID_BATCH": "METADATA_INVALID",
+        "STOPPED": "STOPPED",
     }.get(error.code, "NATIVE_FAILED")
 
 
@@ -93,10 +96,19 @@ def capture_inventory(
     max_records: int = 256,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     stopped: Callable[[], bool] = lambda: False,
+    capacity_wait_seconds: float = 0,
+    monotonic: Callable[[], float] = time.monotonic,
+    wait: Callable[[float], object] = time.sleep,
 ) -> CaptureReport:
     if not isinstance(scope, Scope):
         raise CaptureError("INVALID_SCOPE")
     if type(max_records) is not int or not 1 <= max_records <= 512:
+        raise CaptureError("METADATA_INVALID")
+    if (
+        type(capacity_wait_seconds) not in (int, float)
+        or not math.isfinite(capacity_wait_seconds)
+        or not 0 <= capacity_wait_seconds <= 30
+    ):
         raise CaptureError("METADATA_INVALID")
     source = iter(observations)
     errors: set[str] = set()
@@ -125,19 +137,30 @@ def capture_inventory(
         if not bucket:
             return
         batch = _inventory_batch(box, bucket, clock())
-        box.enqueue(
-            "inventory",
-            batch,
-            _INVENTORY,
-            revision,
-            {
-                "kind": _INVENTORY,
-                "scope": scope.fingerprint,
-                "scan_id": scan_id,
-                "sequence": batches + 1,
-                "completed": final,
-            },
-        )
+        deadline = monotonic() + capacity_wait_seconds
+        while True:
+            if stopped():
+                raise OutboxError("STOPPED")
+            try:
+                box.enqueue(
+                    "inventory",
+                    batch,
+                    _INVENTORY,
+                    revision,
+                    {
+                        "kind": _INVENTORY,
+                        "scope": scope.fingerprint,
+                        "scan_id": scan_id,
+                        "sequence": batches + 1,
+                        "completed": final,
+                    },
+                )
+                break
+            except OutboxError as error:
+                remaining = deadline - monotonic()
+                if error.code != "CAPACITY" or remaining <= 0:
+                    raise
+                wait(min(0.1, remaining))
         revision += 1
         persisted += len(bucket)
         batches += 1

@@ -30,13 +30,13 @@ class RuntimeSettings(BaseModel):
     retained_bytes: Annotated[int, Field(ge=1, le=8 * 1024**3)] = 512 * 1024**2
     reserve_batches: Annotated[int, Field(ge=1, le=10000)] = 32
     reserve_bytes: Annotated[int, Field(ge=1024, le=1024**2)] = 64 * 1024
-    busy_seconds: Annotated[int, Field(ge=1, le=10)] = 5
+    busy_seconds: Annotated[int, Field(ge=1, le=10)] = 1
     heartbeat_burst: Annotated[int, Field(ge=1, le=100)] = 4
 
     @model_validator(mode="after")
     def deadlines(self) -> Self:
         if (
-            self.transport_seconds + self.busy_seconds + self.child_stop_seconds + 1
+            self.transport_seconds + 8 * self.busy_seconds + self.child_stop_seconds + 4
             > self.stop_seconds
         ):
             raise ValueError("INVALID_SETTINGS")
