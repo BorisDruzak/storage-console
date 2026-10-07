@@ -180,6 +180,38 @@ Verification history and final frozen-source evidence:
   5 skipped, two dependency deprecation warnings. SKIP: POSIX ACL/symlink/owner
   checks (4), unsupported-platform negative test on Windows (1). All new native
   SCM checks executed. No owned fixture services remain after cleanup.
+- Publication candidate: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11),
+  branch `codex/issue8-stage-b-service` → `main`, implementation source
+  `00d66e179a6e0c73aff79c5d83e2b7ab78a67925`.
+  [Exact head CI 37700362175](https://github.com/BorisDruzak/storage-console/actions/runs/37700362175)
+  FAILED: backend/frontend/compose-smoke/production-smoke/secrets succeeded;
+  Windows protected-interpreter fixture rejected setup-python's root
+  `python3.exe` reparse alias. Sonar SKIPPED (external configuration absent).
+  Narrow fixture correction skips only unused root versioned aliases; actual
+  `python.exe`/all other reparse points remain rejected. Independent correction
+  review found no Important defect; final v4 regression and replacement head CI
+  still required. No live CI job was cancelled/restarted on an observer timeout.
+  Setup-python alias configuration reproduced in a new owned interpreter source
+  with both versioned symlinks: exact-artifact lifecycle/rollback GREEN
+  (1 passed, 60.90 s). Actual base interpreter and existing ACLs untouched.
+- Post-correction immutable v4 source archive SHA256:
+  `f773b689a9a075f66091ab1fd231c710acb19baa828d9d05d307deba15810c81`.
+  Full Linux Python 3.13.16/PostgreSQL 16 backend 622 passed / 58 skipped /
+  59 warnings (296.00 s); deployment 54 passed; Ruff/mypy/OpenAPI and migration
+  round-trip/check passed. Gitleaks 8.24.3 found no leaks. Complete Windows
+  collector/native follow-up: 316 passed / 5 skipped / 2 warnings (565.64 s).
+  SKIP reasons unchanged: four POSIX checks and one unsupported-platform test.
+  No owned fixture service registration remains. Code/tests/CI equal v4 frozen
+  bytes; only this evidence text was updated after regression.
+- Python 3.13-built candidate wheel `0.1.0`, source `00d66e179a6e0c73aff79c5d83e2b7ab78a67925`:
+  SHA256 `0b6b8c8d053199b52f61558f802e30d093ff79bb11ab709aeccb977990394485`.
+  All 98 Python modules equal committed source bytes. Rollback wheel from accepted
+  Stage A `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`: SHA256
+  `788790267ccf99fdf7ba0843c2219cc0a4d865cf629b929b673a39d439457857`.
+  These exact artifact files passed owned installed-wheel CLI lifecycle → uninstall
+  → previous wheel → foreground rollback (1 passed, 56.08 s), config/binding kept.
+  Artifacts are candidates until accepted source ancestry/exact-main CI verified;
+  neither artifact has been installed on FILESERVER.
 - No native reboot or FILESERVER live handover performed. Synthetic fixtures
   create only their own private objects/registrations, not existing ACL changes.
 
@@ -190,8 +222,8 @@ live acceptance. Full frozen-source regression and independent review completed.
 Stage C remains unauthorized until GATE B PASS.
 
 ~~~text
-PR:
-Source SHA:
+PR: https://github.com/BorisDruzak/storage-console/pull/11 (draft before corrected-head CI)
+Source SHA: 00d66e179a6e0c73aff79c5d83e2b7ab78a67925 (runtime implementation)
 Merged SHA:
 Exact push CI:
 Installed wheel SHA/version:

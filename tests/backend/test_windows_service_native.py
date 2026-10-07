@@ -279,6 +279,12 @@ def protected_installed_python(installed_python):
     root = Path(os.environ["ProgramFiles"]) / (SERVICE_NAME + "Test" + uuid4().hex)
     assert root.parent == Path(os.environ["ProgramFiles"]) and not root.exists()
     def copy(source, target, state, *, bare=False, wheel=False):
+        if bare and source.parent == Path(sys.base_prefix) and source.name in {
+            "python3.exe", f"python{sys.version_info.major}.{sys.version_info.minor}.exe",
+        }:
+            # setup-python provides reparse-point aliases; this standalone owned
+            # interpreter uses python.exe only. Never copy/dereference aliases.
+            return
         if source.name in {"__pycache__", "test", "tests"} or source.suffix == ".pth":
             return
         if bare and source.name == "site-packages":
