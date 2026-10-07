@@ -151,12 +151,21 @@ def _time(value: datetime) -> float:
 
 
 class Outbox:
-    def __init__(self, path: Path, collector_id: UUID, limits: Limits | None = None) -> None:
+    def __init__(
+        self, path: Path, collector_id: UUID, limits: Limits | None = None,
+        *, read_only: bool = False,
+    ) -> None:
         if not isinstance(collector_id, UUID):
             raise OutboxError("INVALID_BATCH")
         self.path = Path(os.path.abspath(path))
         self.collector_id = collector_id
         self.limits = limits if limits is not None else Limits()
+        self._read_only = read_only
+        if read_only:
+            # CLI status must not create, migrate, resume or decrypt local state.
+            with self._transaction() as db:
+                self._binding(db)
+            return
         self._prepare()
         with self._transaction(initializing=True) as db:
             version = db.execute("PRAGMA user_version").fetchone()[0]
@@ -247,7 +256,12 @@ class Outbox:
 
     def _connect(self) -> sqlite3.Connection:
         self._file()
-        db = sqlite3.connect(self.path, timeout=self.limits.busy_timeout_seconds, autocommit=True)
+        db = sqlite3.connect(
+            self.path.as_uri() + "?mode=ro" if self._read_only else self.path,
+            uri=self._read_only,
+            timeout=self.limits.busy_timeout_seconds,
+            autocommit=True,
+        )
         db.row_factory = sqlite3.Row
         return db
 
@@ -260,7 +274,7 @@ class Outbox:
             # Refuse WAL state instead of switching journal modes or deleting sidecars.
             if db.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
                 raise OutboxError("SCHEMA_UNSUPPORTED")
-            db.execute("BEGIN IMMEDIATE")
+            db.execute("BEGIN" if self._read_only else "BEGIN IMMEDIATE")
             if not initializing:
                 if (
                     db.execute("PRAGMA user_version").fetchone()[0] != 3

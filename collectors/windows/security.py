@@ -192,10 +192,13 @@ _SDDL = "O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
 class ProtectedState:
     """Pin ancestors against rename; hold an exclusive lock for the whole runtime."""
 
-    def __init__(self, root: Path, *, create: bool = False, _child: bool = False) -> None:
+    def __init__(
+        self, root: Path, *, create: bool = False, _child: bool = False, read_only: bool = False,
+    ) -> None:
         self._root = Path(root)
-        self._create = create
+        self._create = create and not read_only
         self._child = _child
+        self._read_only = read_only
         self._api = _api()
         self._handles: list[int] = []
         self._active = False
@@ -346,7 +349,7 @@ class ProtectedState:
             self._active = True
             lock = self._root / "runtime.lock"
             if not lock.exists():
-                if self._child:
+                if self._child or self._read_only:
                     raise SecurityError("STATE_INVALID")
                 self._write_new(lock, b"")
             self._validate_file(lock)

@@ -8,6 +8,9 @@ version = "0.1.0"
 requires-python = ">=3.13"
 dynamic = ["dependencies"]
 
+[project.scripts]
+storage-collector = "collectors.windows.cli:entrypoint"
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 

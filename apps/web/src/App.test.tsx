@@ -27,7 +27,7 @@ test('volume capacity follows the console language instead of browser defaults',
   const volume={id:'6a83a99d-247d-4e58-8c49-089c703ab42d',source_node_id:'6a83a99d-247d-4e58-8c49-089c703ab42e',unique_identity:'synthetic-volume',filesystem:'NTFS',label:'Отчёты',total_bytes:1234567,free_bytes:765432,first_seen_at:'2026-10-04T00:00:00Z',last_seen_at:'2026-10-04T00:00:00Z',mount_aliases:[],quality:'COMPLETE'};
   vi.stubGlobal('fetch',vi.fn((url:string)=>Promise.resolve(new ReadResponse(JSON.stringify(url==='/ready'?{status:'ok'}:url.includes('/overview')?emptyOverview:{...emptyPage,items:[volume],total:1})))));
   await show();
-  try {expect(await screen.findByText('1 234 567')).toBeInTheDocument();} finally {formatter.mockRestore();}
+  try {expect(await screen.findByText('1 234 567')).toBeInTheDocument();expect(await screen.findByText('NTFS')).toBeInTheDocument();} finally {formatter.mockRestore();}
 });
 
 test('Russian navigation and empty storage never indicate healthy', async () => {
