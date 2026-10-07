@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS на принятом runtime main SHA ниже. B/C ещё не начаты.**
+**GATE A PASS. Stage B начат после terminal CI финальной публикации A; C не начат.**
 
 ## Known baseline
 
@@ -53,8 +53,10 @@ Pending/quarantine: collector state was not reopened or changed by Stage A;
        no new live local queue-status claim; current central freshness verified.
 Installed collector package: unchanged; no package upgrade/re-enrollment.
 Known limits: Service/reboot and USN not implemented or accepted by Stage A.
-Next stage authorized: NO until final documentation publication CI is terminal
-       PASS; then YES. Source/runtime acceptance above is already proved.
+Documentation publication: PR #10 merged at ef78111c0d2e8f971cb16f7b64a40c3f7cffd716;
+       exact push CI https://github.com/BorisDruzak/storage-console/actions/runs/37688827452
+       terminal SUCCESS for all six jobs, Sonar SKIPPED.
+Next stage authorized: YES (B only; C still requires GATE B PASS).
 ~~~
 
 Stage A independent read-only source review: no Critical/Important findings.
@@ -107,12 +109,20 @@ Installed collector package/state and local pending/quarantine were not changed
 or independently reopened during Stage A. Live FILESERVER freshness and inventory
 were observed through the central API/browser. No FILESERVER SSH session, service
 lifecycle, reboot, ACL/SMB/audit-policy/USN configuration changes were performed.
-Stages B/C have not started. No approval request for FILESERVER reboot is made
+No Stage C work has started. No approval request for FILESERVER reboot is made
 before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
 GATE B: PENDING
+
+Baseline: `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`, exact main push CI
+`37688827452` terminal SUCCESS (six jobs, Sonar SKIPPED). Deployed central
+baseline remains `dda125d08f97fac78ccea466ec89fd0ad6f79776`, live accepted.
+Scope/negative tests/risks and ordered execution:
+[Stage B plan](../superpowers/plans/2026-10-08-windows-service-stage-b.md).
+Design/RED phase; no real FILESERVER service installation or reboot authorized
+or performed by this checkpoint.
 
 ~~~text
 PR:
