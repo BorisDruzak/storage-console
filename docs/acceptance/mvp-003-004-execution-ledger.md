@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**Stage A выполняется. Переход к B/C запрещён до PASS предыдущего gate.**
+**Stage A BLOCKED на обязательном exact-main CI. Переход к B/C запрещён.**
 
 ## Known baseline
 
@@ -16,7 +16,7 @@
 
 ## Stage A — main and operating MVP
 
-GATE A: PENDING — exact-main CI ещё не завершён.
+GATE A: BLOCKED — нет terminal PASS обязательного exact-main CI.
 
 ~~~text
 Source SHA: e65c04863a4311e478b0d08218603add412e94a8
@@ -39,7 +39,10 @@ Real Overview/capacity/inventory proof: fresh authenticated HTTPS API + native
        no page/console errors. Raw evidence remains private.
 Issue #5 state/evidence: OPEN; awaiting exact-main CI before reconciliation.
 Issue #6 state/evidence: OPEN; awaiting exact-main CI before reconciliation.
-Exceptions/Sonar: CI still IN_PROGRESS; no terminal Sonar claim.
+Exceptions/Sonar: backend/windows-pilot/compose-smoke/production-smoke/secrets
+       SUCCESS; frontend IN_PROGRESS at Chromium installation; E2E pending.
+       Sonar not terminal in this run; adjacent accepted main runs report
+       SKIPPED, never counted as PASS for the current run.
 Operator confirmation: previous live operator acceptance documented in
        docs/implementation-status.md; repeated central/browser observation
        on 2026-10-08 (Asia/Yekaterinburg), without FILESERVER changes.
@@ -66,6 +69,32 @@ commits through `e65c048…` only add delivery-train documentation. Fresh runtim
 inspection confirmed OCI image/container revision, all four healthy services,
 strict HTTPS/redirect, anonymous read rejection, Alembic check and inventory TTL.
 Update to exact main and post-deploy backup are pending terminal source CI.
+
+### Exact blocker and resumption
+
+At the checkpoint, main push run `37681158835` still reports frontend
+`IN_PROGRESS` on `npx playwright install --with-deps chromium`, without a
+terminal result. GitHub does not yet expose that running job's final log.
+Do not infer a download/network failure or weaken/skip the installation gate.
+Local Playwright PASS does not replace exact-main CI. Draft Stage A
+[PR #9](https://github.com/BorisDruzak/storage-console/pull/9) preserves evidence;
+its CI also must be accepted on its final head, not on an earlier revision.
+
+Required next action: obtain terminal results of main push run `37681158835`.
+If it fails, inspect its actual failure log, reproduce the cause and apply only
+a scoped RED→GREEN correction or justified rerun; preserve all six required jobs.
+If it succeeds, safely update central to accepted main after rechecking backup,
+verify exact deployed image/container revision, strict HTTPS/auth/migration and
+repeat live browser checks; create/verify post-deploy and external backup copies.
+Only then reconcile Issues #5/#6 with evidence, finish the Stage A PR and verify
+CI on its exact merged main SHA before marking GATE A PASS.
+
+Installed collector package/state and local pending/quarantine were not changed
+or independently reopened during Stage A. Live FILESERVER freshness and inventory
+were observed through the central API/browser. No FILESERVER SSH session, service
+lifecycle, reboot, ACL/SMB/audit-policy/USN configuration changes were performed.
+Stages B/C have not started. No approval request for FILESERVER reboot is made
+before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 

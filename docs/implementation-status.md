@@ -2,9 +2,11 @@
 
 ## Issue #8 — delivery train A → B → C
 
-Stage A повторно проверяет merged MVP и live central/browser evidence.
-Полный regression и независимый source review пройдены; exact-main push CI
-ещё выполняется. GATE A пока не PASS; Windows Service и USN не начаты.
+Stage A повторно проверил merged MVP и live central/browser evidence.
+Полный regression и независимый source review пройдены. GATE A BLOCKED:
+exact-main push CI ещё выполняется на установке Chromium во frontend job;
+terminal PASS отсутствует. Windows Service и USN не начаты. Central пока
+сохранён на ранее принятом runtime; Issues #5/#6 не закрыты без exact CI.
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
 Перезагрузка реального FILESERVER требует отдельного явного разрешения.
