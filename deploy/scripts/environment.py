@@ -19,6 +19,7 @@ DEFAULTS = {
     "HTTPS_PORT": "443",
     "SENTRY_DSN": "",
     "DIRECTORY_CA_FILE": "",
+    "INVENTORY_STALE_SECONDS": "7200",
 }
 REQUIRED = {
     "STORAGE_HOSTNAME",
@@ -64,6 +65,9 @@ def parse_environment(text: str) -> dict[str, str]:
     if REQUIRED - values.keys() or any(not values[key] for key in REQUIRED):
         raise ConfigError("Отсутствует обязательный параметр конфигурации")
     result = DEFAULTS | values
+    interval = result["INVENTORY_STALE_SECONDS"]
+    if not re.fullmatch(r"[0-9]{1,6}", interval) or not 1 <= int(interval) <= 604800:
+        raise ConfigError("Inventory interval должен быть в пределах1..604800 секунд")
     hostname = result["STORAGE_HOSTNAME"]
     if (
         len(hostname) > 253

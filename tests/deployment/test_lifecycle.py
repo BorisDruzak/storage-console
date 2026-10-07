@@ -36,6 +36,19 @@ def test_configuration_keeps_values_as_data_and_supplies_defaults():
     assert data["POSTGRES_PASSWORD"] == "b" * 64
 
 
+def test_inventory_policy_setting_is_supported_and_defaults_to_two_hours():
+    assert parse_environment(valid_text())["INVENTORY_STALE_SECONDS"] == "7200"
+    for seconds in (1, 7200, 604800):
+        data = parse_environment(valid_text() + f"\nINVENTORY_STALE_SECONDS={seconds}")
+        assert data["INVENTORY_STALE_SECONDS"] == str(seconds)
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "604801", "1.5", "", "arbitrary", "9" * 100])
+def test_inventory_policy_setting_rejects_invalid_intervals(value):
+    with pytest.raises(ConfigError):
+        parse_environment(valid_text() + "\nINVENTORY_STALE_SECONDS=" + value)
+
+
 @pytest.mark.parametrize(
     "extra",
     [
