@@ -68,6 +68,17 @@ jobs:
       - run: python -m pip install -r requirements.lock
       - name: Installed wheel and pilot CLI
         run: python -m pytest tests/backend/test_windows_cli.py tests/backend/test_windows_cli_native.py -q
+      - name: Disposable PostgreSQL for native service tests
+        run: python tests/deployment/prepare_windows_postgres.py
+      - name: Native SCM, LocalSystem, runtime and HTTPS ingest
+        run: >-
+          python -m pytest tests/backend/test_windows_service.py
+          tests/backend/test_windows_service_native.py
+          tests/backend/test_windows_runtime_native.py
+          tests/backend/test_windows_runtime_integration.py -q
+      - name: Stop disposable PostgreSQL
+        if: always()
+        run: python tests/deployment/prepare_windows_postgres.py --stop
 
   compose-smoke:
     runs-on: ubuntu-latest

@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: PENDING
+GATE B: BLOCKED — publication/exact-SHA CI and approved live handover/reboot pending
 
 Baseline: `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`, exact main push CI
 `37688827452` terminal SUCCESS (six jobs, Sonar SKIPPED). Deployed central
@@ -123,6 +123,71 @@ Scope/negative tests/risks and ordered execution:
 [Stage B plan](../superpowers/plans/2026-10-08-windows-service-stage-b.md).
 Design/RED phase; no real FILESERVER service installation or reboot authorized
 or performed by this checkpoint.
+
+Implementation verified before publication (not a gate verdict): native own-process SCM adapter,
+thin dispatcher over existing Runtime, lifecycle CLI and read-only privileged
+installation validation. LocalSystem/delayed start/one crash restart configured;
+existing state/binding/auth suspension preserved. No new runtime dependency.
+
+RED observed: service verbs rejected by old CLI; queued crash recovery falsely
+reported as operator stop; external `.pth` dependency skipped by installation
+checks; a nested venv's ancestor cache skipped the base interpreter; failed cleanup
+could wait on a non-daemon thread; BaseException leaked across a ctypes callback.
+Targeted corrections GREEN (32 lifecycle tests at this
+checkpoint). Failed registration uninstall has a separate deletion path.
+
+Verification history and final frozen-source evidence:
+- Linux immutable source archive v1: SHA256
+  `6b0b4055c6935f8e972381d7fca0303aa966bf5a156fc525eece401adb69ce2d`;
+  Python 3.13/PostgreSQL 16 backend 615 passed / 56 skipped, deployment 54 passed;
+  Ruff, mypy (96 + 6 source files), OpenAPI, migration upgrade/check/round-trip
+  passed. Later corrections require the final full regression.
+- Unchanged frontend tree: api:check, lint/i18n negative control, typecheck,
+  121 Vitest tests, build and 12 Playwright tests passed.
+- Owned local synthetic Windows fixtures (Python 3.14; target 3.13 still requires
+  Windows CI): queried SCM configuration, disabled/idempotent registration,
+  foreground lock rejection, actual LocalSystem token/DPAPI/strict TLS,
+  outage/replay, stop/start binding/checkpoints, auth suspension preservation,
+  one crash restart/no storm passed in targeted runs. Actual service → strict
+  HTTPS API → isolated PostgreSQL persisted heartbeat and inventory. A fresh
+  protected installed wheel outside checkout passed the operator CLI lifecycle
+  including repeated install/start/status/stop/uninstall; config/binding retained.
+- Immutable v2 follow-up: Linux Python 3.13/PostgreSQL 16 backend 620 passed /
+  58 skipped; deployment 54 passed; quality checks and migration round-trip passed.
+  Archive SHA256 `a55fc61ed01c22517fbd24f22458f7763386e45c5ce3b5d36ad61ff9e7a5f115`.
+  Windows collector/native regression 314 passed / 5 skipped. The subsequent
+  registered-custom-state CLI correction requires another final full regression.
+- Installed-wheel rollback to accepted Stage A package (public source
+  `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`) passed: service uninstall, previous
+  wheel restore, foreground heartbeat, unchanged config/binding/checkpoints.
+  Test-fixture dependency copying initially omitted pip's vendor directory; RED
+  corrected and actual operator lifecycle/rollback GREEN (1 passed, 54.35 s).
+- Extra optional Windows Python 3.14 all-backend run: 1 failed / 376 passed /
+  13 skipped. Existing read-validity test's two-second window expired over remote
+  PostgreSQL. Failure reproduced on Stage A source; API/test unchanged by B.
+  Required Linux target full regression passed; this extra run is not represented
+  as a success. No unrelated API change made to hide the timing failure.
+- Independent fresh-context whole-stage review: no verified Critical/Important
+  findings in all 13 files; reviewer ran 32 portable lifecycle tests and checked
+  diff whitespace. Reviewer did not execute native/production acceptance.
+- Final immutable v3 source archive: SHA256
+  `a7319f5978c6d24404a2e7b7b8605abdf7e33b47052ac9e0f69792f1455a1129`.
+  Python 3.13.16/PostgreSQL 16 full backend 622 passed / 58 skipped /
+  59 warnings (296.10 s); deployment 54 passed. Ruff, mypy (96 + 6), OpenAPI,
+  migration upgrade/check/downgrade/upgrade/check passed; Gitleaks 8.24.3 found
+  no leaks. Linux skips are native Windows checks, covered by Windows acceptance.
+  Final Windows collector/native regression completed successfully: 316 passed /
+  5 skipped, two dependency deprecation warnings. SKIP: POSIX ACL/symlink/owner
+  checks (4), unsupported-platform negative test on Windows (1). All new native
+  SCM checks executed. No owned fixture services remain after cleanup.
+- No native reboot or FILESERVER live handover performed. Synthetic fixtures
+  create only their own private objects/registrations, not existing ACL changes.
+
+Operator checklist/rollback:
+[Windows Service](../pilot/windows-service-ru.md).
+Next: separate draft PR/exact SHA CI/merge CI → concrete operator approvals and
+live acceptance. Full frozen-source regression and independent review completed.
+Stage C remains unauthorized until GATE B PASS.
 
 ~~~text
 PR:
