@@ -37,3 +37,12 @@ Wave 0B и Wave 0C могут частично выполняться парал
 - Wave 8 — read-only MCP/AI
 
 Не расширять Wave 0 задачами следующих волн без отдельного решения.
+
+## MVP checkpoint — выполнять сейчас
+
+Перед следующими Wave 1/2 задачами выполнить:
+
+1. `mvp-pilot-001-live-fileserver.md` — первый живой FILESERVER → API → PostgreSQL → Web Console.
+
+До его operator acceptance не переходить автоматически к Windows Service, USN, PVE/PBS, ACL, diagnostics или Discovery.
+
