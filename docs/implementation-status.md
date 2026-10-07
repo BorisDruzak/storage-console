@@ -2,11 +2,14 @@
 
 ## Issue #8 — delivery train A → B → C
 
-Stage A повторно проверил merged MVP и live central/browser evidence.
-Полный regression и независимый source review пройдены. GATE A BLOCKED:
-exact-main push CI ещё выполняется на установке Chromium во frontend job;
-terminal PASS отсутствует. Windows Service и USN не начаты. Central пока
-сохранён на ранее принятом runtime; Issues #5/#6 не закрыты без exact CI.
+GATE A PASS на runtime `dda125d08f97fac78ccea466ec89fd0ad6f79776` после
+merged PR #9 и [exact-main push CI](https://github.com/BorisDruzak/storage-console/actions/runs/37686825905):
+все шесть обязательных jobs PASS; Sonar SKIPPED. Полный regression и независимый
+source review пройдены. Central обновлён через runbook после проверенного backup;
+exact images/revision, TLS/auth/redirect, Alembic check, продолжение heartbeat,
+реальные inventory/capacity/UNKNOWN, desktop/mobile/reload/timezone проверены.
+Pre/post-deploy backup и внешние копии проверены; rollback сохранён.
+Issues #5/#6 закрыты с evidence. Windows Service и USN ещё не начаты.
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
 Перезагрузка реального FILESERVER требует отдельного явного разрешения.
