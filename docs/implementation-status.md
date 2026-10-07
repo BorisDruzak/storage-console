@@ -1,5 +1,14 @@
 # Статус реализации
 
+## Issue #8 — delivery train A → B → C
+
+Stage A повторно проверяет merged MVP и live central/browser evidence.
+Полный regression и независимый source review пройдены; exact-main push CI
+ещё выполняется. GATE A пока не PASS; Windows Service и USN не начаты.
+Актуальные SHA, результаты и незакрытые проверки:
+[execution ledger](acceptance/mvp-003-004-execution-ledger.md).
+Перезагрузка реального FILESERVER требует отдельного явного разрешения.
+
 ## MVP-PILOT-002 — inventory dashboard (Issue #6)
 
 Реализован отдельный central `inventory_stale_seconds` (default 7200, 1..604800):
