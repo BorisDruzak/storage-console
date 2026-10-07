@@ -12,7 +12,10 @@ Pre/post-deploy backup и внешние копии проверены; rollback
 Issues #5/#6 закрыты с evidence. Stage B / Windows Service реализован:
 native SCM wrapper, lifecycle CLI, LocalSystem и installed-wheel negative/native
 проверки; полный frozen-source regression и независимый review завершены.
-Publication/exact-SHA CI и live gates ещё не завершены; GATE B BLOCKED.
+PR #11 merged как `c28ef069236a67da2f03bbaa5637fa29e7b88002`; exact head/main CI:
+все шесть required jobs SUCCESS, Sonar SKIPPED. Точные release/rollback wheel
+проверены native operator lifecycle. GATE B BLOCKED: live handover и отдельное
+разрешение/окно реальной перезагрузки ещё не получены, live acceptance не выполнен.
 USN / Stage C не начат. Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:

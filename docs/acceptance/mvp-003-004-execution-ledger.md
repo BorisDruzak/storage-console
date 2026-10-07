@@ -114,7 +114,43 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: BLOCKED — publication/exact-SHA CI and approved live handover/reboot pending
+GATE B: BLOCKED — explicit live handover/reboot approval and acceptance pending
+
+Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
+merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
+[Corrected head CI 37702270249](https://github.com/BorisDruzak/storage-console/actions/runs/37702270249)
+on `60ad7a8a3980b726d47be57c42a4ddb3e8a9a08a` and
+[exact merged-main push CI 37702965026](https://github.com/BorisDruzak/storage-console/actions/runs/37702965026)
+on `c28ef069236a67da2f03bbaa5637fa29e7b88002`: all six required jobs SUCCESS;
+Sonar SKIPPED (external configuration absent). Main CI: backend 622 passed /
+58 skipped / 79 warnings (coverage run, 251.59 s), deployment 54 passed;
+frontend 121 Vitest + 12 Playwright; Windows Python 3.13 installed CLI14 and
+SCM/runtime/real HTTPS/PostgreSQL43 passed, no Windows-native skips.
+
+Release artifact built with Python 3.13 from this exact merged main:
+`storage_console-0.1.0-py3-none-any.whl`, 123630 bytes, SHA256
+`6cbdfffb64fb84fcbd9e7fc3b2a8969f37da50ba11bcbb8ad482d34bff86657a`.
+All 98 Python modules byte-equal committed main source. Source archive SHA256
+`57faf35ad15b01c8fb67b6a2ed8686781a42baa3ec18d379060de47b3493a952`.
+Rollback artifact from accepted Stage A `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`:
+113091 bytes, SHA256 `86caf133b2de1b7e6cb18a7f08943858c4d549bb0c656ef53c58432e9d8698f8`.
+These exact final files passed installed protected-wheel operator CLI lifecycle
+→ uninstall → previous wheel → foreground rollback, with setup-python alias
+configuration reproduced in an owned directory (1 passed, 61.03 s). Config,
+credential binding, identity and heartbeat continuity retained. Local native
+artifact probe used Python 3.14; target Python 3.13 additionally passed main CI.
+
+Neither final artifact is installed on FILESERVER. Current central runtime stays
+accepted Stage A `dda125d08f97fac78ccea466ec89fd0ad6f79776`; API/OpenAPI/schema
+unchanged by B, no central deployment needed. Real service handover, live pending/
+quarantine/freshness and no-login boot recovery are NOT VERIFIED. Operator must
+record/retain actual previous live wheel/interpreter before the approved handover.
+Read-only central recheck at the B code checkpoint: four existing services
+healthy, API APP_RELEASE and API/web image tags still the accepted Stage A SHA.
+Prepared sanitized operator bundle `issue8-stage-b-operator-c28ef06.zip`, SHA256
+`8a26b643ee03a1a8c83637b2b7dfa7b6688437b28f087c0f897e4d9f9901f26b`:
+final/rollback wheels, pinned requirements, manifest and Russian instructions;
+no production state/CA/credentials/data. No real FILESERVER action authorized.
 
 Baseline: `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`, exact main push CI
 `37688827452` terminal SUCCESS (six jobs, Sonar SKIPPED). Deployed central
@@ -124,7 +160,7 @@ Scope/negative tests/risks and ordered execution:
 Design/RED phase; no real FILESERVER service installation or reboot authorized
 or performed by this checkpoint.
 
-Implementation verified before publication (not a gate verdict): native own-process SCM adapter,
+Implementation merged/verified (not a live gate verdict): native own-process SCM adapter,
 thin dispatcher over existing Runtime, lifecycle CLI and read-only privileged
 installation validation. LocalSystem/delayed start/one crash restart configured;
 existing state/binding/auth suspension preserved. No new runtime dependency.
@@ -189,8 +225,9 @@ Verification history and final frozen-source evidence:
   `python3.exe` reparse alias. Sonar SKIPPED (external configuration absent).
   Narrow fixture correction skips only unused root versioned aliases; actual
   `python.exe`/all other reparse points remain rejected. Independent correction
-  review found no Important defect; final v4 regression and replacement head CI
-  still required. No live CI job was cancelled/restarted on an observer timeout.
+  review found no Important defect. The subsequently completed v4 regression and
+  corrected-head/main CI are recorded separately above. No live CI job was
+  cancelled/restarted on an observer timeout.
   Setup-python alias configuration reproduced in a new owned interpreter source
   with both versioned symlinks: exact-artifact lifecycle/rollback GREEN
   (1 passed, 60.90 s). Actual base interpreter and existing ACLs untouched.
@@ -217,33 +254,37 @@ Verification history and final frozen-source evidence:
 
 Operator checklist/rollback:
 [Windows Service](../pilot/windows-service-ru.md).
-Next: separate draft PR/exact SHA CI/merge CI → concrete operator approvals and
-live acceptance. Full frozen-source regression and independent review completed.
+Next: explicit operator handover approval, separate reboot permission/maintenance
+window and actual live acceptance. Full regression/review/head+main CI completed.
 Stage C remains unauthorized until GATE B PASS.
 
 ~~~text
-PR: https://github.com/BorisDruzak/storage-console/pull/11 (draft before corrected-head CI)
-Source SHA: 00d66e179a6e0c73aff79c5d83e2b7ab78a67925 (runtime implementation)
-Merged SHA:
-Exact push CI:
-Installed wheel SHA/version:
-Service name / start mode:
-Service identity + DPAPI validation:
-Install/stop/start/idempotency:
-Foreground handover:
-Network outage/backlog:
-Controlled real service trial:
-Real FILESERVER reboot approved:
-Real FILESERVER reboot acceptance:
-Rollback verified:
-Next stage authorized:
+PR: https://github.com/BorisDruzak/storage-console/pull/11 (MERGED)
+Source SHA: c28ef069236a67da2f03bbaa5637fa29e7b88002 (final artifact source)
+Implementation commits: 00d66e179a6e0c73aff79c5d83e2b7ab78a67925, 60ad7a8a3980b726d47be57c42a4ddb3e8a9a08a
+Merged SHA: c28ef069236a67da2f03bbaa5637fa29e7b88002
+Exact push CI: https://github.com/BorisDruzak/storage-console/actions/runs/37702965026 SUCCESS; Sonar SKIPPED
+Prepared wheel SHA/version: 6cbdfffb64fb84fcbd9e7fc3b2a8969f37da50ba11bcbb8ad482d34bff86657a / 0.1.0
+Installed FILESERVER wheel SHA/version: NOT INSTALLED by this task
+Service name / start mode: SosnadminStorageCollector / Automatic (Delayed), verified disposable
+Service identity + DPAPI validation: LocalSystem, actual native PASS disposable; live pending
+Install/stop/start/idempotency: PASS disposable installed wheel + SCM
+Foreground handover: PASS disposable; real FILESERVER NOT AUTHORIZED/NOT RUN
+Network outage/backlog: 503 replay + retained 401 suspension PASS disposable
+Pending/quarantine/freshness: disposable drain 0/0 + new heartbeat/inventory; live NOT VERIFIED
+Controlled real service trial: NOT AUTHORIZED/NOT RUN
+Real FILESERVER reboot approved: NO explicit approval/window received
+Real FILESERVER reboot acceptance: NOT RUN, no-login auto-start NOT VERIFIED
+Rollback verified: PASS exact final artifact files, existing config/binding preserved
+Deployed central SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776 (accepted Stage A)
+Next stage authorized: NO
 ~~~
 
 Do not mark PASS without explicitly approved real reboot acceptance.
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: PENDING
+GATE C: BLOCKED — GATE B PASS required; Stage C NOT STARTED
 
 ~~~text
 PR:
