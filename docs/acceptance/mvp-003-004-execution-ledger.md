@@ -929,3 +929,19 @@ Only native test evidence and final documentation differ from the deployed code.
 Source/compiled collector module bytes remain those of the accepted release.
 After GATE C: **STOP**. No attribution, SMB/VSS/ACL, PVE/PBS, Diagnostics,
 Discovery, remediation or fleet rollout was performed.
+
+Acceptance-follow-up CI first attempt
+[37768400795](https://github.com/BorisDruzak/storage-console/actions/runs/37768400795)
+FAILED in the pre-existing native runtime pressure test, before USN/privacy steps.
+It read queue-empty before reading inventory completion and later reread a changing
+queue; the assertion observed four pending batches after its earlier empty snapshot.
+The test now reads completion before queue status and asserts that same bounded
+post-completion empty snapshot; ongoing heartbeat producers do not promise a
+permanently empty queue. Pressure, lost ACK/one duplicate, PG effects, heartbeat,
+checkpoint and bounded shutdown assertions remain. Product code unchanged.
+This corrects a demonstrated observer ordering defect; no claim is made about the
+separate older partial-capture timeout whose root cause remains unestablished.
+Replacement actual native runtime + USN HTTPS/PostgreSQL regression: 2 passed,
+2 warnings, 126.58 seconds; Ruff PASS. Final independent test review reports no
+verified Critical/Important. Replacement exact-SHA CI must pass before this
+follow-up is merged or Issue #8 is closed.
