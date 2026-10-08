@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS. Live reboot B PASS; GATE B BLOCKED на final native CI; C не начат.**
+**GATE A PASS. GATE B PASS: final exact head/main CI и live service/reboot подтверждены. C: planning, gate pending.**
 
 ## Known baseline
 
@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: BLOCKED — live service/reboot PASS; native capture failure diagnosis and final CI required
+GATE B: PASS — exact head/main full CI, native and real service/reboot acceptance confirmed
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -470,6 +470,47 @@ disposable PostgreSQL integration: 1 passed, 2 dependency warnings (67.58 s).
 Full target Python 3.13 exact-head/main CI remain required, not substituted by
 the portable diagnostic regression or local Python 3.14.3 checks.
 
+### Final GATE B confirmation — 2026-10-08
+
+[PR #16](https://github.com/BorisDruzak/storage-console/pull/16) final diagnostic
+head `68557b21947c18185794579dd8974fc0e1345499`,
+[exact head CI 37742061754](https://github.com/BorisDruzak/storage-console/actions/runs/37742061754):
+terminal SUCCESS, all six required jobs. Target Python 3.13 native 43 passed /
+no skips (287.15 s), installed CLI 14 passed; backend 623 passed / 58 platform
+skips / 79 warnings, deployment 54 passed, frontend 121 / Playwright 12 passed.
+Sonar explicitly SKIPPED, not Quality Gate PASS.
+
+Merged as `8a1916d96aaca75287ff9b0865c9b5b98c8454ec`, tree equal to reviewed head.
+[Exact merged-main push CI 37742833424](https://github.com/BorisDruzak/storage-console/actions/runs/37742833424):
+terminal SUCCESS, all six required jobs; no failed/cancelled/timed-out steps.
+Target Python 3.13 native 43 passed / no skips (224.85 s), installed CLI 14 passed;
+backend 623 passed / 58 platform skips / 79 warnings, deployment 54 passed,
+frontend 121 / Playwright 12 passed; Sonar SKIPPED.
+
+Fresh live read-only verification at 12:21:45 (Asia/Yekaterinburg): automatically
+started SYSTEM service still RUNNING, no manual post-boot start. Heartbeat sequence
+1546, pending=0 / quarantine=0 / auth unsuspended. Identity/binding/config and all
+98 installed modules unchanged. Actual source HEALTHY with new heartbeat;
+one current volume quality COMPLETE, latest inventory 12:00:25, 10,146 objects.
+Thus complete/fresh inventory is confirmed independently of queue-zero evidence.
+Prior real delayed autostart/no human login, strict browser/TLS, policy-invariant
+and rollback proofs above remain applicable to the unchanged installed artifact.
+
+Independent final review: no Important findings; verified diagnostic-cap issue
+was corrected RED -> GREEN. Ordinary uninstrumented installed capture entrypoint
+is exercised by separate native checks; pressure test is explicitly instrumented.
+The historical partial-capture NATIVE_FAILED did not recur in either final run.
+Its underlying cause is still unestablished; neither diagnostics nor passing
+runs are claimed as a runtime fix or elimination of intermittence. Instrumentation
+can affect timing; acceptance does not guarantee complete capture under every
+load. If this symptom recurs or a real runtime defect is identified, reopen the
+gate for a bounded correction. No product/installed artifact change was made.
+
+GATE B now PASS for this bounded pilot; Stage C implementation is authorized.
+Live C must still use a dedicated folder inside approved scope. The user replied
+“создай сам” to the folder-path request, explicitly delegating its creation to
+Codex for the controlled scenario; no real department files are authorized targets.
+
 ### Operator-performed reboot acceptance — 2026-10-08
 
 The user stated “отправил в ребут проверяй”. The operator performed the reboot;
@@ -531,7 +572,10 @@ Real FILESERVER reboot approved: operator performed reboot; user requested verif
 Real FILESERVER reboot acceptance: PASS; auto-start/no human login, fresh heartbeat, queue 0/0
 Rollback verified: PASS exact final artifact files, existing config/binding preserved
 Deployed central SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776 (accepted Stage A)
-Next stage authorized: NO; final native failure diagnosis/exact head+main CI required
+Final acceptance head SHA: 68557b21947c18185794579dd8974fc0e1345499
+Final merged-main SHA: 8a1916d96aaca75287ff9b0865c9b5b98c8454ec
+Final exact push CI: https://github.com/BorisDruzak/storage-console/actions/runs/37742833424 SUCCESS; Sonar SKIPPED
+Next stage authorized: YES; bounded read-only USN/Activity C only
 ~~~
 
 B acceptance is limited to the reviewed code, installed artifact and actual pilot.
@@ -539,7 +583,13 @@ Measured delayed startup latency is an observation, not a guaranteed fixed timeo
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: BLOCKED — GATE B final native CI required; Stage C NOT STARTED
+GATE C: BLOCKED — implementation/native/CI/live acceptance pending; planning starts after B PASS
+
+Baseline main SHA: `8a1916d96aaca75287ff9b0865c9b5b98c8454ec`.
+Baseline exact-main CI: `37742833424`, all six required jobs SUCCESS, Sonar SKIPPED.
+Central remains accepted Stage A `dda125d08f97fac78ccea466ec89fd0ad6f79776`;
+FILESERVER remains accepted Stage B wheel `6cbdfffb64fb84fcbd9e7fc3b2a8969f37da50ba11bcbb8ad482d34bff86657a`.
+No C source/runtime deployment or journal configuration change has occurred.
 
 ~~~text
 PR:

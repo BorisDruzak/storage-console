@@ -57,7 +57,18 @@ merged-main `30ac6c69ac…` / CI `37739444011`: FAIL, native 42 passed / 1 faile
 Добавлена только test-only bounded диагностика installed worker (runpy/exception
 codes, без exception text/locals/paths); обычный entrypoint проверяют другие
 native tests. Это diagnostic execution, не fix; budgets и deadlines не меняются.
-GATE B BLOCKED, C NOT STARTED до диагностики/full exact head+main CI.
+Final [PR #16](https://github.com/BorisDruzak/storage-console/pull/16) head
+`68557b2194…` / CI `37742061754` и merged-main `8a1916d96a…` /
+[CI `37742833424`](https://github.com/BorisDruzak/storage-console/actions/runs/37742833424):
+оба terminal SUCCESS, все шесть required jobs. Native 43 passed без skips,
+CLI 14, backend 623 / 58 platform skips, frontend 121 / Playwright 12; Sonar SKIPPED.
+Live SYSTEM autostart/no-login/reboot PASS; повторно HEALTHY, COMPLETE inventory,
+10,146 objects, queue 0/0, config/binding/98 modules неизменны. Independent review
+без Important; diagnostic cap исправлен RED→GREEN. Исторический NATIVE_FAILED
+не повторился; причина не установлена и не объявлена исправленной. Instrumented
+pressure test может менять timing; обычный entrypoint проверяется отдельно.
+GATE B PASS для ограниченного pilot. C разрешён только в read-only USN/Activity
+scope; начинается planning, implementation/native/CI/live gate ещё не пройден.
 Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
