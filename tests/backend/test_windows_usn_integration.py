@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import uuid
 from dataclasses import replace
 
 import pytest
@@ -11,6 +12,7 @@ from collectors.common.transport import DeliveryOutcome
 from collectors.windows.capture_process import CaptureProcess
 from collectors.windows.configuration import RuntimeSettings, activate, load, set_usn_enabled
 from collectors.windows.inventory import Scope
+from collectors.windows.native import _Api
 from collectors.windows.runtime import Runtime
 from collectors.windows.security import ProtectedState
 from packages.shared.models.activity import change_events
@@ -26,6 +28,9 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
     client, engine, collector, token, source = authenticated_setup
     root = tmp_path / "approved"
     root.mkdir()
+    sibling = tmp_path / "outside-sibling"
+    sibling.mkdir()
+    outside_marker = "outside-" + uuid.uuid4().hex
     with serving_ingest(client.app, tmp_path / "tls") as (origin, ca):
         with ProtectedState(tmp_path / "state", create=True) as state:
             activate(state, collector, origin, Scope((str(root),)), token, ca.read_bytes(),
@@ -38,10 +43,12 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
 
                 def __init__(self):
                     self.bodies = {}
+                    self.all_bodies = []
                     self.lost = False
                     self.duplicate = False
 
                 def send(self, claim):
+                    self.all_bodies.append(claim.body)
                     if claim.domain == "changes":
                         assert self.bodies.setdefault(claim.batch_id, claim.body) == claim.body
                     outcome = loaded.transport.send(claim)
@@ -78,6 +85,14 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
             thread.start()
             try:
                 wait(lambda: any(e.kind == "usn" and e.code is None for e in runtime.events))
+                outside = sibling / (outside_marker + ".txt")
+                outside.write_text("synthetic-outside", encoding="utf-8")
+                native = _Api()
+                with native.opened(str(outside)) as handle:
+                    outside_file_id = native.metadata(handle).file_id
+                outside.write_text("modified-outside", encoding="utf-8")
+                outside = outside.rename(sibling / (outside_marker + "-renamed.txt"))
+                outside.unlink()
                 parent = root / "До"
                 parent.mkdir()
                 file = parent / "Отчёт.txt"
@@ -105,6 +120,17 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                     unique = connection.scalar(select(func.count(func.distinct(
                         change_events.c.source_event_id))))
                 assert total == unique and sender.lost and sender.duplicate
+                # Positive in-scope delivery above prevents a vacuous empty-stream pass.
+                # Inspect actual HTTPS request bytes and persisted/read-back rows.
+                assert sender.all_bodies
+                assert all(outside_marker.encode() not in body for body in sender.all_bodies)
+                assert all(outside_file_id.encode() not in body for body in sender.all_bodies)
+                assert outside_marker not in str(page)
+                assert all(row["file_id"] != outside_file_id for row in page["items"])
+                with engine.connect() as connection:
+                    persisted = connection.execute(select(change_events)).mappings().all()
+                assert persisted and outside_marker not in str(persisted)
+                assert all(row["file_id"] != outside_file_id for row in persisted)
                 assert any(e.kind == "inventory" and e.code is None for e in runtime.events)
                 assert any(e.kind == "heartbeat" for e in runtime.events)
                 assert loaded.config.settings.heartbeat_seconds == 30
