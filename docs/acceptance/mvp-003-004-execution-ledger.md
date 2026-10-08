@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS. Live reboot B PASS; GATE B BLOCKED на final native CI; C не начат.**
+**GATE A PASS. GATE B PASS: final exact head/main CI и live service/reboot подтверждены. C: implementation in progress, gate pending.**
 
 ## Known baseline
 
@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: BLOCKED — live service/reboot PASS; native capture failure diagnosis and final CI required
+GATE B: PASS — exact head/main full CI, native and real service/reboot acceptance confirmed
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -470,6 +470,47 @@ disposable PostgreSQL integration: 1 passed, 2 dependency warnings (67.58 s).
 Full target Python 3.13 exact-head/main CI remain required, not substituted by
 the portable diagnostic regression or local Python 3.14.3 checks.
 
+### Final GATE B confirmation — 2026-10-08
+
+[PR #16](https://github.com/BorisDruzak/storage-console/pull/16) final diagnostic
+head `68557b21947c18185794579dd8974fc0e1345499`,
+[exact head CI 37742061754](https://github.com/BorisDruzak/storage-console/actions/runs/37742061754):
+terminal SUCCESS, all six required jobs. Target Python 3.13 native 43 passed /
+no skips (287.15 s), installed CLI 14 passed; backend 623 passed / 58 platform
+skips / 79 warnings, deployment 54 passed, frontend 121 / Playwright 12 passed.
+Sonar explicitly SKIPPED, not Quality Gate PASS.
+
+Merged as `8a1916d96aaca75287ff9b0865c9b5b98c8454ec`, tree equal to reviewed head.
+[Exact merged-main push CI 37742833424](https://github.com/BorisDruzak/storage-console/actions/runs/37742833424):
+terminal SUCCESS, all six required jobs; no failed/cancelled/timed-out steps.
+Target Python 3.13 native 43 passed / no skips (224.85 s), installed CLI 14 passed;
+backend 623 passed / 58 platform skips / 79 warnings, deployment 54 passed,
+frontend 121 / Playwright 12 passed; Sonar SKIPPED.
+
+Fresh live read-only verification at 12:21:45 (Asia/Yekaterinburg): automatically
+started SYSTEM service still RUNNING, no manual post-boot start. Heartbeat sequence
+1546, pending=0 / quarantine=0 / auth unsuspended. Identity/binding/config and all
+98 installed modules unchanged. Actual source HEALTHY with new heartbeat;
+one current volume quality COMPLETE, latest inventory 12:00:25, 10,146 objects.
+Thus complete/fresh inventory is confirmed independently of queue-zero evidence.
+Prior real delayed autostart/no human login, strict browser/TLS, policy-invariant
+and rollback proofs above remain applicable to the unchanged installed artifact.
+
+Independent final review: no Important findings; verified diagnostic-cap issue
+was corrected RED -> GREEN. Ordinary uninstrumented installed capture entrypoint
+is exercised by separate native checks; pressure test is explicitly instrumented.
+The historical partial-capture NATIVE_FAILED did not recur in either final run.
+Its underlying cause is still unestablished; neither diagnostics nor passing
+runs are claimed as a runtime fix or elimination of intermittence. Instrumentation
+can affect timing; acceptance does not guarantee complete capture under every
+load. If this symptom recurs or a real runtime defect is identified, reopen the
+gate for a bounded correction. No product/installed artifact change was made.
+
+GATE B now PASS for this bounded pilot; Stage C implementation is authorized.
+Live C must still use a dedicated folder inside approved scope. The user replied
+“создай сам” to the folder-path request, explicitly delegating its creation to
+Codex for the controlled scenario; no real department files are authorized targets.
+
 ### Operator-performed reboot acceptance — 2026-10-08
 
 The user stated “отправил в ребут проверяй”. The operator performed the reboot;
@@ -531,7 +572,10 @@ Real FILESERVER reboot approved: operator performed reboot; user requested verif
 Real FILESERVER reboot acceptance: PASS; auto-start/no human login, fresh heartbeat, queue 0/0
 Rollback verified: PASS exact final artifact files, existing config/binding preserved
 Deployed central SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776 (accepted Stage A)
-Next stage authorized: NO; final native failure diagnosis/exact head+main CI required
+Final acceptance head SHA: 68557b21947c18185794579dd8974fc0e1345499
+Final merged-main SHA: 8a1916d96aaca75287ff9b0865c9b5b98c8454ec
+Final exact push CI: https://github.com/BorisDruzak/storage-console/actions/runs/37742833424 SUCCESS; Sonar SKIPPED
+Next stage authorized: YES; bounded read-only USN/Activity C only
 ~~~
 
 B acceptance is limited to the reviewed code, installed artifact and actual pilot.
@@ -539,7 +583,42 @@ Measured delayed startup latency is an observation, not a guaranteed fixed timeo
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: BLOCKED — GATE B final native CI required; Stage C NOT STARTED
+GATE C: BLOCKED — exact-SHA CI, immutable release and live acceptance pending
+
+Baseline main SHA: `8a1916d96aaca75287ff9b0865c9b5b98c8454ec`.
+Baseline exact-main CI: `37742833424`, all six required jobs SUCCESS, Sonar SKIPPED.
+Central remains accepted Stage A `dda125d08f97fac78ccea466ec89fd0ad6f79776`;
+FILESERVER remains accepted Stage B wheel `6cbdfffb64fb84fcbd9e7fc3b2a8969f37da50ba11bcbb8ad482d34bff86657a`.
+No C runtime deployment or journal configuration change has occurred.
+
+### Preparation and initial RED -> GREEN — 2026-10-08
+
+User delegated dedicated-folder creation with “создай сам”. A unique empty
+synthetic folder was created inside the existing approved monitored root after
+resolved-path/reparse checks; no existing files modified. Native read-only
+`fsutil usn queryjournal` of that volume succeeded. Raw root/folder/journal
+evidence stays private; no journal enable/resize/delete operation was issued.
+
+Plan: `docs/superpowers/plans/2026-10-08-usn-activity-stage-c.md`.
+Portable parser RED: required module absent; GREEN: 14 passed. Actual isolated
+Windows NTFS QUERY/READ/CRUD RED: native module absent; GREEN: 1 passed, no skip;
+CREATE/WRITE/RENAME_OLD/RENAME_NEW/DELETE correlate with inventory FileId.
+Journal ID/maximum size/allocation delta unchanged. Combined parser/native and
+existing native inventory: 32 passed, 2 dependency warnings (0.38 s).
+
+Atomic multi-checkpoint/cursor/batch transitions RED: four missing-interface
+failures; GREEN with existing Outbox/delivery/priority regressions: 82 passed,
+4 platform skips, 2 dependency warnings (3.20 s). Mixed-key validation separately
+RED: leaked TypeError before transaction; correction validates keys before sort;
+atomic-state GREEN: 5 passed, 2 dependency warnings (0.26 s).
+Scoped normalization initial RED: required module absent; GREEN: 6 passed.
+Partial-pair status/unpaired NEW/no invented rename regressions RED: 3 failed,
+5 passed; GREEN combined four new USN files: 28 passed, 2 dependency warnings
+(1.41 s), including real native CRUD. Ruff and Linux-target mypy of new modules
+PASS. Windows-target mypy also exposes pre-existing `os.geteuid` portability
+annotations in Outbox; the canonical target is checked separately.
+These are isolated implementation checks, not full regression, independent
+Stage C review, final exact-SHA CI or live/operator Activity acceptance.
 
 ~~~text
 PR:
@@ -562,6 +641,171 @@ Stop/development complete:
 ~~~
 
 ## Rules for updates
+
+### Stage C current development checkpoint (not Gate C acceptance)
+
+At this development checkpoint, product changes remained uncommitted on the Stage C branch based on
+`a756654bb0e868fd1f200e4d327e003097b3c6fd`; no Stage C PR, exact CI, deployed
+candidate or live CRUD acceptance exists yet. The delegated dedicated folder is
+created, but still has no controlled test files. Accepted B runtime remains installed.
+
+- Protected USN activation RED five failures -> GREEN with existing configuration:
+  19 passed. Default disabled; enable/disable survives restart without changing
+  config bytes or credential binding; invalid/duplicate-key/scope-mismatched sidecar
+  fails explicitly. CLI includes stopped-state enable/disable/rebaseline operations.
+- Independent runtime RED two missing-interface failures -> GREEN. Subsequent
+  inventory-stop exception review reproduced a skipped USN stop, then correction
+  ensured sibling cleanup and lock release. Configuration/CLI/runtime regression:
+  36 passed at that checkpoint, before the later progress-age additions.
+- Bootstrap review found enumeration/cursor ancestry race. Portable mutation test
+  RED -> fenced bootstrap GREEN, including native NTFS capture. No cache commits
+  when an approved object or parent changes during enumeration; outside-only volume
+  noise is read without persisting its names. Prior WRITE/move-in findings were
+  closed by independent component re-review.
+- Native QUERY/READ terminal errors initially cleared on the next successful query:
+  five PostgreSQL-independent failures reproduced this. They are now latched in
+  protected state; relevant bootstrap/error/native capture checks: eight passed.
+- Cache capacity and explicit rebaseline each had RED -> GREEN: seven atomic-state
+  checks passed. Capacity rolls back cursor/cache/batch together; heartbeat retains
+  independent checkpoints. Rebaseline keeps queued bytes/receipts and credentials.
+- Installed isolated `-I` USN worker built from current source: one actual Windows
+  native test passed in 10.54 seconds; scoped Cyrillic CRUD, durable cache reopen,
+  stable FileId and no logical reread duplication. Local interpreter is Python 3.14,
+  not substituted for the required Windows Python 3.13 CI gate.
+- Full frontend regression: 125 Vitest passed; API generation/check, TypeScript
+  build, ESLint and i18n gate passed. Activity now uses typed API, five-second polling,
+  preserved absolute evidence expiry, source/type filters, bounded paging, FileId,
+  USN provenance and explicit unknown continuity/path/actor/client/confidence.
+- Outbox/delivery/priority regression after cache bounds: 84 passed, four existing
+  platform skips. Ruff passed before subsequent test additions; mypy Linux-platform
+  check passed on 22 affected source files. Final whole-source checks remain required.
+- Whole-source review exposed partial RENAME ingest assertion. Actual PostgreSQL
+  RED reproduced it for a known object; proven-side-only alias update corrected it.
+  Activity/dedup/alias regression: 40 selected checks completed successfully, including
+  move-out/move-in before and after inventory hydration. Later freshness checks add
+  two more cases; full final regression is still pending.
+- Whole-source review exposed fresh heartbeat falsely retaining continuous USN after
+  a blocked worker. RED -> GREEN with independent progress age and bounded child
+  deadline. Backlog beyond eight raw transitions also reproduced false completion;
+  now returns USN_LAG. Combined bootstrap/native/runtime checks: 13 passed.
+- Actual PostgreSQL freshness RED showed a 35-second lifetime exceeding the USN proof
+  interval. New typed cursor carries an absolute progress timestamp; API proof age
+  and its evidence lifetime are bounded to 15 seconds. Fresh, aged and existing
+  projection/filter checks: three passed in 27.50 seconds.
+
+- Default 30-second heartbeat exceeded the 15-second proof lifetime: a targeted
+  runtime test reproduced the mismatch RED. USN activation now bounds publication
+  to five seconds without rewriting config; five runtime cases GREEN. Installed
+  native USN -> strict HTTPS -> PostgreSQL -> Activity with default settings,
+  byte-identical lost-ACK replay and logical dedup: one passed in 59.68 seconds.
+  Four five-second Activity polls stayed COMPLETE beyond one proof lifetime.
+- New Windows USN parser/native/cache/scope/bootstrap/activation/runtime/installed
+  worker checks: 56 passed, no skips, 17.17 seconds on local Python 3.14. Playwright
+  regression: 12 passed, 12.6 seconds; these use controlled API fixtures and do not
+  replace live browser acceptance. Adaptive oversized transitions passed 17
+  relevant checks without advancing beyond unconsumed records.
+- Immutable accepted B wheel reader/writer on owned state passed; C replay reopened
+  with unchanged pending bytes and credential binding. B deliberately rejects
+  partial C RENAME payloads. The runbook requires C delivery before package rollback
+  or preservation for C recovery; shared SQLite schema alone is not event compatibility.
+- Independent source/component review found no remaining verified Critical/Important
+  after cadence and partial-rename corrections. Full first target-version regression
+  failed seven legacy migration checks (682 passed, 66 skipped): they pinned 0005
+  before checking against new 0006 head. All original path/downgrade assertions remain;
+  updated migration suite passed nine checks. Corrected full regression is running.
+  Ruff, mypy 101 source plus six deployment modules, runtime OpenAPI check and 54
+  deployment checks passed. Public candidate Gitleaks scan reported no leaks.
+
+- Corrected canonical Python 3.13.16/PostgreSQL full regression: 689 passed,
+  66 Windows-only skipped, 59 warnings, 349.34 seconds. Migration upgrade/check,
+  downgrade to base, upgrade/check passed. Candidate archive SHA256:
+  `bc0af43ebe66e25db23d5acef4772936be5108b586a7191f0c267f7945a4567e`.
+  Existing local Windows CLI/native/inventory/runtime regression: 45 passed,
+  no skips, 344.10 seconds. Disposable source verification does not close live gates.
+
+Still pending: browser real-API acceptance; separate Stage C PR and exact-head/main CI;
+immutable artifacts/backups/deployment; controlled live folder scenario, measured
+latency, restart/network loss/replay, invariants and rollback. Gate C remains open.
+
+Final ancestry review before publication reproduced two additional path-integrity
+failures: a descendant renamed while its ancestor was outside retained its old
+name after re-entry; a pending WRITE used renamed ancestry under its earlier time.
+Both RED failures were corrected. Outside descendants become redacted tombstones
+without losing pending inside WRITE/OLD evidence. WRITE keeps its first parent and
+path digest; changed or unproven historical ancestry yields an unknown path.
+Restart/pending-pair/re-entry-descendant/cross-parent controls passed; independent
+review found no remaining verified Important. Latest combined native USN/runtime/
+installed-worker/HTTPS/PG/Activity checks: 62 passed, no skips, 77.37 seconds.
+The previous 689/692 full-pass snapshots predate these last corrections. Final
+frozen-source Python 3.13.16/PostgreSQL regression: 694 passed, 66 Windows-only
+skipped, 59 warnings, 342.83 seconds. Ruff, mypy 101+6, runtime OpenAPI, 54 deployment
+checks and complete migration upgrade/check/downgrade/upgrade/check passed.
+Final test archive SHA256:
+`41b9ca845fa4ab7c416c74e5538a32596e78560f1d934ce2e53fe62ffd131931`.
+Gitleaks on that public archive reported no leaks. Immutable B compatibility/C byte
+recovery was rerun successfully. These checks preceded the first live C attempt.
+
+### Stage C first live attempt — FAIL; correction in progress
+
+- Draft [PR #17](https://github.com/BorisDruzak/storage-console/pull/17), source
+  `b771db2659aa01b1896a8c99c4a46c39321df99b`,
+  [exact-head CI](https://github.com/BorisDruzak/storage-console/actions/runs/37759319009):
+  all six required jobs SUCCESS; Sonar SKIPPED. Not merged; no C exact-main acceptance.
+- Immutable wheel SHA256
+  `dfd179188b84f2691152f11af96b3fa3a0febcc8fb5beb4ec17dfe3d0da77ba1`:
+  139173 bytes; all 103 Python modules byte-equal source. Operator ZIP SHA256
+  `adf8e30da7c3810f0768509e5ee042f3a1b531a52c6084514c9f34244099a78d`.
+  Accepted B rollback wheel retained unchanged. Actual owned SYSTEM service with
+  strict HTTPS/PostgreSQL completed immutable C -> B -> C acceptance: one passed,
+  96.23 seconds; cursor, config, binding retained. This is isolated artifact proof.
+- Central was deployed to exact C source after verified database backup SHA256
+  `eac0fd51335ee3443b7a8fb5c51f96158d4402cfaf53feb28e84b63c4b02d868`.
+  API/worker/web/PostgreSQL healthy; revision checks, migration/check, strict TLS,
+  auth/redirect, inventory threshold 7200 seconds and post-backup verification PASS.
+- Real collector C installation verified all 103 modules and LocalSystem service.
+  Offline SQLite backup SHA256
+  `e1052fa31b0fcf7fff7559b69c3a07e44919b611e8557b4ab816875de0e7a699`.
+  Existing config/identity/binding preserved; no reboot or journal mutation.
+  User delegated creation of the dedicated disposable folder inside approved root.
+  USN baseline became COMPLETE / CONTINUOUS_SINCE_BASELINE; queue/quarantine 0/0.
+- Controlled live create/write/file rename/parent rename/delete generated stable
+  FileId and correct known paths, including DELETE after parent rename. However,
+  both renames also produced a redundant partial RENAME for CLOSE|NEW (0x80002000)
+  after the complete OLD/NEW pair (0x00003000). GATE C FAIL; no latency/UI PASS claimed.
+  Existing synthetic checks had checked event-ID dedup but missed this semantic
+  duplication. Native installed-worker assertion now requires exactly one RENAME.
+- Independent review confirmed the blocker. Two focused tests reproduced RED;
+  correction persists proof of emitted NEW within the current reason cycle,
+  suppresses matching parent/name accumulated NEW summaries without pending OLD,
+  and clears proof after CLOSE. Markerless orphan NEW, subsequent real rename,
+  restart/buffer boundaries and DATA on CLOSE remain observable. See Microsoft
+  [USN_RECORD_V2 reason semantics](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/d2a2b53e-bf78-4ef3-90c7-21b918fab304).
+  First correction focused scope/installed native worker GREEN: 22 passed.
+  Independent review then reproduced repeated NEW|DATA before CLOSE; matching
+  NEW is now suppressed throughout the proven open reason cycle while DATA still
+  accumulates. Any destination cache change invalidates proof. The earlier
+  CLOSE-only snapshot passed 698 backend checks and 66 native checks, but these
+  results do not verify the final reason-accumulation correction. Full corrected regression,
+  independent review, updated exact-SHA CI/artifact and fresh live acceptance pending.
+- Browser verification helper used UI aliases instead of raw API relative-path
+  fields; its failed attempt is not acceptance evidence. Correct the helper and
+  measure a fresh creation in an actual polling UI after the product correction.
+- After draining C events, actual live service rollback to unchanged accepted B
+  succeeded without re-enrollment/config/binding changes. Central C ingest stays
+  available for already-delivered C events. Existing historical test events are
+  retained; future corrected acceptance must use a fresh bounded time window.
+  Cleanup, network replay, restart, final invariants and Gate C remain open.
+
+Final corrected reason-cycle source verification (not live acceptance):
+Python 3.13.16/PostgreSQL full regression 700 passed, 66 Windows-only skipped,
+59 warnings, 336.88 seconds. Ruff, mypy 101 source + six deployment modules,
+runtime OpenAPI, 54 deployment checks and upgrade/check/downgrade/upgrade/check
+PASS. Snapshot SHA256:
+`33e828337cbab14ead73f455623122b4280c693d3de6c72bf41c4d5765eed558`.
+Actual local Windows USN/installed worker/HTTPS/PostgreSQL/Activity regression:
+68 passed, no skips, 77.86 seconds. Independent review of the final correction
+reported no remaining verified Critical/Important. Updated exact-head/main CI,
+immutable artifact and fresh controlled live acceptance are still pending.
 
 - Change only own gate after verifying relevant evidence.
 - Describe failures as FAIL or BLOCKED, never ambiguous success.

@@ -4,7 +4,7 @@ import validators from './validators.generated.mjs';
 import { recordEvidence } from './evidence';
 
 type Models = components['schemas'];
-type ResponseName = 'Overview' | 'Domains' | 'Source' | 'Freshness' | 'Page_Source_' | 'Page_Volume_' | 'Page_Share_';
+type ResponseName = 'Overview' | 'Domains' | 'Source' | 'Freshness' | 'Page_Source_' | 'Page_Volume_' | 'Page_Share_' | 'Activity';
 export type Overview = Models['Overview'];
 export type Source = Models['Source'];
 export type Volume = Models['Volume'];
@@ -12,6 +12,9 @@ export type Share = Models['Share'];
 export type HealthState = Models['Freshness']['state'];
 export interface PageOptions { limit?: number; offset?: number }
 export interface StoragePageOptions extends PageOptions { source_id?: string }
+export interface ActivityOptions extends StoragePageOptions {
+  event_type?: Models['ActivityItem']['event_type']; start_at?: string; end_at?: string;
+}
 export type ErrorCode = 'INVALID_REQUEST' | 'INVALID_RESPONSE' | 'API_UNAVAILABLE' | 'NOT_FOUND' | 'AUTH_REQUIRED' | 'CANCELLED' | 'TIMEOUT';
 
 export class ApiError extends Error {
@@ -73,6 +76,18 @@ function page(options: StoragePageOptions, sourceFilter: boolean): string {
 }
 
 export const api = {
+  activity: async (options: ActivityOptions = {}, signal?: AbortSignal) => {
+    if ((options.offset ?? 0)>10000) throw new ApiError('INVALID_REQUEST');
+    const parameters=new URLSearchParams(page(options,true).slice(1));
+    if(options.event_type) {
+      if(!['CREATE','WRITE','RENAME','DELETE','METADATA_CHANGE','SECURITY_CHANGE'].includes(options.event_type)) throw new ApiError('INVALID_REQUEST');
+      parameters.set('event_type',options.event_type);
+    }
+    for(const key of ['start_at','end_at'] as const) {
+      if(options[key]) parameters.set(key,options[key]);
+    }
+    return get('/activity?'+parameters,'Activity',signal);
+  },
   overview: (signal?: AbortSignal) => get('/overview', 'Overview', signal),
   domains: (signal?: AbortSignal) => get('/health/domains', 'Domains', signal),
   sources: async (options: PageOptions = {}, signal?: AbortSignal) => get('/sources' + page(options, false), 'Page_Source_', signal),

@@ -97,3 +97,58 @@ Sonar SKIPPED остаётся внешним gate. Downgrade после нов�
 
 Windows Service/state DACL, USN continuity, SMB/DFS/FSRM/VSS/ACL/telemetry,
 500k-object performance и live pilot остаются отдельными обязательными этапами.
+
+## Stage C: read-only USN activation and rebaseline
+
+Implementation and acceptance are tracked in
+[Issue #8 ledger](../../docs/acceptance/mvp-003-004-execution-ledger.md).
+The following operator commands belong to the Stage C candidate; Gate C is not
+accepted until the ledger records exact CI and controlled live acceptance.
+
+- Stop the collector service through its existing lifecycle and confirm STOPPED.
+  Back up its protected state using the existing offline backup procedure.
+- Run `storage-collector usn-enable --state <protected-state>` and start the service.
+  A protected, scope-bound sidecar enables the feature without changing enrollment
+  credentials or the existing config. An absent sidecar keeps the accepted B mode.
+- Initial ancestry enumeration is fenced with QUERY/READ of the already-existing
+  journal. If a monitored object/parent changes during enumeration, no initial
+  cache is committed: coverage stays UNKNOWN and a subsequent bounded pass retries.
+- Successful passes prove coverage through their initial queried target, not
+  complete historical coverage. Eight transitions of at most 256 raw records bound
+  each pass; remaining backlog is USN_LAG. Polling runs every two seconds.
+  Heartbeat/inventory/delivery remain independent. When USN is enabled, heartbeat
+  publication is bounded to five seconds without rewriting the configured interval;
+  disabling USN restores the configured cadence. A proof ages after 15 seconds;
+  Activity cannot retain COMPLETE beyond that proof's absolute expiry. A stalled
+  established worker is stopped after 30 seconds; initial bootstrap has 600 seconds.
+- Gap, malformed/unsupported read, access denial or volume loss after an established
+  baseline remains latched UNKNOWN. After investigating, explicitly stop the
+  service and back up state, then run `storage-collector usn-rebaseline --state
+  <protected-state>`. This clears only the collector's USN checkpoints, keeps
+  queued event bytes/receipts/credentials, and starts a new observation window on
+  restart. Missing history is not recovered. It does not change OS journal settings.
+- For rollback, stop the service, run `storage-collector usn-disable --state
+  <protected-state>`, retain the state backup and restore the accepted B package
+  through its existing runbook. The sidecar and checkpoint additions do not modify
+  the old config or SQLite table schema. Pending C changes with `path_quality` or
+  a missing RENAME side are incompatible with the B contract: preserve their exact
+  bytes in the C state backup and drain them through the C ingestion contract before
+  switching delivery to B. A restored older state starts an explicitly incomplete
+  observation window; it must not silently discard pending C events. A central
+  rollback additionally requires a compatible database snapshot or retained C
+  ingestion/read support. Index downgrade alone does not provide that compatibility.
+  Actual package rollback acceptance is still required before Gate C PASS.
+
+Activity polls every five seconds, uses source/type filters and bounded pages,
+retains nullable unknown paths, and shows NTFS USN provenance. It never infers
+actor/client/confidence from journal records. Total protected USN cache is capped
+at 250,000 checkpoint entries and 256 MiB encoded data across volumes; individual
+scope state also limits object count. Capacity rejects the complete transition
+without advancing its cursor or consuming heartbeat reserve. No journal create,
+resize/delete operation, content capture, audit/ACL/SMB mutation or reboot is used.
+
+Pending WRITE retains its first data-record time and parent FileId. If ancestry
+changes before CLOSE and its historical path cannot be proven, the event carries
+an explicitly unknown path. Outside activity redacts cached descendants without
+discarding pending in-scope WRITE or RENAME evidence; paired re-entry restores only
+proven ancestry. Outside names are neither cached nor included in event payloads.

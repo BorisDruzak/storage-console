@@ -1,10 +1,11 @@
-"""Independent heartbeat, one capture child and one bounded delivery thread."""
+"""Independent heartbeat, bounded inventory/USN children and delivery thread."""
 
 import threading
 import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol
 
 from collectors.common.delivery import Delivery
@@ -36,11 +37,17 @@ class Runtime:
         loaded: Loaded,
         *,
         capture_factory: Callable[[], Capture] | None = None,
+        usn_factory: Callable[[], Capture] | None = None,
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self._loaded = loaded
         self._settings = loaded.config.settings
+        self._heartbeat_seconds = (
+            min(self._settings.heartbeat_seconds, 5)
+            if loaded.usn_enabled else self._settings.heartbeat_seconds
+        )
         self._capture_factory = capture_factory
+        self._usn_factory = usn_factory
         self._monotonic = monotonic
         self._events: deque[RuntimeEvent] = deque(maxlen=64)
         self._event_lock = threading.Lock()
@@ -73,6 +80,7 @@ class Runtime:
         if not self._run_lock.acquire(blocking=False):
             raise SecurityError("STATE_BUSY")
         capture: Capture | None = None
+        usn: Capture | None = None
         failure = threading.Event()
         thread: threading.Thread | None = None
 
@@ -90,11 +98,36 @@ class Runtime:
 
         try:
             next_heartbeat = next_inventory = self._monotonic()
+            next_usn = next_heartbeat
+            usn_started = next_usn
+            last_usn: float | None = None
+            usn_proof: int | None = None
             error: str | None = None
+            usn_error: str | None = "USN_BOOTSTRAP" if self._loaded.usn_enabled else None
             thread = threading.Thread(target=deliver, name="collector-delivery", daemon=False)
             thread.start()
             while not stop.is_set() and not failure.is_set():
                 now = self._monotonic()
+                if usn is not None:
+                    report = usn.poll()
+                    if report is not None:
+                        usn = None
+                        usn_error = (None if report.completed and not report.errors else
+                                     report.errors[0] if report.errors and report.errors[0] in CODES
+                                     else "USN_UNAVAILABLE")
+                        if usn_error is None:
+                            # A slow pass cannot make an old journal target look
+                            # freshly observed merely because it finally exits.
+                            last_usn = usn_started
+                            usn_proof = int((datetime.now(UTC).timestamp()-(now-last_usn))*1000)
+                        self._record(RuntimeEvent("usn", usn_error, report.records, report.batches))
+                        next_usn = now + 2
+                    elif now-usn_started >= (600 if last_usn is None else 30):
+                        report = usn.stop(self._settings.child_stop_seconds)
+                        usn = None
+                        usn_error = "USN_STALE"
+                        self._record(RuntimeEvent("usn", usn_error, report.records, report.batches))
+                        next_usn = now + 2
                 if capture is not None:
                     report = capture.poll()
                     if report is not None:
@@ -113,15 +146,25 @@ class Runtime:
                         )
                         next_inventory = now + self._settings.inventory_seconds
                 if now >= next_heartbeat:
-                    uncertain = error
+                    progress_stale = last_usn is not None and now-last_usn >= 15
+                    uncertain = usn_error or ("USN_STALE" if progress_stale else None) or error
                     if self._loaded.outbox.status().quarantined_count:
                         uncertain = uncertain or "STATE_MISMATCH"
                     try:
-                        capture_heartbeat(self._loaded.outbox, error_code=uncertain)
+                        cursor = None
+                        if self._loaded.usn_enabled:
+                            continuity = (
+                                "gap" if usn_error == "CONTINUITY_GAP" else
+                                "unknown" if usn_error or progress_stale else "continuous"
+                            )
+                            cursor = ("ntfs-usn:" + continuity + ":"
+                                      + str(usn_proof or 0) + ":"
+                                      + self._loaded.config.scope.fingerprint)
+                        capture_heartbeat(self._loaded.outbox, error_code=uncertain, cursor=cursor)
                         self._record(RuntimeEvent("heartbeat", uncertain))
                     except CaptureError as caught:
                         self._record(RuntimeEvent("heartbeat", caught.code))
-                    next_heartbeat = self._monotonic() + self._settings.heartbeat_seconds
+                    next_heartbeat = self._monotonic() + self._heartbeat_seconds
                 if capture is None and now >= next_inventory:
                     try:
                         capture = self._start_capture()
@@ -129,6 +172,19 @@ class Runtime:
                         error = "NATIVE_FAILED"
                         self._record(RuntimeEvent("inventory", error))
                         next_inventory = now + self._settings.inventory_seconds
+                if self._loaded.usn_enabled and usn is None and now >= next_usn:
+                    try:
+                        if self._usn_factory is not None:
+                            usn = self._usn_factory()
+                        else:
+                            from .capture_process import CaptureProcess
+
+                            usn = CaptureProcess(self._loaded, mode="usn")
+                        usn_started = self._monotonic()
+                    except Exception:
+                        usn_error = "USN_UNAVAILABLE"
+                        self._record(RuntimeEvent("usn", usn_error))
+                        next_usn = now + 2
                 stop.wait(self._settings.poll_seconds)
         except (OutboxError, CaptureError):
             raise SecurityError("STATE_INVALID") from None
@@ -137,11 +193,17 @@ class Runtime:
             stop.set()
             self._delivery.close()
             try:
-                if capture is not None:
-                    report = capture.stop(self._settings.child_stop_seconds)
-                    self._record(
-                        RuntimeEvent("inventory", "STOPPED", report.records, report.batches)
-                    )
+                try:
+                    if capture is not None:
+                        report = capture.stop(self._settings.child_stop_seconds)
+                        self._record(
+                            RuntimeEvent("inventory", "STOPPED", report.records, report.batches)
+                        )
+                finally:
+                    if usn is not None:
+                        report = usn.stop(max(0, min(self._settings.child_stop_seconds,
+                                                   deadline - self._monotonic())))
+                        self._record(RuntimeEvent("usn", "STOPPED", report.records, report.batches))
             finally:
                 try:
                     if thread is not None:

@@ -17,9 +17,23 @@ const event: ActivityEvent = {id:'event-1',source_id:'synthetic-source',object_i
 const workload: RecoveryWorkload = {id:'synthetic-workload',name:'synthetic-workload',platform_state:'HEALTHY',protection:'UNPROTECTED',steps:{}};
 
 test('domain providers are explicitly unavailable without synthetic production evidence', async () => {
-  await show(<ActivityPage />);
+  await show(<RecoveryPage />);
   expect(await screen.findByText('Для этого раздела ещё нет данных источников')).toBeInTheDocument();
   expect(screen.queryByText('Исправно')).not.toBeInTheDocument();
+});
+
+test('Activity labels USN provenance, unknown continuity and actor without invented attribution', async () => {
+  await show(<ActivityPage load={async()=>({availability:'available',quality:'STALE',
+    evaluated_at:'2026-10-08T04:01:00Z',
+    activity:{continuity:'GAP',total:1,limit:50,offset:0},
+    items:[{...event,actor:null,client:null,confidence:null,provenance:'NTFS_USN',
+      path_quality:'UNAVAILABLE',file_id:'synthetic-file-id'}]})}/>);
+  expect(await screen.findByText('Непрерывность не подтверждена: обнаружен разрыв журнала')).toBeInTheDocument();
+  expect(screen.getByText('Журнал NTFS USN')).toBeInTheDocument();
+  expect(screen.getByText('synthetic-file-id')).toBeInTheDocument();
+  expect(screen.getByText('Часть пути не определена')).toBeInTheDocument();
+  expect(screen.queryByText('Тестовый пользователь')).not.toBeInTheDocument();
+  expect(screen.queryByText('80 %')).not.toBeInTheDocument();
 });
 test('storm groups equivalent events without merging actors, paths or minute boundaries', () => {
   const events = [event, {...event,id:'event-2',occurred_at:'2026-10-04T00:00:02Z'},event,

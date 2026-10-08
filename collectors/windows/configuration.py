@@ -2,8 +2,9 @@
 
 import base64
 import json
+import os
 from dataclasses import dataclass
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -81,6 +82,40 @@ class Loaded:
     config: PrivateConfig
     outbox: Outbox
     transport: Transport
+    usn_enabled: bool = False
+
+
+class _UsnActivation(BaseModel):
+    model_config = ConfigDict(strict=True, frozen=True, extra="forbid")
+    version: Literal[1]
+    scope: str = Field(pattern="^[0-9a-f]{64}$")
+    enabled: bool
+
+
+def _usn_enabled(state: ProtectedState, config: PrivateConfig) -> bool:
+    if not os.path.lexists(state.root / "usn-activation.json"):
+        return False
+    try:
+        raw = state.read("usn-activation.json", 4096)
+        json.loads(raw, object_pairs_hook=_unique)
+        activation = _UsnActivation.model_validate_json(raw)
+        if activation.scope != config.scope.fingerprint:
+            raise ValueError
+        return activation.enabled
+    except (ValueError, TypeError, UnicodeError):
+        raise SecurityError("CONFIG_INVALID") from None
+
+
+def set_usn_enabled(state: ProtectedState, enabled: bool) -> None:
+    """Explicit activation under the exclusive ProtectedState operator lock."""
+    config = _read(state)
+    if _outbox(state, config).credential_binding() != config.credential_version:
+        raise SecurityError("CREDENTIAL_MISMATCH")
+    try:
+        activation = _UsnActivation(version=1, scope=config.scope.fingerprint, enabled=enabled)
+        state.write("usn-activation.json", activation.model_dump_json().encode())
+    except (ValueError, TypeError):
+        raise SecurityError("CONFIG_INVALID") from None
 
 
 def _unique(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -123,6 +158,7 @@ def _outbox(state: ProtectedState, config: PrivateConfig) -> Outbox:
 
 def load(state: ProtectedState) -> Loaded:
     config = _read(state)
+    usn_enabled = _usn_enabled(state, config)
     box = _outbox(state, config)
     if box.credential_binding() != config.credential_version:
         raise SecurityError("CREDENTIAL_MISMATCH")
@@ -139,7 +175,7 @@ def load(state: ProtectedState) -> Loaded:
         )
     except (ValueError, UnicodeError, TransportError):
         raise SecurityError("CONFIG_INVALID") from None
-    return Loaded(config, box, transport)
+    return Loaded(config, box, transport, usn_enabled)
 
 
 def activate(

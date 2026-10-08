@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, Field
 
+from .changes import EventType
 from .common import Contract, HealthState, NonNegative, Quality
 
 DOMAINS = (
@@ -49,6 +50,34 @@ class Page[T: Contract](Contract):
     total: NonNegative
     limit: int
     offset: int
+
+
+class ActivityItem(Contract):
+    id: UUID
+    source_id: UUID
+    object_id: UUID | None
+    volume_identity: str
+    file_id: str | None
+    parent_file_id: str | None
+    occurred_at: AwareDatetime
+    event_type: EventType
+    old_relative_path: str | None
+    new_relative_path: str | None
+    reason_mask: str | None
+    source_event_id: str | None
+    provenance: Literal["NTFS_USN", "UNKNOWN"]
+    path_quality: Literal["COMPLETE", "UNAVAILABLE"]
+    actor: None = None
+    client: None = None
+    confidence: None = None
+
+
+class Activity(Page[ActivityItem]):
+    evaluated_at: AwareDatetime
+    quality: Quality
+    continuity: Literal["CONTINUOUS_SINCE_BASELINE", "GAP", "UNKNOWN"]
+    window_start_at: AwareDatetime
+    window_end_at: AwareDatetime
 
 
 class DomainHealth(Contract):

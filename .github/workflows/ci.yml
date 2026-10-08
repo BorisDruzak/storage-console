@@ -76,6 +76,15 @@ jobs:
           tests/backend/test_windows_service_native.py
           tests/backend/test_windows_runtime_native.py
           tests/backend/test_windows_runtime_integration.py -q
+      - name: Read-only USN, atomic scope cache, activation and installed worker
+        run: >-
+          python -m pytest tests/backend/test_windows_usn.py
+          tests/backend/test_windows_usn_native.py tests/backend/test_windows_usn_state.py
+          tests/backend/test_windows_usn_scope.py tests/backend/test_windows_usn_capture.py
+          tests/backend/test_windows_usn_bootstrap.py tests/backend/test_windows_usn_activation.py
+          tests/backend/test_windows_usn_runtime.py tests/backend/test_windows_usn_worker_native.py -q
+      - name: Native USN to real HTTPS, PostgreSQL and Activity with lost ACK
+        run: python -m pytest tests/backend/test_windows_usn_integration.py -q
       - name: Stop disposable PostgreSQL
         if: always()
         run: python tests/deployment/prepare_windows_postgres.py --stop

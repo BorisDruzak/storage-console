@@ -23,6 +23,8 @@ change_events = Table(
         name="ck_change_event_type",
     ),
     Index("ix_changes_source_time", "source_node_id", "occurred_at"),
+    Index("ix_changes_time_id", "occurred_at", "id"),
+    Index("ix_changes_source_type_time_id", "source_node_id", "event_type", "occurred_at", "id"),
     Index(
         "ix_changes_object_identity_time",
         "source_node_id",
@@ -30,6 +32,11 @@ change_events = Table(
         "file_id",
         "occurred_at",
     ),
+)
+Index(
+    "uq_changes_usn_source_event", change_events.c.source_node_id,
+    change_events.c.source_event_id, unique=True,
+    postgresql_where=change_events.c.source_event_id.like("ntfs-usn:%"),
 )
 event_attributions = Table(
     "event_attributions",

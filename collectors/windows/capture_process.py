@@ -8,6 +8,7 @@ import sys
 import threading
 from dataclasses import asdict
 from pathlib import Path
+from typing import Literal
 
 from .configuration import Loaded, _unique
 from .inventory import CODES, CaptureError
@@ -74,7 +75,10 @@ class _Job:
 
 
 class CaptureProcess:
-    def __init__(self, loaded: Loaded, *, python: Path | None = None) -> None:
+    def __init__(self, loaded: Loaded, *, python: Path | None = None,
+                 mode: Literal["inventory", "usn"] = "inventory") -> None:
+        if mode not in ("inventory", "usn"):
+            raise CaptureError("METADATA_INVALID")
         if os.name != "nt":
             raise CaptureError("PLATFORM_UNSUPPORTED")
         executable = Path(python or sys.executable).absolute()
@@ -86,6 +90,7 @@ class CaptureProcess:
                     "credential_version": str(loaded.config.credential_version),
                     "roots": list(loaded.config.scope.roots),
                     "settings": loaded.config.settings.model_dump(mode="json"),
+                    "mode": mode,
                 }
             ).encode("utf-8")
             + b"\n"

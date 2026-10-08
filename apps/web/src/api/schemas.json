@@ -1,6 +1,240 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "Activity": {
+      "additionalProperties": false,
+      "properties": {
+        "continuity": {
+          "enum": [
+            "CONTINUOUS_SINCE_BASELINE",
+            "GAP",
+            "UNKNOWN"
+          ],
+          "title": "Continuity",
+          "type": "string"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ActivityItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "limit": {
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "title": "Offset",
+          "type": "integer"
+        },
+        "quality": {
+          "enum": [
+            "COMPLETE",
+            "PARTIAL",
+            "STALE",
+            "ESTIMATED",
+            "UNAVAILABLE"
+          ],
+          "title": "Quality",
+          "type": "string"
+        },
+        "total": {
+          "maximum": 9223372036854776000,
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        },
+        "window_end_at": {
+          "format": "date-time",
+          "title": "Window End At",
+          "type": "string"
+        },
+        "window_start_at": {
+          "format": "date-time",
+          "title": "Window Start At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "limit",
+        "offset",
+        "evaluated_at",
+        "quality",
+        "continuity",
+        "window_start_at",
+        "window_end_at"
+      ],
+      "title": "Activity",
+      "type": "object"
+    },
+    "ActivityItem": {
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "title": "Actor",
+          "type": "null"
+        },
+        "client": {
+          "title": "Client",
+          "type": "null"
+        },
+        "confidence": {
+          "title": "Confidence",
+          "type": "null"
+        },
+        "event_type": {
+          "enum": [
+            "CREATE",
+            "WRITE",
+            "RENAME",
+            "DELETE",
+            "METADATA_CHANGE",
+            "SECURITY_CHANGE"
+          ],
+          "title": "Event Type",
+          "type": "string"
+        },
+        "file_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "File Id"
+        },
+        "id": {
+          "format": "uuid",
+          "title": "Id",
+          "type": "string"
+        },
+        "new_relative_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "New Relative Path"
+        },
+        "object_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Object Id"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "old_relative_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Old Relative Path"
+        },
+        "parent_file_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Parent File Id"
+        },
+        "path_quality": {
+          "enum": [
+            "COMPLETE",
+            "UNAVAILABLE"
+          ],
+          "title": "Path Quality",
+          "type": "string"
+        },
+        "provenance": {
+          "enum": [
+            "NTFS_USN",
+            "UNKNOWN"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "reason_mask": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason Mask"
+        },
+        "source_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source Event Id"
+        },
+        "source_id": {
+          "format": "uuid",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "volume_identity": {
+          "title": "Volume Identity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_id",
+        "object_id",
+        "volume_identity",
+        "file_id",
+        "parent_file_id",
+        "occurred_at",
+        "event_type",
+        "old_relative_path",
+        "new_relative_path",
+        "reason_mask",
+        "source_event_id",
+        "provenance",
+        "path_quality"
+      ],
+      "title": "ActivityItem",
+      "type": "object"
+    },
     "ApiError": {
       "additionalProperties": false,
       "properties": {

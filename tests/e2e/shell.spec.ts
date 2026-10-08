@@ -70,9 +70,15 @@ test('overview remains usable on desktop and mobile without overflow', async ({ 
 });
 
 test('activity and recovery shells expose domain structure with unavailable evidence', async ({page})=>{
+  await page.route('**/api/v1/activity?*',route=>route.fulfill({
+    headers:{'X-Evidence-Valid-For-Ms':'35000','Cache-Control':'no-store'},
+    contentType:'application/json',body:JSON.stringify({items:[],total:0,limit:50,offset:0,
+      evaluated_at:'2026-10-08T00:00:00Z',quality:'UNAVAILABLE',continuity:'UNKNOWN',
+      window_start_at:'2026-10-07T00:00:00Z',window_end_at:'2026-10-08T00:00:00Z'}),
+  }));
   await page.goto('/#activity');
   await expect(page.getByRole('columnheader',{name:'Достоверность'})).toBeVisible();
-  await expect(page.getByText('Для этого раздела ещё нет данных источников')).toBeVisible();
+  await expect(page.getByText('Непрерывность наблюдения не определена')).toBeVisible();
   await page.getByRole('link',{name:'Восстановление',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Проверка восстановления'})).toBeVisible();
   await expect(page.getByText('Нет данных',{exact:true})).toHaveCount(9);

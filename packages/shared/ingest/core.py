@@ -2,6 +2,7 @@ from typing import cast
 from uuid import UUID
 
 from sqlalchemy import insert, select, tuple_, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Connection
 
 from packages.contracts.changes import ChangeRecord
@@ -271,7 +272,14 @@ def _hydrate_changes(
             break
         for row in rows:
             event = ChangeRecord.model_validate(
-                {key: row[key] for key in ChangeRecord.model_fields}
+                {
+                    **{key: row[key] for key in ChangeRecord.model_fields if key in row},
+                    "path_quality": (
+                        "UNAVAILABLE" if row["event_type"] == "RENAME" and (
+                            row["old_relative_path"] is None or row["new_relative_path"] is None
+                        ) else "COMPLETE"
+                    ),
+                }
             )
             _path_change(connection, target, event, path_delete_only=row["path_delete_only"])
             latest = max(latest, event.occurred_at)
@@ -295,17 +303,17 @@ def _path_change(
             paths.end(connection, target, record.old_relative_path, record.occurred_at)
     elif record.event_type == "RENAME":
         old, new = record.old_relative_path, record.new_relative_path
-        assert old is not None and new is not None
-        if old != new:
+        if old is not None and old != new:
             paths.end(connection, target, old, record.occurred_at)
-        paths.observe(
-            connection,
-            target,
-            new,
-            record.occurred_at,
-            name=new.replace("\\", "/").rsplit("/", 1)[-1],
-            parent_file_id=record.parent_file_id,
-        )
+        if new is not None:
+            paths.observe(
+                connection,
+                target,
+                new,
+                record.occurred_at,
+                name=new.replace("\\", "/").rsplit("/", 1)[-1],
+                parent_file_id=record.parent_file_id,
+            )
 
 
 def change(connection: Connection, source: UUID, record: ChangeRecord) -> None:
@@ -322,14 +330,33 @@ def change(connection: Connection, source: UUID, record: ChangeRecord) -> None:
         .mappings()
         .one_or_none()
     )
-    connection.execute(
-        insert(change_events).values(
-            source_node_id=source,
-            object_id=existing["id"] if existing else None,
-            path_delete_only=record.event_type == "DELETE" and record.old_relative_path is not None,
-            **record.model_dump(),
-        )
+    values = dict(
+        source_node_id=source,
+        object_id=existing["id"] if existing else None,
+        path_delete_only=record.event_type == "DELETE" and record.old_relative_path is not None,
+        **record.model_dump(exclude={"path_quality"}),
     )
+    if record.source_event_id and record.source_event_id.startswith("ntfs-usn:"):
+        inserted = connection.scalar(
+            pg_insert(change_events).values(**values).on_conflict_do_nothing(
+                index_elements=[change_events.c.source_node_id, change_events.c.source_event_id],
+                index_where=change_events.c.source_event_id.like("ntfs-usn:%"),
+            ).returning(change_events.c.id)
+        )
+        if inserted is None:
+            previous = connection.execute(select(change_events).where(
+                change_events.c.source_node_id == source,
+                change_events.c.source_event_id == record.source_event_id,
+            )).mappings().one()
+            # A logical replay may resolve an object that was unknown at the first
+            # event. Its immutable event evidence still has to match exactly.
+            if any(
+                previous[name] != value for name, value in values.items() if name != "object_id"
+            ):
+                raise IngestConflict("SOURCE_EVENT_CONFLICT")
+            return
+    else:
+        connection.execute(insert(change_events).values(**values))
     if existing is None:
         return
     _path_change(connection, existing["id"], record)

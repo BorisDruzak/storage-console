@@ -5,7 +5,7 @@ import math
 import os
 import sqlite3
 import stat
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -90,6 +90,8 @@ class Limits:
     busy_timeout_seconds: int = 5
     heartbeat_reserve_batches: int = 0
     heartbeat_reserve_bytes: int = 0
+    max_cache_entries: int = 250000
+    max_cache_bytes: int = 256 * 1024**2
 
     def __post_init__(self) -> None:
         bounds = (
@@ -97,6 +99,8 @@ class Limits:
             (self.max_retained_bytes, 1, 8 * 1024**3),
             (self.max_body_bytes, 1, 16 * 1024**2),
             (self.max_checkpoint_bytes, 1, 16 * 1024),
+            (self.max_cache_entries, 1, 1000000),
+            (self.max_cache_bytes, 1, 1024**3),
             (self.max_receipts, 1, 100000),
             (self.lease_seconds, 30, 3600),
             (self.busy_timeout_seconds, 1, 30),
@@ -310,24 +314,103 @@ class Outbox:
             except (ValueError, TypeError):
                 raise OutboxError("STATE_UNAVAILABLE") from None
 
-    def enqueue(
-        self, domain: str, batch: BaseModel, stream: str, expected_revision: int, checkpoint: object
-    ) -> str:
+    def _checkpoint_value(self, stream: str, revision: int, checkpoint: object) -> str:
         _stream(stream)
-        if type(expected_revision) is not int or not 0 <= expected_revision < 2**63 - 1:
+        if type(revision) is not int or not 0 <= revision < 2**63 - 1:
             raise OutboxError("INVALID_CHECKPOINT")
         try:
             value = json.dumps(
-                checkpoint,
-                allow_nan=False,
-                ensure_ascii=False,
-                sort_keys=True,
-                separators=(",", ":"),
+                checkpoint, allow_nan=False, ensure_ascii=False,
+                sort_keys=True, separators=(",", ":"),
             )
             if len(value.encode("utf-8")) > self.limits.max_checkpoint_bytes:
                 raise OutboxError("INVALID_CHECKPOINT")
+            return value
         except (ValueError, TypeError, RecursionError, UnicodeError):
             raise OutboxError("INVALID_CHECKPOINT") from None
+
+    def _checkpoint_group(
+        self, stream: str, updates: Mapping[str, tuple[int, object]] | None,
+    ) -> tuple[tuple[str, int, str], ...]:
+        if updates is None:
+            return ()
+        if not isinstance(updates, Mapping) or len(updates) > 1024 or stream in updates:
+            raise OutboxError("INVALID_CHECKPOINT")
+        for name in updates:
+            _stream(name)
+        result = []
+        for name, update in sorted(updates.items()):
+            if not isinstance(update, tuple) or len(update) != 2:
+                raise OutboxError("INVALID_CHECKPOINT")
+            revision, checkpoint = update
+            result.append((name, revision, self._checkpoint_value(name, revision, checkpoint)))
+        return tuple(result)
+
+    @staticmethod
+    def _write_checkpoints(
+        db: sqlite3.Connection, updates: tuple[tuple[str, int, str], ...],
+    ) -> None:
+        for stream, revision, value in updates:
+            row = db.execute(
+                "SELECT revision FROM checkpoints WHERE stream=?", (stream,),
+            ).fetchone()
+            if (row[0] if row else 0) != revision:
+                raise OutboxError("CHECKPOINT_CONFLICT")
+            db.execute(
+                "INSERT INTO checkpoints(stream,revision,value) VALUES (?,?,?) "
+                "ON CONFLICT(stream) DO UPDATE SET revision=excluded.revision, "
+                "value=excluded.value", (stream, revision + 1, value),
+            )
+
+    def advance(
+        self, stream: str, expected_revision: int, checkpoint: object, *,
+        checkpoint_updates: Mapping[str, tuple[int, object]] | None = None,
+    ) -> None:
+        """Atomic state-only transition, for reads that produce no outgoing event."""
+        value = self._checkpoint_value(stream, expected_revision, checkpoint)
+        group = self._checkpoint_group(stream, checkpoint_updates)
+        with self._transaction() as db:
+            self._write_checkpoints(db, ((stream, expected_revision, value), *group))
+            if stream.startswith("windows:usn:") or any(
+                key.startswith("windows:usn:") for key, _, _ in group
+            ):
+                self._cache_capacity(db)
+
+    def _cache_capacity(self, db: sqlite3.Connection) -> None:
+        # Bound the entire USN namespace across volumes, including retired node
+        # tombstones. Heartbeat/inventory checkpoints retain independent space.
+        count, size = db.execute(
+            "SELECT count(*), coalesce(sum(length(CAST(value AS BLOB)) "
+            "+ length(CAST(stream AS BLOB))),0) FROM checkpoints "
+            "WHERE substr(stream,1,12)='windows:usn:'",
+        ).fetchone()
+        if count > self.limits.max_cache_entries or size > self.limits.max_cache_bytes:
+            raise OutboxError("CAPACITY")
+
+    def reset_usn_checkpoints(self) -> None:
+        """Operator-only local rebaseline; caller holds the exclusive runtime lock.
+
+        Queued events, replay receipts, credentials and other checkpoints survive.
+        This resets collector observation state, never the operating-system journal.
+        """
+        with self._transaction() as db:
+            db.execute("DELETE FROM checkpoints WHERE substr(stream,1,12)='windows:usn:'")
+
+    def enqueue(
+        self, domain: str, batch: BaseModel, stream: str, expected_revision: int,
+        checkpoint: object, *,
+        checkpoint_updates: Mapping[str, tuple[int, object]] | None = None,
+    ) -> str:
+        value = self._checkpoint_value(stream, expected_revision, checkpoint)
+        group = self._checkpoint_group(stream, checkpoint_updates)
+        # Bind a retained transition to the exact cache mutation set as well as
+        # its batch/cursor. Existing callers retain their prior receipt encoding.
+        receipt_value = value
+        if group:
+            receipt_value = json.dumps({
+                "checkpoint": value,
+                "group_sha256": sha256(json.dumps(group).encode()).hexdigest(),
+            }, sort_keys=True, separators=(",", ":"))
         try:
             if domain not in _ADAPTERS or not isinstance(batch, BaseModel):
                 raise OutboxError("INVALID_BATCH")
@@ -357,7 +440,7 @@ class Outbox:
                     (batch_id,),
                 ).fetchone()
             if previous is not None:
-                if tuple(previous) != (domain, stream, digest, expected_revision, value):
+                if tuple(previous) != (domain, stream, digest, expected_revision, receipt_value):
                     raise OutboxError("BATCH_CONFLICT")
                 return batch_id
             current = db.execute(
@@ -385,15 +468,14 @@ class Outbox:
             db.execute(
                 "INSERT INTO batches(batch_id,domain,stream,body,digest,revision,checkpoint) "
                 "VALUES (?,?,?,?,?,?,?)",
-                (batch_id, domain, stream, body, digest, expected_revision, value),
+                (batch_id, domain, stream, body, digest, expected_revision, receipt_value),
             )
-            db.execute(
-                "INSERT INTO checkpoints(stream,revision,value) VALUES (?,?,?) "
-                "ON CONFLICT(stream) DO UPDATE SET revision=excluded.revision, "
-                "value=excluded.value",
-                (stream, expected_revision + 1, value),
-            )
-            self._receipt(db, batch_id, domain, stream, digest, expected_revision, value)
+            self._write_checkpoints(db, ((stream, expected_revision, value), *group))
+            if stream.startswith("windows:usn:") or any(
+                key.startswith("windows:usn:") for key, _, _ in group
+            ):
+                self._cache_capacity(db)
+            self._receipt(db, batch_id, domain, stream, digest, expected_revision, receipt_value)
             return batch_id
 
     def _receipt(

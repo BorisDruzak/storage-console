@@ -7,7 +7,7 @@ import sys
 import threading
 from io import BufferedReader, RawIOBase
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -21,6 +21,7 @@ from .inventory import CODES, CaptureError, Scope
 from .native import NativeInventory
 from .producer import CaptureReport, capture_inventory
 from .security import ProtectedState, _api
+from .usn_capture import capture_usn
 
 
 class _Request(BaseModel):
@@ -30,6 +31,7 @@ class _Request(BaseModel):
     credential_version: UUID = Field(repr=False)
     roots: tuple[str, ...] = Field(repr=False, min_length=1, max_length=32)
     settings: RuntimeSettings
+    mode: Literal["inventory", "usn"] = "inventory"
 
 
 def main() -> int:
@@ -94,7 +96,10 @@ def main() -> int:
                     target=control, name="capture-control", daemon=False
                 )
                 control_thread.start()
-                report = capture_inventory(
+                if request.mode == "usn":
+                    report = capture_usn(box, scope, stopped=stopped.is_set)
+                else:
+                    report = capture_inventory(
                     box,
                     scope,
                     NativeInventory().scan(scope),
@@ -102,7 +107,7 @@ def main() -> int:
                     stopped=stopped.is_set,
                     capacity_wait_seconds=request.settings.capacity_wait_seconds,
                     wait=stopped.wait,
-                )
+                    )
         except CaptureError as error:
             report = CaptureReport(
                 0, 0, False, (error.code if error.code in CODES else "NATIVE_FAILED",)

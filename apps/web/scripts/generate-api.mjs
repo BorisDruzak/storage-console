@@ -32,7 +32,7 @@ const validation = JSON.stringify({
 const ajv = new Ajv2020({ code: { source: true, formats: _`require("ajv-formats/dist/formats").fullFormats` }, strict: true });
 addFormats(ajv);
 ajv.addSchema({ ...JSON.parse(validation), $id: 'storage-console-read' });
-const responses = ['Overview', 'Domains', 'Source', 'Freshness', 'Page_Source_', 'Page_Volume_', 'Page_Share_', 'UserResponse',
+const responses = ['Activity', 'Overview', 'Domains', 'Source', 'Freshness', 'Page_Source_', 'Page_Volume_', 'Page_Share_', 'UserResponse',
   'SourceRegistration', 'CollectorView', 'CollectorCredential', 'Page_CollectorView_'];
 const compiled = standalone(ajv, Object.fromEntries(responses.map(name => [name, `storage-console-read#/$defs/${name}`])));
 const bundled = await build({ stdin: { contents: compiled, resolveDir: fileURLToPath(new URL('../', import.meta.url)) }, bundle: true, platform: 'browser', format: 'esm', minify: true, write: false });

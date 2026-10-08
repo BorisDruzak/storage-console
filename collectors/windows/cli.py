@@ -21,7 +21,7 @@ from collectors.common.outbox import Outbox, OutboxError
 from collectors.common.transport import Transport, TransportError
 
 from .capture_process import CaptureProcess
-from .configuration import Loaded, PrivateConfig, _read, activate, load
+from .configuration import Loaded, PrivateConfig, _read, activate, load, set_usn_enabled
 from .errors import SecurityError
 from .inventory import CaptureError, Scope
 from .native import NativeInventory
@@ -51,12 +51,16 @@ def _parser() -> Parser:
         child = actions.add_parser(action)
         child.add_argument("--state", default=DEFAULT_STATE if action == "install" else None,
                            help="Каталог состояния; lifecycle по умолчанию читает регистрацию SCM")
-    for command in ("activate", "status", "inventory-once", "run"):
+    for command in ("activate", "status", "inventory-once", "run", "usn-enable", "usn-disable",
+                    "usn-rebaseline"):
         child = commands.add_parser(command, help={
             "activate": "Активировать защищённое состояние",
             "status": "Прочитать безопасный статус",
             "inventory-once": "Однократно собрать и доставить metadata",
             "run": "Запустить foreground runtime; Ctrl+C — остановка",
+            "usn-enable": "Включить read-only USN при остановленном collector",
+            "usn-disable": "Отключить USN, сохранив очередь и identity",
+            "usn-rebaseline": "Начать новое наблюдение USN; пропущенная история не восстановится",
         }[command])
         child.add_argument("--state", default=DEFAULT_STATE, help="Каталог защищённого состояния")
         if command == "activate":
@@ -238,6 +242,11 @@ def _execute(args: argparse.Namespace, stop: threading.Event) -> int:
         if args.command == "status" else ProtectedState(Path(args.state))
     )
     with protected as state:
+        if args.command in {"usn-enable", "usn-disable"}:
+            set_usn_enabled(state, args.command == "usn-enable")
+            print("Read-only USN включён; baseline будет проверен при запуске" if
+                  args.command == "usn-enable" else "USN отключён; очередь и identity сохранены")
+            return 0
         if args.command == "status":
             config = _read(state)
             for suffix in ("", "-journal", "-wal", "-shm"):
@@ -253,6 +262,11 @@ def _execute(args: argparse.Namespace, stop: threading.Event) -> int:
             print_status(config, box)
             return 0
         loaded = load(state)
+        if args.command == "usn-rebaseline":
+            loaded.outbox.reset_usn_checkpoints()
+            print("Локальный USN baseline сброшен; пропущенная история не восстановлена. "
+                  "Journal configuration, очередь и identity сохранены.")
+            return 0
         if args.command == "run":
             print("Foreground runtime запущен; Ctrl+C — остановка", flush=True)
             runtime = Runtime(loaded)

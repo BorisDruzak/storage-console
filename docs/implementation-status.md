@@ -2,6 +2,16 @@
 
 ## Issue #8 — delivery train A → B → C
 
+Stage C live gate FAIL / correction in progress: draft PR #17 exact-head
+`b771db2659aa01b1896a8c99c4a46c39321df99b` passed all six CI jobs (Sonar SKIPPED),
+and exact wheel/central/LocalSystem installation were verified. Real controlled
+rename exposed redundant CLOSE|NEW partial events after a correct rename pair.
+Focused RED→GREEN now covers durable reason-cycle suppression and exactly one
+native RENAME; full regression/review/new exact-SHA CI and fresh live acceptance
+remain required. Collector safely rolled back to accepted B; central C ingest
+retained. No C merge/gate PASS, no reboot or journal/ACL/SMB/audit-policy mutation.
+Evidence: [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
+
 GATE A PASS на runtime `dda125d08f97fac78ccea466ec89fd0ad6f79776` после
 merged PR #9 и [exact-main push CI](https://github.com/BorisDruzak/storage-console/actions/runs/37686825905):
 все шесть обязательных jobs PASS; Sonar SKIPPED. Полный regression и независимый
@@ -57,7 +67,34 @@ merged-main `30ac6c69ac…` / CI `37739444011`: FAIL, native 42 passed / 1 faile
 Добавлена только test-only bounded диагностика installed worker (runpy/exception
 codes, без exception text/locals/paths); обычный entrypoint проверяют другие
 native tests. Это diagnostic execution, не fix; budgets и deadlines не меняются.
-GATE B BLOCKED, C NOT STARTED до диагностики/full exact head+main CI.
+Final [PR #16](https://github.com/BorisDruzak/storage-console/pull/16) head
+`68557b2194…` / CI `37742061754` и merged-main `8a1916d96a…` /
+[CI `37742833424`](https://github.com/BorisDruzak/storage-console/actions/runs/37742833424):
+оба terminal SUCCESS, все шесть required jobs. Native 43 passed без skips,
+CLI 14, backend 623 / 58 platform skips, frontend 121 / Playwright 12; Sonar SKIPPED.
+Live SYSTEM autostart/no-login/reboot PASS; повторно HEALTHY, COMPLETE inventory,
+10,146 objects, queue 0/0, config/binding/98 modules неизменны. Independent review
+без Important; diagnostic cap исправлен RED→GREEN. Исторический NATIVE_FAILED
+не повторился; причина не установлена и не объявлена исправленной. Instrumented
+pressure test может менять timing; обычный entrypoint проверяется отдельно.
+GATE B PASS для ограниченного pilot. C разрешён только в read-only USN/Activity
+scope. C plan опубликован в локальной ветке, initial parser/native NTFS и atomic
+state/scoped-normalization RED→GREEN проверяются в изоляции; полного C gate пока нет.
+Пользователь делегировал отдельную тестовую папку: создана внутри approved scope,
+existing journal QUERY PASS, без изменения journal configuration/реальных файлов.
+Stage C candidate реализует scoped QUERY/READ USN, atomic cursor/cache/outbox,
+latched continuity gap, stopped-state activation/rebaseline и typed Activity API/UI.
+Независимый source review после RED→GREEN исправлений без Critical/Important.
+Полный final Python 3.13.16/PostgreSQL regression: 694 passed / 66 native-only skips;
+migration cycle/check, Ruff/mypy/OpenAPI и 54 deployment checks PASS.
+Windows отдельно: 62 USN/native/HTTPS/PG и 45 прежних CLI/native/runtime checks PASS.
+Installed USN → strict HTTPS → PostgreSQL → Activity: lost-ACK exact replay,
+logical dedup и COMPLETE polling со стандартным config PASS (59.68 s).
+Frontend: 125 Vitest / 12 Playwright, lint/i18n/types/build/API drift PASS.
+Shared SQLite совместим с immutable B reader/writer; partial C RENAME payloads
+требуют C delivery или сохранённого C state, что отражено в rollback runbook.
+GATE C остаётся BLOCKED: отдельный PR/exact CI, immutable artifacts/deployment,
+live browser/operator CRUD, measured latency/restart/network/privacy/rollback pending.
 Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
