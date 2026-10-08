@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: BLOCKED — explicit live handover/reboot approval and acceptance pending
+GATE B: BLOCKED — approved live service trial completed; separate real reboot approval/acceptance pending
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -140,17 +140,21 @@ configuration reproduced in an owned directory (1 passed, 61.03 s). Config,
 credential binding, identity and heartbeat continuity retained. Local native
 artifact probe used Python 3.14; target Python 3.13 additionally passed main CI.
 
-Neither final artifact is installed on FILESERVER. Current central runtime stays
+The final Stage B artifact is now installed on FILESERVER after the user's explicit
+handover instruction; the Stage A rollback artifact and previous actual installed
+runtime are retained. Current central runtime stays
 accepted Stage A `dda125d08f97fac78ccea466ec89fd0ad6f79776`; API/OpenAPI/schema
-unchanged by B, no central deployment needed. Real service handover, live pending/
-quarantine/freshness and no-login boot recovery are NOT VERIFIED. Operator must
-record/retain actual previous live wheel/interpreter before the approved handover.
+unchanged by B, no central deployment needed. Live handover, stop/start, pending/
+quarantine/freshness are verified below. No-login boot recovery remains NOT VERIFIED.
+Actual previous live interpreter/package and a protected SQLite rollback copy
+were retained before the handover.
 Read-only central recheck at the B code checkpoint: four existing services
 healthy, API APP_RELEASE and API/web image tags still the accepted Stage A SHA.
 Prepared sanitized operator bundle `issue8-stage-b-operator-c28ef06.zip`, SHA256
 `8a26b643ee03a1a8c83637b2b7dfa7b6688437b28f087c0f897e4d9f9901f26b`:
 final/rollback wheels, pinned requirements, manifest and Russian instructions;
-no production state/CA/credentials/data. No real FILESERVER action authorized.
+no production state/CA/credentials/data. Its sealed manifest records the original
+pre-installation code checkpoint; use this ledger for the subsequent live verdict.
 
 Baseline: `ef78111c0d2e8f971cb16f7b64a40c3f7cffd716`, exact main push CI
 `37688827452` terminal SUCCESS (six jobs, Sonar SKIPPED). Deployed central
@@ -254,8 +258,59 @@ Verification history and final frozen-source evidence:
 
 Operator checklist/rollback:
 [Windows Service](../pilot/windows-service-ru.md).
-Next: explicit operator handover approval, separate reboot permission/maintenance
-window and actual live acceptance. Full regression/review/head+main CI completed.
+
+### Approved live service trial — 2026-10-08 (Asia/Yekaterinburg)
+
+The user explicitly instructed Codex to transfer the package to FILESERVER and
+check it using the available access. This authorizes the controlled foreground
+handover/service trial; it does not authorize reboot.
+
+- Confirmed administrative access, existing foreground PID/creation time and
+  unchanged enrolled state. Before handover: HEALTHY, one source/volume/collector,
+  10,146 inventory objects, pending=0/quarantine=0, auth not suspended.
+- Transferred the sealed operator ZIP and verified its SHA256, both wheel hashes
+  and pinned installed dependency versions. The existing interpreter directories
+  failed the stricter privileged-code protection boundary; no existing ACL was
+  repaired. Prepared a separate standalone Python 3.13.15 installation with
+  protected security attributes on new owned objects only. Read-only production
+  installation validation PASS; all 98 installed Python modules equal the exact
+  accepted wheel. Test-coverage startup instrumentation was excluded from this
+  standalone installation. Original interpreter/package remain unchanged.
+- Checked the exact old process identity and console membership. A temporary
+  interactive-session helper sent normal Ctrl+C: runtime exit 130, old process
+  tree exited. No forced process termination or runtime-lock deletion. The owned
+  helper task was removed after success.
+- Before SCM install, retained unchanged config/CA and a protected SQLite backup
+  on FILESERVER; SQLite integrity/hash verification PASS. Private identity,
+  binding, checkpoints and installation hashes remain outside public Git.
+- Installed `SosnadminStorageCollector`: Automatic (Delayed), actual process token
+  LocalSystem, one restart after 10 seconds then NONE. Idempotent install/start
+  retained the running PID. Actual SYSTEM DPAPI/strict HTTPS ingestion succeeded.
+- Three post-handover central API observations at 09:28:25, 09:29:24 and 09:30:28
+  confirmed HEALTHY, newer collector observations, same source and one collector,
+  and visible unchanged inventory. The startup queue drained to pending=0 and
+  quarantine=0 without clearing batches/leases.
+- Controlled service stop/start PASS: stop 1.151 seconds, STOPPED/PID=0 confirmed,
+  new running PID after start. Real restart backlog drained in 102.58 seconds
+  (35 read-only observations) to pending=0/quarantine=0; auth remains unsuspended.
+  New heartbeat confirmed; config bytes, collector identity, credential binding
+  and previous installed module hashes unchanged. Heartbeat sequence advanced
+  1205 before install to 1217 at final validation; inventory remains complete.
+- Read-only before/after comparison: existing installation/state/scope-root ACLs,
+  SMB server configuration, audit policy and boot time unchanged. No USN Journal
+  configuration operations were performed. One service runtime, no competing
+  foreground. A 30-second steady service-process sample measured 0.208% of total
+  CPU capacity and 39,526,400 bytes working set; this is a bounded sample, not a
+  fleet/performance or SMB workload acceptance claim.
+- A fresh browser login hit existing HTTP 429 after repeated acceptance logins.
+  Read-only authenticated API evidence above passed. No rate-limit/authentication
+  configuration was changed. After the normal 10-minute account window, one
+  browser retry at 09:42 passed: real login, source HEALTHY, one source/volume,
+  10,146 filesystem objects, volume detail/reload, no page errors and verified
+  strict TLS. Private screenshots retained; no mocks/TLS bypass used.
+
+Next: separate reboot permission/maintenance window and actual no-login boot
+acceptance. Full regression/review/head+main CI completed.
 Stage C remains unauthorized until GATE B PASS.
 
 ~~~text
@@ -265,14 +320,14 @@ Implementation commits: 00d66e179a6e0c73aff79c5d83e2b7ab78a67925, 60ad7a8a3980b7
 Merged SHA: c28ef069236a67da2f03bbaa5637fa29e7b88002
 Exact push CI: https://github.com/BorisDruzak/storage-console/actions/runs/37702965026 SUCCESS; Sonar SKIPPED
 Prepared wheel SHA/version: 6cbdfffb64fb84fcbd9e7fc3b2a8969f37da50ba11bcbb8ad482d34bff86657a / 0.1.0
-Installed FILESERVER wheel SHA/version: NOT INSTALLED by this task
-Service name / start mode: SosnadminStorageCollector / Automatic (Delayed), verified disposable
-Service identity + DPAPI validation: LocalSystem, actual native PASS disposable; live pending
-Install/stop/start/idempotency: PASS disposable installed wheel + SCM
-Foreground handover: PASS disposable; real FILESERVER NOT AUTHORIZED/NOT RUN
+Installed FILESERVER wheel SHA/version: 6cbdfffb64fb84fcbd9e7fc3b2a8969f37da50ba11bcbb8ad482d34bff86657a / 0.1.0; 98 installed modules verified
+Service name / start mode: SosnadminStorageCollector / Automatic (Delayed), actual FILESERVER PASS
+Service identity + DPAPI validation: LocalSystem, actual native + FILESERVER HTTPS ingestion PASS
+Install/stop/start/idempotency: PASS disposable + approved FILESERVER trial
+Foreground handover: PASS approved FILESERVER Ctrl+C, old runtime exit 130
 Network outage/backlog: 503 replay + retained 401 suspension PASS disposable
-Pending/quarantine/freshness: disposable drain 0/0 + new heartbeat/inventory; live NOT VERIFIED
-Controlled real service trial: NOT AUTHORIZED/NOT RUN
+Pending/quarantine/freshness: actual FILESERVER drain 0/0 + new heartbeat/inventory HEALTHY
+Controlled real service trial: EXPLICITLY AUTHORIZED/RUN/PASS; reboot remains separate
 Real FILESERVER reboot approved: NO explicit approval/window received
 Real FILESERVER reboot acceptance: NOT RUN, no-login auto-start NOT VERIFIED
 Rollback verified: PASS exact final artifact files, existing config/binding preserved
