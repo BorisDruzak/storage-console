@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS. Stage B начат после terminal CI финальной публикации A; C не начат.**
+**GATE A PASS. GATE B PASS после operator-performed reboot; C не начат.**
 
 ## Known baseline
 
@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: BLOCKED — approved live service trial completed; separate real reboot approval/acceptance pending
+GATE B: PASS — approved service trial and operator-performed no-login reboot verified
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -145,7 +145,7 @@ handover instruction; the Stage A rollback artifact and previous actual installe
 runtime are retained. Current central runtime stays
 accepted Stage A `dda125d08f97fac78ccea466ec89fd0ad6f79776`; API/OpenAPI/schema
 unchanged by B, no central deployment needed. Live handover, stop/start, pending/
-quarantine/freshness are verified below. No-login boot recovery remains NOT VERIFIED.
+quarantine/freshness and no-login boot recovery are verified below.
 Actual previous live interpreter/package and a protected SQLite rollback copy
 were retained before the handover.
 Read-only central recheck at the B code checkpoint: four existing services
@@ -309,9 +309,43 @@ handover/service trial; it does not authorize reboot.
   10,146 filesystem objects, volume detail/reload, no page errors and verified
   strict TLS. Private screenshots retained; no mocks/TLS bypass used.
 
-Next: separate reboot permission/maintenance window and actual no-login boot
-acceptance. Full regression/review/head+main CI completed.
-Stage C remains unauthorized until GATE B PASS.
+### Operator-performed reboot acceptance — 2026-10-08
+
+The user stated “отправил в ребут проверяй”. The operator performed the reboot;
+Codex issued no reboot, service start/run/install or interactive login command
+while verifying automatic startup. Read-only administrative SSH probes were used.
+
+- New boot observed at 09:57:47 (Asia/Yekaterinburg). At +54 seconds, delayed-start
+  service was still STOPPED and Console showed OBSERVE with retained inventory;
+  this intermediate observation was not represented as HEALTHY.
+- Automatic service process began at 10:00:06, approximately 139.36 seconds after
+  boot, session 0. Registered Automatic (Delayed), LocalSystem and bounded
+  recovery configuration preserved; actual process token is SYSTEM. No competing
+  foreground runtime or leftover temporary console helper task.
+- Successful logon auditing was already enabled and remained unchanged. Read-only
+  Security 4624 and active-session checks found no human interactive logon since
+  boot, including before service startup; 151 successful logon events observed at
+  final probe. Service/system logons were excluded from human-interactive counts.
+- Console API at 10:00:22 confirmed HEALTHY with new collector observation
+  10:00:15: approximately 155.32 seconds boot-to-observed-HEALTHY. Another API
+  observation at 10:06:26 confirmed continued HEALTHY/new heartbeat. Same one
+  source, one volume, one collector and 10,146 inventory objects.
+- Post-boot queue drained to pending=0/quarantine=0; auth not suspended. Heartbeat
+  sequence 1266 then 1274, newer than last saved pre-reboot acceptance checkpoint
+  1217; that checkpoint is not claimed as the immediate reboot cursor. Inventory
+  checkpoint remains complete at sequence 20. Identity, credential binding and
+  config bytes unchanged; all 98 installed modules equal the accepted wheel,
+  original installation unchanged and protected rollback backup hash verified.
+- Existing state/installation/scope-root ACLs, SMB configuration and audit policy
+  compare unchanged against pre-handover evidence. No USN configuration operation
+  was performed. Boot changed through the operator's action only.
+- Fresh strict-TLS browser acceptance after reboot PASS: actual login, HEALTHY
+  source, one source/volume, 10,146 objects, volume detail and reload, no page
+  errors. Private post-boot evidence/screenshots retained outside public Git.
+
+Full regression, independent source review and exact code head/main CI already
+completed above. This documentary checkpoint requires its own fresh independent
+review/head and merged-main CI before starting C. C remains NOT STARTED here.
 
 ~~~text
 PR: https://github.com/BorisDruzak/storage-console/pull/11 (MERGED)
@@ -327,19 +361,20 @@ Install/stop/start/idempotency: PASS disposable + approved FILESERVER trial
 Foreground handover: PASS approved FILESERVER Ctrl+C, old runtime exit 130
 Network outage/backlog: 503 replay + retained 401 suspension PASS disposable
 Pending/quarantine/freshness: actual FILESERVER drain 0/0 + new heartbeat/inventory HEALTHY
-Controlled real service trial: EXPLICITLY AUTHORIZED/RUN/PASS; reboot remains separate
-Real FILESERVER reboot approved: NO explicit approval/window received
-Real FILESERVER reboot acceptance: NOT RUN, no-login auto-start NOT VERIFIED
+Controlled real service trial: EXPLICITLY AUTHORIZED/RUN/PASS
+Real FILESERVER reboot approved: operator performed reboot; user requested verification
+Real FILESERVER reboot acceptance: PASS; auto-start/no human login, fresh heartbeat, queue 0/0
 Rollback verified: PASS exact final artifact files, existing config/binding preserved
 Deployed central SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776 (accepted Stage A)
-Next stage authorized: NO
+Next stage authorized: C only, after this documentary checkpoint review/exact head+main CI
 ~~~
 
-Do not mark PASS without explicitly approved real reboot acceptance.
+B acceptance is limited to the reviewed code, installed artifact and actual pilot.
+Measured delayed startup latency is an observation, not a guaranteed fixed timeout.
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: BLOCKED — GATE B PASS required; Stage C NOT STARTED
+GATE C: NOT STARTED — GATE B PASS; wait for B documentary checkpoint review/head+main CI
 
 ~~~text
 PR:

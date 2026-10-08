@@ -17,15 +17,19 @@ PR #11 merged как `c28ef069236a67da2f03bbaa5637fa29e7b88002`; exact head/main
 проверены native operator lifecycle. По явному указанию пользователя пакет перенесён
 на FILESERVER, выполнены foreground Ctrl+C → service и stop/start: LocalSystem,
 тот же config/identity/binding, heartbeat/inventory HEALTHY и очередь 0/0 подтверждены.
-Существующие ACL/SMB/audit policy и boot time неизменны; USN configuration не менялась.
-GATE B BLOCKED: отдельное разрешение/окно реальной перезагрузки ещё не получены;
-автозапуск после reboot без login не проверен. Browser login/source/inventory/reload
-PASS после штатного истечения HTTP 429 окна; strict TLS без bypass.
-USN / Stage C не начат. Operator checklist:
+GATE B PASS: пользователь сам отправил FILESERVER в reboot и поручил проверку.
+Служба автоматически запустилась в session 0 от LocalSystem примерно через 139 секунд
+после boot, без интерактивного входа. Console HEALTHY примерно через 155 секунд;
+новый heartbeat, inventory и очередь 0/0 подтверждены. Codex не выполнял reboot
+или ручной start/run после boot. Существующие ACL/SMB/audit policy неизменны;
+USN configuration не менялась. Browser login/source/inventory/reload после reboot
+PASS, strict TLS без bypass. Evidence и screenshots остаются приватными.
+USN / Stage C не начат; переход после review и exact head/main CI этого
+документального checkpoint. Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
-Перезагрузка реального FILESERVER требует отдельного явного разрешения.
+Любая следующая перезагрузка реального FILESERVER требует отдельного явного разрешения.
 
 ## MVP-PILOT-002 — inventory dashboard (Issue #6)
 
