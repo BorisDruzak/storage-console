@@ -68,7 +68,10 @@ Live SYSTEM autostart/no-login/reboot PASS; повторно HEALTHY, COMPLETE i
 не повторился; причина не установлена и не объявлена исправленной. Instrumented
 pressure test может менять timing; обычный entrypoint проверяется отдельно.
 GATE B PASS для ограниченного pilot. C разрешён только в read-only USN/Activity
-scope; начинается planning, implementation/native/CI/live gate ещё не пройден.
+scope. C plan опубликован в локальной ветке, initial parser/native NTFS и atomic
+state/scoped-normalization RED→GREEN проверяются в изоляции; полного C gate пока нет.
+Пользователь делегировал отдельную тестовую папку: создана внутри approved scope,
+existing journal QUERY PASS, без изменения journal configuration/реальных файлов.
 Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:

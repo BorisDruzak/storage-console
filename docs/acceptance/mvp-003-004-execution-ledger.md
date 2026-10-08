@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS. GATE B PASS: final exact head/main CI и live service/reboot подтверждены. C: planning, gate pending.**
+**GATE A PASS. GATE B PASS: final exact head/main CI и live service/reboot подтверждены. C: implementation in progress, gate pending.**
 
 ## Known baseline
 
@@ -583,13 +583,42 @@ Measured delayed startup latency is an observation, not a guaranteed fixed timeo
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: BLOCKED — implementation/native/CI/live acceptance pending; planning starts after B PASS
+GATE C: BLOCKED — implementation/full regression/review/CI/live acceptance pending
 
 Baseline main SHA: `8a1916d96aaca75287ff9b0865c9b5b98c8454ec`.
 Baseline exact-main CI: `37742833424`, all six required jobs SUCCESS, Sonar SKIPPED.
 Central remains accepted Stage A `dda125d08f97fac78ccea466ec89fd0ad6f79776`;
 FILESERVER remains accepted Stage B wheel `6cbdfffb64fb84fcbd9e7fc3b2a8969f37da50ba11bcbb8ad482d34bff86657a`.
-No C source/runtime deployment or journal configuration change has occurred.
+No C runtime deployment or journal configuration change has occurred.
+
+### Preparation and initial RED -> GREEN — 2026-10-08
+
+User delegated dedicated-folder creation with “создай сам”. A unique empty
+synthetic folder was created inside the existing approved monitored root after
+resolved-path/reparse checks; no existing files modified. Native read-only
+`fsutil usn queryjournal` of that volume succeeded. Raw root/folder/journal
+evidence stays private; no journal enable/resize/delete operation was issued.
+
+Plan: `docs/superpowers/plans/2026-10-08-usn-activity-stage-c.md`.
+Portable parser RED: required module absent; GREEN: 14 passed. Actual isolated
+Windows NTFS QUERY/READ/CRUD RED: native module absent; GREEN: 1 passed, no skip;
+CREATE/WRITE/RENAME_OLD/RENAME_NEW/DELETE correlate with inventory FileId.
+Journal ID/maximum size/allocation delta unchanged. Combined parser/native and
+existing native inventory: 32 passed, 2 dependency warnings (0.38 s).
+
+Atomic multi-checkpoint/cursor/batch transitions RED: four missing-interface
+failures; GREEN with existing Outbox/delivery/priority regressions: 82 passed,
+4 platform skips, 2 dependency warnings (3.20 s). Mixed-key validation separately
+RED: leaked TypeError before transaction; correction validates keys before sort;
+atomic-state GREEN: 5 passed, 2 dependency warnings (0.26 s).
+Scoped normalization initial RED: required module absent; GREEN: 6 passed.
+Partial-pair status/unpaired NEW/no invented rename regressions RED: 3 failed,
+5 passed; GREEN combined four new USN files: 28 passed, 2 dependency warnings
+(1.41 s), including real native CRUD. Ruff and Linux-target mypy of new modules
+PASS. Windows-target mypy also exposes pre-existing `os.geteuid` portability
+annotations in Outbox; the canonical target is checked separately.
+These are isolated implementation checks, not full regression, independent
+Stage C review, final exact-SHA CI or live/operator Activity acceptance.
 
 ~~~text
 PR:
