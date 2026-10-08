@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 import time
@@ -6,6 +7,7 @@ import pytest
 from sqlalchemy import func, select
 from test_windows_runtime_native import installed_python as installed_python
 
+from collectors.common.outbox import OutboxError
 from collectors.common.transport import DeliveryOutcome
 from collectors.windows.capture_process import CaptureProcess
 from collectors.windows.configuration import Loaded, RuntimeSettings, activate, load
@@ -84,7 +86,35 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
             try:
                 deadline = time.monotonic() + 60
                 while time.monotonic() < deadline and thread.is_alive():
-                    pending = loaded.outbox.status().pending_count
+                    try:
+                        pending = loaded.outbox.status().pending_count
+                    except OutboxError as error:
+                        # Synthetic failure metadata only, never exception text/paths/locals.
+                        chain = []
+                        current = error
+                        seen = set()
+                        while current is not None and id(current) not in seen and len(chain) < 4:
+                            seen.add(id(current))
+                            item = {"type": type(current).__name__}
+                            for name in ("errno", "winerror", "sqlite_errorcode"):
+                                value = getattr(current, name, None)
+                                if type(value) is int:
+                                    item[name] = value
+                            frames = []
+                            trace = current.__traceback__
+                            while trace is not None and len(frames) < 16:
+                                frames.append({
+                                    "function": trace.tb_frame.f_code.co_name,
+                                    "line": trace.tb_lineno,
+                                })
+                                trace = trace.tb_next
+                            item["frames"] = frames
+                            chain.append(item)
+                            current = current.__cause__ or current.__context__
+                        print("SYNTHETIC_OUTBOX_FAILURE:" + json.dumps({
+                            "busy_seconds": settings.busy_seconds, "chain": chain,
+                        }), flush=True)
+                        raise
                     high_water = max(high_water, pending)
                     completed = any(
                         event.kind == "inventory" and event.code is None and event.records == 12

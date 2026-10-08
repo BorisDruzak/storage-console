@@ -17,7 +17,7 @@ PR #11 merged как `c28ef069236a67da2f03bbaa5637fa29e7b88002`; exact head/main
 проверены native operator lifecycle. По явному указанию пользователя пакет перенесён
 на FILESERVER, выполнены foreground Ctrl+C → service и stop/start: LocalSystem,
 тот же config/identity/binding, heartbeat/inventory HEALTHY и очередь 0/0 подтверждены.
-GATE B PASS: пользователь сам отправил FILESERVER в reboot и поручил проверку.
+Live reboot B PASS: пользователь сам отправил FILESERVER в reboot и поручил проверку.
 Служба автоматически запустилась в session 0 от LocalSystem примерно через 139 секунд
 после boot, без интерактивного входа. Console HEALTHY примерно через 155 секунд;
 новый heartbeat, inventory и очередь 0/0 подтверждены. Codex не выполнял reboot
@@ -29,7 +29,12 @@ Initial CI документального PR #14 упал на native synthetic 
 failure-only диагностика без изменения runtime, predicate или timeout. Fresh head
 `fda8a7597ee665e48f78875ba7b9f668278066d8` / CI `37732147714`: все шесть jobs
 SUCCESS, native 43 passed без skips; Sonar SKIPPED. Диагностика не объявлена fix.
-Переход C после exact final head/main CI. USN / Stage C не начат. Operator checklist:
+GATE B BLOCKED: final head `7d957032…` / CI `37732725825` упал в другом native
+queue-pressure/lost-ACK test: `STATE_UNAVAILABLE` при чтении outbox status.
+Native 42 passed, включая сервисный replay test; пять других jobs PASS.
+Добавляется bounded numeric failure-chain диагностика без suppression/retry.
+Причина ещё не доказана; runtime на FILESERVER не меняется. Переход C только после
+fresh exact head/main CI. USN / Stage C не начат. Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).

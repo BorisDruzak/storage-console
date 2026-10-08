@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS. GATE B PASS: accepted code/live reboot and fresh six-job CI; C не начат.**
+**GATE A PASS. Live reboot B PASS; GATE B BLOCKED на final native CI; C не начат.**
 
 ## Known baseline
 
@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: PASS — accepted service/reboot and fresh native/full CI; final publication CI required before C
+GATE B: BLOCKED — live service/reboot PASS; final native CI state-read failure under investigation
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -336,7 +336,17 @@ SCM/LocalSystem/runtime/HTTPS/PostgreSQL 43 passed (236.13 s); no native skips.
 The initial failure did not recur; its cause remains unestablished. Diagnostic
 instrumentation is not claimed as a fix. Retain bounded diagnostics if it recurs;
 no product behavior, acceptance predicate or timeout was weakened.
-Final evidence-only head and its merged-main push CI must complete before C.
+Final evidence head `7d957032ef5d7ffbb1c086e2c247319b5c41a217`,
+[CI 37732725825](https://github.com/BorisDruzak/storage-console/actions/runs/37732725825):
+FAIL in a different native test, queue-pressure/lost-ACK runtime integration:
+`OutboxError: STATE_UNAVAILABLE` while reading local outbox status. The service
+503/replay test was among the 42 passing native checks; five other required jobs passed;
+Sonar SKIPPED. No root cause is inferred from this generic error. Added bounded
+synthetic failure-chain metadata to that test, without retry/suppression or changed
+predicate/timeout; original error is re-raised. No installed runtime change.
+Exact updated-worktree native/strict HTTPS/disposable PostgreSQL check passed
+(1 passed, 67.17 s); Ruff/diff-check and independent diagnostic review passed.
+Final exact head and merged-main CI remain required; C is held.
 
 ### Operator-performed reboot acceptance — 2026-10-08
 
@@ -395,7 +405,7 @@ Real FILESERVER reboot approved: operator performed reboot; user requested verif
 Real FILESERVER reboot acceptance: PASS; auto-start/no human login, fresh heartbeat, queue 0/0
 Rollback verified: PASS exact final artifact files, existing config/binding preserved
 Deployed central SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776 (accepted Stage A)
-Next stage authorized: C only after final documentary checkpoint exact head+main CI
+Next stage authorized: NO; final native failure diagnosis/exact head+main CI required
 ~~~
 
 B acceptance is limited to the reviewed code, installed artifact and actual pilot.
@@ -403,7 +413,7 @@ Measured delayed startup latency is an observation, not a guaranteed fixed timeo
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: NOT STARTED — GATE B PASS; final documentary checkpoint head+main CI required
+GATE C: BLOCKED — GATE B final native CI required; Stage C NOT STARTED
 
 ~~~text
 PR:
