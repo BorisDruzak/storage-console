@@ -36,8 +36,20 @@ Diagnostic head `54f83b34…` / CI `37733855050` доказал SQLite code 5
 на `BEGIN IMMEDIATE`: test observer запрашивал writer lock для чтения status.
 Test-only correction — отдельный read-only observer с прежними limits, runtime
 сохраняет writable outbox. Reserved-lock RED воспроизведён; прежние assertions
-и deadlines сохранены. Runtime на FILESERVER не меняется. Переход C только после
-GREEN и fresh exact head/main CI. USN / Stage C не начат. Operator checklist:
+и deadlines сохранены. Corrected PR #14 head `cdd48fd82…` / CI `37734822496`:
+все шесть jobs SUCCESS; exact merged-main `8e7eb05f96…` / CI `37735548662`:
+FAIL, native 41 passed / 2 failed, пять других jobs SUCCESS, Sonar SKIPPED.
+Дополнительная диагностика доказала BUSY на PRAGMA у test monitor и оставшиеся
+только новые heartbeat после успешной доставки старого outage backlog.
+Дополнительные native RED→GREEN: bounded exclusive lock с отдельным read-only
+monitor (runtime busy budget неизменен); slow HTTPS receipt и штатная cadence
+30 секунд только lifecycle fixture, прежний drain deadline 105 секунд сохранён.
+Полный локальный installed CLI/native regression: 57 passed без skips, Python
+3.14.3; independent review без Important, Ruff/diff-check/public secret scan PASS.
+Runtime на FILESERVER не меняется: продолжает автоматически запущенный SYSTEM
+процесс, queue 0/0 и HEALTHY подтверждены повторно. GATE B остаётся BLOCKED до
+fresh full exact head/main CI, включая target Python 3.13. USN / Stage C не начат.
+Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).

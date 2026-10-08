@@ -4,12 +4,13 @@ import sqlite3
 import threading
 import time
 from contextlib import closing
+from dataclasses import replace
 
 import pytest
 from sqlalchemy import func, select
 from test_windows_runtime_native import installed_python as installed_python
 
-from collectors.common.outbox import Outbox, OutboxError
+from collectors.common.outbox import Limits, Outbox, OutboxError
 from collectors.common.transport import DeliveryOutcome
 from collectors.windows.capture_process import CaptureProcess
 from collectors.windows.configuration import Loaded, RuntimeSettings, activate, load
@@ -51,7 +52,10 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
             )
             loaded = load(state)
             observer = Outbox(
-                loaded.outbox.path, collector, loaded.outbox.limits, read_only=True,
+                loaded.outbox.path, collector,
+                replace(loaded.outbox.limits,
+                        busy_timeout_seconds=Limits().busy_timeout_seconds),
+                read_only=True,
             )
             # A status observer must read while a producer reserves the writer lock.
             with closing(sqlite3.connect(loaded.outbox.path, autocommit=True)) as writer:
@@ -60,6 +64,30 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                     assert observer.status().pending_count == 0
                 finally:
                     writer.execute("ROLLBACK")
+
+            # An independent monitor must also tolerate a bounded exclusive commit.
+            locked = threading.Event()
+            writer_failures = []
+
+            def commit_writer():
+                try:
+                    with closing(sqlite3.connect(loaded.outbox.path, autocommit=True)) as writer:
+                        writer.execute("BEGIN EXCLUSIVE")
+                        locked.set()
+                        time.sleep(2)
+                        writer.execute("ROLLBACK")
+                except Exception as error:
+                    writer_failures.append(type(error).__name__)
+                    locked.set()
+
+            writer_thread = threading.Thread(target=commit_writer)
+            writer_thread.start()
+            try:
+                assert locked.wait(5) and not writer_failures
+                assert observer.status().pending_count == 0
+            finally:
+                writer_thread.join(5)
+                assert not writer_thread.is_alive() and not writer_failures
 
             class LoseOnce:
                 collector_id = collector
@@ -124,7 +152,7 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                             chain.append(item)
                             current = current.__cause__ or current.__context__
                         print("SYNTHETIC_OUTBOX_FAILURE:" + json.dumps({
-                            "busy_seconds": settings.busy_seconds, "chain": chain,
+                            "busy_seconds": observer.limits.busy_timeout_seconds, "chain": chain,
                         }), flush=True)
                         raise
                     high_water = max(high_water, pending)
