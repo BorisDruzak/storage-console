@@ -14,8 +14,13 @@ native SCM wrapper, lifecycle CLI, LocalSystem и installed-wheel negative/nativ
 проверки; полный frozen-source regression и независимый review завершены.
 PR #11 merged как `c28ef069236a67da2f03bbaa5637fa29e7b88002`; exact head/main CI:
 все шесть required jobs SUCCESS, Sonar SKIPPED. Точные release/rollback wheel
-проверены native operator lifecycle. GATE B BLOCKED: live handover и отдельное
-разрешение/окно реальной перезагрузки ещё не получены, live acceptance не выполнен.
+проверены native operator lifecycle. По явному указанию пользователя пакет перенесён
+на FILESERVER, выполнены foreground Ctrl+C → service и stop/start: LocalSystem,
+тот же config/identity/binding, heartbeat/inventory HEALTHY и очередь 0/0 подтверждены.
+Существующие ACL/SMB/audit policy и boot time неизменны; USN configuration не менялась.
+GATE B BLOCKED: отдельное разрешение/окно реальной перезагрузки ещё не получены;
+автозапуск после reboot без login не проверен. Browser login/source/inventory/reload
+PASS после штатного истечения HTTP 429 окна; strict TLS без bypass.
 USN / Stage C не начат. Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
