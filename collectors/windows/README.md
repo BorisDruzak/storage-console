@@ -102,8 +102,8 @@ Windows Service/state DACL, USN continuity, SMB/DFS/FSRM/VSS/ACL/telemetry,
 
 Implementation and acceptance are tracked in
 [Issue #8 ledger](../../docs/acceptance/mvp-003-004-execution-ledger.md).
-The following operator commands belong to the Stage C candidate; Gate C is not
-accepted until the ledger records exact CI and controlled live acceptance.
+Stage C exact CI and controlled live acceptance are recorded in the ledger.
+The following commands preserve the accepted activation/recovery boundaries.
 
 - Stop the collector service through its existing lifecycle and confirm STOPPED.
   Back up its protected state using the existing offline backup procedure.
@@ -137,7 +137,9 @@ accepted until the ledger records exact CI and controlled live acceptance.
   observation window; it must not silently discard pending C events. A central
   rollback additionally requires a compatible database snapshot or retained C
   ingestion/read support. Index downgrade alone does not provide that compatibility.
-  Actual package rollback acceptance is still required before Gate C PASS.
+  Actual immutable C→B→C package rollback passed; see the ledger for evidence.
+  Preserve the new cache for the corrected C reader; the superseded C candidate
+  does not understand the durable reason-cycle marker.
 
 Activity polls every five seconds, uses source/type filters and bounded pages,
 retains nullable unknown paths, and shows NTFS USN provenance. It never infers
