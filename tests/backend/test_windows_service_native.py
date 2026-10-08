@@ -112,7 +112,7 @@ def crash(service):
     return status.pid
 
 
-def activate_fixture(service, tmp_path, origin, ca):
+def activate_fixture(service, tmp_path, origin, ca, *, settings=None):
     data = tmp_path / "data"
     data.mkdir()
     (data / "synthetic.txt").write_bytes(b"synthetic")
@@ -120,7 +120,9 @@ def activate_fixture(service, tmp_path, origin, ca):
     with ProtectedState(tmp_path / "state", create=True) as state:
         config = activate(
             state, identity, origin, Scope((str(data),)), "a" * 43, ca.read_bytes(),
-            RuntimeSettings(heartbeat_seconds=5, inventory_seconds=3600, poll_seconds=0.05),
+            settings or RuntimeSettings(
+                heartbeat_seconds=5, inventory_seconds=3600, poll_seconds=0.05,
+            ),
         )
     return config, Outbox(tmp_path / "state" / "outbox.sqlite3", identity, read_only=True)
 
@@ -170,7 +172,12 @@ def test_local_system_dpapi_tls_outage_stop_start_and_auth_suspension(
 ):
     server, origin = servers()
     server.reply = {"status": 503}
-    config, box = activate_fixture(service, tmp_path, origin, authorities[0] / "ca.pem")
+    # This lifecycle/replay test uses the production-default heartbeat cadence.
+    # Five-second pressure remains covered by the dedicated runtime stress test.
+    config, box = activate_fixture(
+        service, tmp_path, origin, authorities[0] / "ca.pem",
+        settings=RuntimeSettings(inventory_seconds=3600, poll_seconds=0.05),
+    )
     status = service.start()
     assert principal(status.pid) == "S-1-5-18"
     assert service.start().pid == status.pid
@@ -222,7 +229,9 @@ def test_local_system_dpapi_tls_outage_stop_start_and_auth_suspension(
 
     stopped = snapshot()
     service.stop()
-    server.reply = {}
+    # A successful receipt takes longer than five seconds, but remains inside
+    # the transport's whole deadline; replay must still drain within 105 seconds.
+    server.reply = {"drip": True}
     service.start()
     deadline = time.monotonic() + box.limits.lease_seconds + config.settings.transport_seconds + 30
     restarted = snapshot()
@@ -238,7 +247,9 @@ def test_local_system_dpapi_tls_outage_stop_start_and_auth_suspension(
     assert any(json.loads(r["body"])["collector_id"] == str(config.collector_id)
                for r in server.requests)
     server.reply = {"status": 401}
-    eventually(box.auth_suspended)
+    eventually(box.auth_suspended, seconds=(
+        config.settings.heartbeat_seconds + config.settings.transport_seconds + 1
+    ))
     service.stop()
     generation = box.credential_generation()
     server.reply = {}

@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: BLOCKED — live service/reboot PASS; native observer lock correction awaiting final CI
+GATE B: BLOCKED — live service/reboot PASS; bounded native fixture corrections awaiting final CI
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -365,6 +365,55 @@ lost-ACK, duplicate, pending-zero and checkpoint acceptance. GREEN observed:
 longer timeouts or production runtime changes. Final exact head and merged-main
 CI remain required; C is held.
 
+Corrected PR #14 head `cdd48fd82e8617919e0e35aacdc3600ddc23e49e`,
+[CI 37734822496](https://github.com/BorisDruzak/storage-console/actions/runs/37734822496):
+all six required jobs SUCCESS, Sonar SKIPPED; native 43 passed, installed CLI 14
+passed, backend 622 passed / 58 skipped, frontend 121 passed / 12 Playwright passed.
+Merged as `8e7eb05f96b43fad0ab11c7cefb61f42bcb7f2e1`; exact merged-main
+[CI 37735548662](https://github.com/BorisDruzak/storage-console/actions/runs/37735548662)
+FAIL: native 41 passed / 2 failed; five other required jobs SUCCESS, Sonar SKIPPED.
+The successful head run does not substitute for failed merged-main acceptance.
+
+Bounded failure metadata established two additional fixture conditions:
+
+- Service replay timeout: all original outage batches and inventory were already
+  acknowledged. Only two newly generated, unattempted heartbeat batches remained;
+  service RUNNING, sequence 23, no quarantine or authentication suspension. The
+  five-second fixture cadence kept replenishing the queue under slower delivery.
+- Read-only integration observer: SQLite BUSY (code 5) occurred at
+  `PRAGMA synchronous=FULL`, before BEGIN, with a one-second budget. Read-only mode
+  removed the reserved-writer conflict but cannot bypass a bounded exclusive lock.
+  CLI uses the configured one-second budget too; a five-second test monitor is
+  not claimed as CLI parity or a product fix.
+
+Additional RED -> GREEN checks use actual Windows/native execution:
+
+- Owned exclusive writer holds the synthetic database for two seconds. Existing
+  one-second observer fails RED (`STATE_UNAVAILABLE`, 1 failed, 18.09 s). Separate
+  read-only monitor uses the existing Outbox default five-second busy budget;
+  production/runtime writer settings remain one second. GREEN: 1 passed, 67.16 s,
+  including reserved/exclusive locks, strict HTTPS/disposable PostgreSQL, original
+  five-second queue pressure, lost-ACK replay, duplicate count, pending zero,
+  heartbeat/inventory and durable checkpoint assertions. No errors suppressed.
+- Controlled successful HTTPS receipt drips for approximately 5.7 seconds, inside
+  the existing 15-second transport deadline. Five-second heartbeat cadence fails
+  the unchanged 105-second pending-zero/freshness predicate RED (1 failed,
+  124.89 s): retained backlog gone, only new heartbeats pending. Lifecycle/replay
+  fixture now uses the production-default 30-second cadence; dedicated pressure
+  and other native fixtures retain five seconds. Authentication-suspension wait
+  derives from that cadence plus transport deadline plus one second. Drain
+  deadline, zero-pending requirement, suspension persistence and cleanup remain.
+  GREEN: 1 passed, 55.57 s, including slow receipt, unchanged drain and retained
+  auth-suspension checks. Independent review of both test changes found no
+  Important findings; reviewer did not claim native execution. Local full Windows
+  installed CLI/native SCM/LocalSystem/runtime/strict HTTPS/disposable PostgreSQL
+  regression: 57 passed, 2 dependency warnings, no skips (254.24 s, Python 3.14.3).
+  Ruff, diff-check and Gitleaks public-file scan PASS. Fresh full required CI on
+  exact head plus merged-main, including target Python 3.13, remain required.
+
+No collector, installation artifact, backend, frontend or CI workflow is changed.
+C remains NOT STARTED until all required final publication checks pass.
+
 ### Operator-performed reboot acceptance — 2026-10-08
 
 The user stated “отправил в ребут проверяй”. The operator performed the reboot;
@@ -392,6 +441,10 @@ while verifying automatic startup. Read-only administrative SSH probes were used
   checkpoint remains complete at sequence 20. Identity, credential binding and
   config bytes unchanged; all 98 installed modules equal the accepted wheel,
   original installation unchanged and protected rollback backup hash verified.
+- Continued read-only check at 11:28:37 confirms the same automatically started
+  SYSTEM service process, heartbeat sequence 1440, queue 0/0, unchanged config,
+  identity and 98 installed modules; API HEALTHY with fresh heartbeat and the
+  same 10,146 objects. This required no manual service start or further reboot.
 - Existing state/installation/scope-root ACLs, SMB configuration and audit policy
   compare unchanged against pre-handover evidence. No USN configuration operation
   was performed. Boot changed through the operator's action only.
