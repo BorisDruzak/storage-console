@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS. GATE B PASS после operator-performed reboot; C не начат.**
+**GATE A PASS. Live reboot B PASS; GATE B BLOCKED на fresh publication CI; C не начат.**
 
 ## Known baseline
 
@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: PASS — approved service trial and operator-performed no-login reboot verified
+GATE B: BLOCKED — live service/reboot PASS; fresh documentary publication native CI failed
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -309,6 +309,26 @@ handover/service trial; it does not authorize reboot.
   10,146 filesystem objects, volume detail/reload, no page errors and verified
   strict TLS. Private screenshots retained; no mocks/TLS bypass used.
 
+### Documentary publication CI blocker
+
+[PR #14](https://github.com/BorisDruzak/storage-console/pull/14) initial head
+`98dd2903a6a38be6db0b23f59c15ab4a072ad413`,
+[CI 37730844343](https://github.com/BorisDruzak/storage-console/actions/runs/37730844343):
+FAIL in Windows native synthetic 503 → stop/start → backlog-drain acceptance:
+`SERVICE_ACCEPTANCE_TIMEOUT` at the unchanged 105-second drain predicate;
+42 other native checks passed, five other required jobs SUCCESS; Sonar SKIPPED.
+This does not invalidate the observed FILESERVER reboot, but prevents final
+publication/transition to C. No failed/live CI run was cancelled or restarted.
+
+Unchanged local native reproduction passed (1 passed, 48.75 seconds). Its read-only
+synthetic timing observations showed separate retry/lease scheduling; the actual
+CI failure cause is not established. Added bounded failure-only synthetic
+queue/SCM snapshots, preserving the predicate and its post-start 105-second deadline.
+No runtime/installed artifact change or increased timeout. Independent diagnostic
+review: no Important findings. Exact updated-worktree native check passed
+(1 passed, 94.23 seconds); Ruff/diff-check passed. A new exact-head run must supply the missing result;
+do not claim the diagnostic instrumentation proves a fix.
+
 ### Operator-performed reboot acceptance — 2026-10-08
 
 The user stated “отправил в ребут проверяй”. The operator performed the reboot;
@@ -366,7 +386,7 @@ Real FILESERVER reboot approved: operator performed reboot; user requested verif
 Real FILESERVER reboot acceptance: PASS; auto-start/no human login, fresh heartbeat, queue 0/0
 Rollback verified: PASS exact final artifact files, existing config/binding preserved
 Deployed central SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776 (accepted Stage A)
-Next stage authorized: C only, after this documentary checkpoint review/exact head+main CI
+Next stage authorized: NO; fresh documentary checkpoint exact head+main CI required
 ~~~
 
 B acceptance is limited to the reviewed code, installed artifact and actual pilot.
@@ -374,7 +394,7 @@ Measured delayed startup latency is an observation, not a guaranteed fixed timeo
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: NOT STARTED — GATE B PASS; wait for B documentary checkpoint review/head+main CI
+GATE C: BLOCKED — GATE B publication CI required; Stage C NOT STARTED
 
 ~~~text
 PR:

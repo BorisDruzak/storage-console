@@ -17,15 +17,18 @@ PR #11 merged как `c28ef069236a67da2f03bbaa5637fa29e7b88002`; exact head/main
 проверены native operator lifecycle. По явному указанию пользователя пакет перенесён
 на FILESERVER, выполнены foreground Ctrl+C → service и stop/start: LocalSystem,
 тот же config/identity/binding, heartbeat/inventory HEALTHY и очередь 0/0 подтверждены.
-GATE B PASS: пользователь сам отправил FILESERVER в reboot и поручил проверку.
+Live reboot B PASS: пользователь сам отправил FILESERVER в reboot и поручил проверку.
 Служба автоматически запустилась в session 0 от LocalSystem примерно через 139 секунд
 после boot, без интерактивного входа. Console HEALTHY примерно через 155 секунд;
 новый heartbeat, inventory и очередь 0/0 подтверждены. Codex не выполнял reboot
 или ручной start/run после boot. Существующие ACL/SMB/audit policy неизменны;
 USN configuration не менялась. Browser login/source/inventory/reload после reboot
 PASS, strict TLS без bypass. Evidence и screenshots остаются приватными.
-USN / Stage C не начат; переход после review и exact head/main CI этого
-документального checkpoint. Operator checklist:
+GATE B BLOCKED: initial CI документального PR #14 упал только на native synthetic
+503 → stop/start → drain timeout; остальные пять jobs PASS. Причина ещё не доказана;
+локальное native воспроизведение PASS. Добавлена bounded failure-only диагностика
+без изменения runtime, predicate или timeout. Переход C только после fresh exact
+head/main CI. USN / Stage C не начат. Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
