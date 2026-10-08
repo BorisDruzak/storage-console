@@ -743,7 +743,69 @@ checks and complete migration upgrade/check/downgrade/upgrade/check passed.
 Final test archive SHA256:
 `41b9ca845fa4ab7c416c74e5538a32596e78560f1d934ce2e53fe62ffd131931`.
 Gitleaks on that public archive reported no leaks. Immutable B compatibility/C byte
-recovery was rerun successfully. No Stage C code is deployed yet; CI/live gates remain open.
+recovery was rerun successfully. These checks preceded the first live C attempt.
+
+### Stage C first live attempt — FAIL; correction in progress
+
+- Draft [PR #17](https://github.com/BorisDruzak/storage-console/pull/17), source
+  `b771db2659aa01b1896a8c99c4a46c39321df99b`,
+  [exact-head CI](https://github.com/BorisDruzak/storage-console/actions/runs/37759319009):
+  all six required jobs SUCCESS; Sonar SKIPPED. Not merged; no C exact-main acceptance.
+- Immutable wheel SHA256
+  `dfd179188b84f2691152f11af96b3fa3a0febcc8fb5beb4ec17dfe3d0da77ba1`:
+  139173 bytes; all 103 Python modules byte-equal source. Operator ZIP SHA256
+  `adf8e30da7c3810f0768509e5ee042f3a1b531a52c6084514c9f34244099a78d`.
+  Accepted B rollback wheel retained unchanged. Actual owned SYSTEM service with
+  strict HTTPS/PostgreSQL completed immutable C -> B -> C acceptance: one passed,
+  96.23 seconds; cursor, config, binding retained. This is isolated artifact proof.
+- Central was deployed to exact C source after verified database backup SHA256
+  `eac0fd51335ee3443b7a8fb5c51f96158d4402cfaf53feb28e84b63c4b02d868`.
+  API/worker/web/PostgreSQL healthy; revision checks, migration/check, strict TLS,
+  auth/redirect, inventory threshold 7200 seconds and post-backup verification PASS.
+- Real collector C installation verified all 103 modules and LocalSystem service.
+  Offline SQLite backup SHA256
+  `e1052fa31b0fcf7fff7559b69c3a07e44919b611e8557b4ab816875de0e7a699`.
+  Existing config/identity/binding preserved; no reboot or journal mutation.
+  User delegated creation of the dedicated disposable folder inside approved root.
+  USN baseline became COMPLETE / CONTINUOUS_SINCE_BASELINE; queue/quarantine 0/0.
+- Controlled live create/write/file rename/parent rename/delete generated stable
+  FileId and correct known paths, including DELETE after parent rename. However,
+  both renames also produced a redundant partial RENAME for CLOSE|NEW (0x80002000)
+  after the complete OLD/NEW pair (0x00003000). GATE C FAIL; no latency/UI PASS claimed.
+  Existing synthetic checks had checked event-ID dedup but missed this semantic
+  duplication. Native installed-worker assertion now requires exactly one RENAME.
+- Independent review confirmed the blocker. Two focused tests reproduced RED;
+  correction persists proof of emitted NEW within the current reason cycle,
+  suppresses matching parent/name accumulated NEW summaries without pending OLD,
+  and clears proof after CLOSE. Markerless orphan NEW, subsequent real rename,
+  restart/buffer boundaries and DATA on CLOSE remain observable. See Microsoft
+  [USN_RECORD_V2 reason semantics](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/d2a2b53e-bf78-4ef3-90c7-21b918fab304).
+  First correction focused scope/installed native worker GREEN: 22 passed.
+  Independent review then reproduced repeated NEW|DATA before CLOSE; matching
+  NEW is now suppressed throughout the proven open reason cycle while DATA still
+  accumulates. Any destination cache change invalidates proof. The earlier
+  CLOSE-only snapshot passed 698 backend checks and 66 native checks, but these
+  results do not verify the final reason-accumulation correction. Full corrected regression,
+  independent review, updated exact-SHA CI/artifact and fresh live acceptance pending.
+- Browser verification helper used UI aliases instead of raw API relative-path
+  fields; its failed attempt is not acceptance evidence. Correct the helper and
+  measure a fresh creation in an actual polling UI after the product correction.
+- After draining C events, actual live service rollback to unchanged accepted B
+  succeeded without re-enrollment/config/binding changes. Central C ingest stays
+  available for already-delivered C events. Existing historical test events are
+  retained; future corrected acceptance must use a fresh bounded time window.
+  Cleanup, network replay, restart, final invariants and Gate C remain open.
+
+Final corrected reason-cycle source verification (not live acceptance):
+Python 3.13.16/PostgreSQL full regression 700 passed, 66 Windows-only skipped,
+59 warnings, 336.88 seconds. Ruff, mypy 101 source + six deployment modules,
+runtime OpenAPI, 54 deployment checks and upgrade/check/downgrade/upgrade/check
+PASS. Snapshot SHA256:
+`33e828337cbab14ead73f455623122b4280c693d3de6c72bf41c4d5765eed558`.
+Actual local Windows USN/installed worker/HTTPS/PostgreSQL/Activity regression:
+68 passed, no skips, 77.86 seconds. Independent review of the final correction
+reported no remaining verified Critical/Important. Updated exact-head/main CI,
+immutable artifact and fresh controlled live acceptance are still pending.
 
 - Change only own gate after verifying relevant evidence.
 - Describe failures as FAIL or BLOCKED, never ambiguous success.

@@ -2,6 +2,16 @@
 
 ## Issue #8 — delivery train A → B → C
 
+Stage C live gate FAIL / correction in progress: draft PR #17 exact-head
+`b771db2659aa01b1896a8c99c4a46c39321df99b` passed all six CI jobs (Sonar SKIPPED),
+and exact wheel/central/LocalSystem installation were verified. Real controlled
+rename exposed redundant CLOSE|NEW partial events after a correct rename pair.
+Focused RED→GREEN now covers durable reason-cycle suppression and exactly one
+native RENAME; full regression/review/new exact-SHA CI and fresh live acceptance
+remain required. Collector safely rolled back to accepted B; central C ingest
+retained. No C merge/gate PASS, no reboot or journal/ACL/SMB/audit-policy mutation.
+Evidence: [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
+
 GATE A PASS на runtime `dda125d08f97fac78ccea466ec89fd0ad6f79776` после
 merged PR #9 и [exact-main push CI](https://github.com/BorisDruzak/storage-console/actions/runs/37686825905):
 все шесть обязательных jobs PASS; Sonar SKIPPED. Полный regression и независимый

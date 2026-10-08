@@ -24,6 +24,67 @@ def state(tmp_path):
     return result
 
 
+def test_rename_close_summary_does_not_repeat_pair_after_restart(tmp_path):
+    capture = state(tmp_path)
+    capture.consume(42, 32, [item(1, 0x80000100)])
+    pair = capture.consume(42, 64, [item(33, 0x1000), item(34, 0x2000, "После.txt")])
+    assert len(pair) == 1 and pair[0].event_type == "RENAME"
+    restarted = UsnState(capture.box, VOLUME, "synthetic-scope")
+    assert restarted.consume(42, 96, [item(65, 0x80002000, "После.txt")]) == ()
+    again = restarted.consume(42, 128, [item(97, 0x1000, "После.txt"),
+                                        item(98, 0x2000, "Следующее.txt"),
+                                        item(99, 0x80002000, "Следующее.txt")])
+    assert len(again) == 1 and again[0].event_type == "RENAME"
+    assert again[0].old_relative_path == "pilot\\После.txt"
+
+
+def test_orphan_new_name_is_observed_once_and_new_destination_is_not_suppressed(tmp_path):
+    capture = state(tmp_path)
+    first = capture.consume(42, 32, [item(1, 0x2000, "Первое.txt")])
+    assert len(first) == 1 and first[0].old_relative_path is None
+    assert capture.consume(42, 64, [item(33, 0x80002000, "Первое.txt")]) == ()
+    second = capture.consume(42, 96, [item(65, 0x80002000, "Иное.txt")])
+    assert len(second) == 1 and second[0].new_relative_path == "pilot\\Иное.txt"
+
+
+def test_first_orphan_close_on_cached_path_is_not_inferred_as_duplicate(tmp_path):
+    capture = state(tmp_path)
+    capture.consume(42, 32, [item(1, 0x80000100)])
+    orphan = capture.consume(42, 64, [item(33, 0x80002000)])
+    assert len(orphan) == 1 and orphan[0].event_type == "RENAME"
+    assert orphan[0].old_relative_path is None
+    next_cycle = capture.consume(42, 96, [item(65, 0x80002000)])
+    assert len(next_cycle) == 1 and next_cycle[0].event_type == "RENAME"
+
+
+def test_rename_close_summary_still_flushes_data_write(tmp_path):
+    capture = state(tmp_path)
+    capture.consume(42, 32, [item(1, 0x80000100)])
+    capture.consume(42, 64, [item(33, 0x1000), item(34, 0x2000, "После.txt")])
+    events = capture.consume(42, 96, [item(65, 0x80002001, "После.txt")])
+    assert [event.event_type for event in events] == ["WRITE"]
+
+
+def test_accumulated_new_reason_before_close_is_not_another_rename(tmp_path):
+    capture = state(tmp_path)
+    capture.consume(42, 32, [item(1, 0x80000100)])
+    pair = capture.consume(42, 64, [item(33, 0x1000), item(34, 0x2000, "После.txt")])
+    assert len(pair) == 1 and pair[0].event_type == "RENAME"
+    restarted = UsnState(capture.box, VOLUME, "synthetic-scope")
+    assert restarted.consume(42, 96, [item(65, 0x2001, "После.txt")]) == ()
+    closed = restarted.consume(42, 128, [item(97, 0x80002001, "После.txt")])
+    assert [event.event_type for event in closed] == ["WRITE"]
+
+
+def test_changed_cache_signature_cannot_suppress_a_markerless_destination(tmp_path):
+    capture = state(tmp_path)
+    capture.consume(42, 32, [item(1, 0x2000, "Первое.txt")])
+    capture.consume(42, 64, [item(33, 0x8000, "Иное.txt")])
+    orphan = capture.consume(42, 96, [item(65, 0x80002000, "Иное.txt")])
+    assert len(orphan) == 1 and orphan[0].event_type == "RENAME"
+    assert orphan[0].old_relative_path is None
+
+
 def test_crud_close_noise_rename_restart_and_deleted_cached_path(tmp_path):
     capture = state(tmp_path)
     events = capture.consume(42, 32, [item(1, 0x100), item(2, 0x80000100)])
@@ -50,7 +111,11 @@ def test_ancestor_rename_updates_descendant_path_without_changing_id(tmp_path):
     capture = state(tmp_path)
     capture.consume(42, 32, [item(1, 0x80000100, "До", DIR),
                             item(2, 0x80000100, parent=DIR)])
-    capture.consume(42, 64, [item(33, 0x1000, "До", DIR), item(34, 0x2000, "После", DIR)])
+    renamed = capture.consume(42, 64, [item(33, 0x1000, "До", DIR),
+                                       item(34, 0x2000, "После", DIR)])
+    assert len(renamed) == 1
+    restarted = UsnState(capture.box, VOLUME, "synthetic-scope")
+    assert restarted.consume(42, 65, [item(64, 0x80002000, "После", DIR)]) == ()
     deleted = capture.consume(42, 96, [item(65, 0x80000200, parent=DIR)])
     assert deleted[0].file_id == FILE
     assert deleted[0].old_relative_path == "pilot\\После\\Отчёт.txt"

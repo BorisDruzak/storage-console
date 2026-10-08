@@ -37,6 +37,7 @@ class _Node(BaseModel):
     created: bool = False
     outside: bool = False
     write_emitted: bool = False
+    rename_emitted: bool = False
     rename_usn: Unsigned | None = None
     rename_reason: Annotated[int, Field(ge=0, le=2**32 - 1)] = 0
     rename_parts: Annotated[int, Field(ge=1, le=32)] | None = None
@@ -267,6 +268,13 @@ class UsnState:
             node = get(record.file_id)
             parent_path = path(record.parent_id)
             previous_path = path(record.file_id) if node else None
+            # NTFS accumulates NEW with later reasons until CLOSE. Proof belongs
+            # to this destination in the still-open cycle, not merely its cache.
+            rename_summary = bool(
+                record.reason & 0x2000
+                and node and node.rename_emitted and node.rename_usn is None
+                and node.parent == record.parent_id and node.name == record.name
+            )
             if parent_path is None and (outside(record.parent_id) or outside(record.file_id)):
                 # An ancestor's proven move-out invalidates descendant membership;
                 # subsequent outside noise cannot block unrelated monitored files.
@@ -343,7 +351,8 @@ class UsnState:
                     continue
                 node = node.model_copy(update={"parent": record.parent_id, "name": record.name,
                                               "rename_usn": None, "rename_reason": 0,
-                                              "rename_parts": None, "outside": False})
+                                              "rename_parts": None, "outside": False,
+                                              "rename_emitted": True})
             elif parent_path is None:
                 # No trustworthy ancestry/transition: do not invent an event kind
                 # or commit this raw record's outside name/cursor.
@@ -355,12 +364,18 @@ class UsnState:
                     raise UsnError("USN_CAPACITY")
                 node = _Node(parent=record.parent_id, name=record.name)
             else:
-                node = node.model_copy(update={"parent": record.parent_id, "name": record.name})
+                node = node.model_copy(update={
+                    "parent": record.parent_id, "name": record.name,
+                    "rename_emitted": bool(node.rename_emitted and
+                                           node.parent == record.parent_id and
+                                           node.name == record.name),
+                })
             put(record.file_id, node)
             current_path = path(record.file_id)
-            if record.reason & 0x2000 and not paired_rename:
+            if record.reason & 0x2000 and not paired_rename and not rename_summary:
                 emit(record, "RENAME", None, current_path)
                 node.created = True
+                node.rename_emitted = True
             if record.reason & 0x100 and not node.created:
                 emit(record, "CREATE", None, current_path)
                 node.created = True
@@ -378,6 +393,7 @@ class UsnState:
                 flush_write(node, record, current_path)
             if record.reason & 0x80000000:
                 node.write_emitted = False
+                node.rename_emitted = False
                 classes: tuple[tuple[int, EventType], ...] = (
                     (0x8000, "METADATA_CHANGE"), (0x800, "SECURITY_CHANGE"),
                 )

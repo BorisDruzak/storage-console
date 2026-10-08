@@ -55,3 +55,7 @@ def test_installed_owned_usn_worker_reopens_durable_cache_and_queue(
         assert {row["event_type"] for row in events} >= {"CREATE", "WRITE", "RENAME", "DELETE"}
         assert len({row["source_event_id"] for row in events}) == len(events)
         assert len({row["file_id"] for row in events}) == 1
+        renames = [row for row in events if row["event_type"] == "RENAME"]
+        assert len(renames) == 1, "CLOSE_SUMMARY_MUST_NOT_REPEAT_RENAME"
+        assert renames[0]["old_relative_path"].endswith("Отчёт.txt")
+        assert renames[0]["new_relative_path"].endswith("После.txt")
