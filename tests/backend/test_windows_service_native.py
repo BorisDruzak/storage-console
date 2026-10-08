@@ -5,6 +5,7 @@ import io
 import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import sysconfig
@@ -33,13 +34,19 @@ from tests.deployment.collector_delivery import serving_ingest
 pytestmark = pytest.mark.skipif(os.name != "nt", reason="Native Windows SCM acceptance")
 
 
-def eventually(predicate, seconds=30):
+def eventually(predicate, seconds=30, diagnostics=None):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         if predicate():
             return
         time.sleep(0.1)
-    pytest.fail("SERVICE_ACCEPTANCE_TIMEOUT")
+    detail = ""
+    if diagnostics is not None:
+        try:
+            detail = ":" + json.dumps(diagnostics())
+        except Exception as error:
+            detail = ":" + json.dumps({"diagnostic_error": type(error).__name__})
+    pytest.fail("SERVICE_ACCEPTANCE_TIMEOUT" + detail)
 
 
 @pytest.fixture
@@ -181,12 +188,50 @@ def test_local_system_dpapi_tls_outage_stop_start_and_auth_suspension(
     assert inventory.value["completed"]
     pending = box.status().pending_count
     config_bytes = (tmp_path / "state" / "config.json").read_bytes()
+
+    def replay_snapshot():
+        # Read only synthetic scheduling metadata; never bodies, tokens or paths.
+        now = time.time()
+        database = tmp_path / "state" / "outbox.sqlite3"
+        with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+            rows = connection.execute(
+                "SELECT domain,stream,attempts,error_code,next_attempt,lease_until "
+                "FROM batches ORDER BY seq LIMIT 65"
+            ).fetchall()
+        current = service.status()
+        return {
+            "pending": box.status().pending_count,
+            "quarantine": box.status().quarantined_count,
+            "auth_suspended": box.auth_suspended(),
+            "heartbeat_sequence": box.checkpoint("windows:heartbeat").value["sequence"],
+            "requests": len(server.requests),
+            "service_state": current.state,
+            "batches": [{
+                "domain": domain, "stream": stream, "attempts": attempts, "code": code,
+                "retry_wait": round(max(0, retry - now), 3),
+                "lease_wait": round(max(0, (lease or 0) - now), 3),
+            } for domain, stream, attempts, code, retry, lease in rows[:64]],
+            "rows_truncated": len(rows) > 64,
+        }
+
+    def snapshot():
+        try:
+            return replay_snapshot()
+        except Exception as error:
+            return {"snapshot_error": type(error).__name__}
+
+    stopped = snapshot()
     service.stop()
     server.reply = {}
     service.start()
+    deadline = time.monotonic() + box.limits.lease_seconds + config.settings.transport_seconds + 30
+    restarted = snapshot()
     eventually(lambda: box.status().pending_count == 0 and (
         box.checkpoint("windows:heartbeat").value["sequence"] > sequence
-    ), seconds=box.limits.lease_seconds + config.settings.transport_seconds + 30)
+    ), seconds=max(0, deadline - time.monotonic()),
+        diagnostics=lambda: {
+            "stopped": stopped, "restarted": restarted, "timeout": snapshot(),
+        })
     assert pending > 0 and box.credential_binding() == config.credential_version
     assert not box.status().quarantined_count
     assert (tmp_path / "state" / "config.json").read_bytes() == config_bytes

@@ -17,15 +17,31 @@ PR #11 merged как `c28ef069236a67da2f03bbaa5637fa29e7b88002`; exact head/main
 проверены native operator lifecycle. По явному указанию пользователя пакет перенесён
 на FILESERVER, выполнены foreground Ctrl+C → service и stop/start: LocalSystem,
 тот же config/identity/binding, heartbeat/inventory HEALTHY и очередь 0/0 подтверждены.
-Существующие ACL/SMB/audit policy и boot time неизменны; USN configuration не менялась.
-GATE B BLOCKED: отдельное разрешение/окно реальной перезагрузки ещё не получены;
-автозапуск после reboot без login не проверен. Browser login/source/inventory/reload
-PASS после штатного истечения HTTP 429 окна; strict TLS без bypass.
-USN / Stage C не начат. Operator checklist:
+Live reboot B PASS: пользователь сам отправил FILESERVER в reboot и поручил проверку.
+Служба автоматически запустилась в session 0 от LocalSystem примерно через 139 секунд
+после boot, без интерактивного входа. Console HEALTHY примерно через 155 секунд;
+новый heartbeat, inventory и очередь 0/0 подтверждены. Codex не выполнял reboot
+или ручной start/run после boot. Существующие ACL/SMB/audit policy неизменны;
+USN configuration не менялась. Browser login/source/inventory/reload после reboot
+PASS, strict TLS без bypass. Evidence и screenshots остаются приватными.
+Initial CI документального PR #14 упал на native synthetic replay timeout;
+причина не установлена, локальное воспроизведение PASS. Добавлена bounded
+failure-only диагностика без изменения runtime, predicate или timeout. Fresh head
+`fda8a7597ee665e48f78875ba7b9f668278066d8` / CI `37732147714`: все шесть jobs
+SUCCESS, native 43 passed без skips; Sonar SKIPPED. Диагностика не объявлена fix.
+GATE B BLOCKED: final head `7d957032…` / CI `37732725825` упал в другом native
+queue-pressure/lost-ACK test: `STATE_UNAVAILABLE` при чтении outbox status.
+Native 42 passed, включая сервисный replay test; пять других jobs PASS.
+Diagnostic head `54f83b34…` / CI `37733855050` доказал SQLite code 5
+на `BEGIN IMMEDIATE`: test observer запрашивал writer lock для чтения status.
+Test-only correction — отдельный read-only observer с прежними limits, runtime
+сохраняет writable outbox. Reserved-lock RED воспроизведён; прежние assertions
+и deadlines сохранены. Runtime на FILESERVER не меняется. Переход C только после
+GREEN и fresh exact head/main CI. USN / Stage C не начат. Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
-Перезагрузка реального FILESERVER требует отдельного явного разрешения.
+Любая следующая перезагрузка реального FILESERVER требует отдельного явного разрешения.
 
 ## MVP-PILOT-002 — inventory dashboard (Issue #6)
 

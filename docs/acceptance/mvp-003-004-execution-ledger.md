@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS. Stage B начат после terminal CI финальной публикации A; C не начат.**
+**GATE A PASS. Live reboot B PASS; GATE B BLOCKED на final native CI; C не начат.**
 
 ## Known baseline
 
@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: BLOCKED — approved live service trial completed; separate real reboot approval/acceptance pending
+GATE B: BLOCKED — live service/reboot PASS; native observer lock correction awaiting final CI
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -145,7 +145,7 @@ handover instruction; the Stage A rollback artifact and previous actual installe
 runtime are retained. Current central runtime stays
 accepted Stage A `dda125d08f97fac78ccea466ec89fd0ad6f79776`; API/OpenAPI/schema
 unchanged by B, no central deployment needed. Live handover, stop/start, pending/
-quarantine/freshness are verified below. No-login boot recovery remains NOT VERIFIED.
+quarantine/freshness and no-login boot recovery are verified below.
 Actual previous live interpreter/package and a protected SQLite rollback copy
 were retained before the handover.
 Read-only central recheck at the B code checkpoint: four existing services
@@ -309,9 +309,99 @@ handover/service trial; it does not authorize reboot.
   10,146 filesystem objects, volume detail/reload, no page errors and verified
   strict TLS. Private screenshots retained; no mocks/TLS bypass used.
 
-Next: separate reboot permission/maintenance window and actual no-login boot
-acceptance. Full regression/review/head+main CI completed.
-Stage C remains unauthorized until GATE B PASS.
+### Documentary publication CI history
+
+[PR #14](https://github.com/BorisDruzak/storage-console/pull/14) initial head
+`98dd2903a6a38be6db0b23f59c15ab4a072ad413`,
+[CI 37730844343](https://github.com/BorisDruzak/storage-console/actions/runs/37730844343):
+FAIL in Windows native synthetic 503 → stop/start → backlog-drain acceptance:
+`SERVICE_ACCEPTANCE_TIMEOUT` at the unchanged 105-second drain predicate;
+42 other native checks passed, five other required jobs SUCCESS; Sonar SKIPPED.
+This did not invalidate the observed FILESERVER reboot; publication/transition
+was held until fresh native/full CI below. No failed/live CI run was cancelled or restarted.
+
+Unchanged local native reproduction passed (1 passed, 48.75 seconds). Its read-only
+synthetic timing observations showed separate retry/lease scheduling; the actual
+CI failure cause is not established. Added bounded failure-only synthetic
+queue/SCM snapshots, preserving the predicate and its post-start 105-second deadline.
+No runtime/installed artifact change or increased timeout. Independent diagnostic
+review: no Important findings. Exact updated-worktree native check passed
+(1 passed, 94.23 seconds); Ruff/diff-check passed.
+
+Fresh head `fda8a7597ee665e48f78875ba7b9f668278066d8`,
+[CI 37732147714](https://github.com/BorisDruzak/storage-console/actions/runs/37732147714):
+all six required jobs terminal SUCCESS, Sonar SKIPPED. Backend 622 passed /
+58 skipped / 79 warnings (255.37 s), Windows installed CLI 14 passed and native
+SCM/LocalSystem/runtime/HTTPS/PostgreSQL 43 passed (236.13 s); no native skips.
+The initial failure did not recur; its cause remains unestablished. Diagnostic
+instrumentation is not claimed as a fix. Retain bounded diagnostics if it recurs;
+no product behavior, acceptance predicate or timeout was weakened.
+Final evidence head `7d957032ef5d7ffbb1c086e2c247319b5c41a217`,
+[CI 37732725825](https://github.com/BorisDruzak/storage-console/actions/runs/37732725825):
+FAIL in a different native test, queue-pressure/lost-ACK runtime integration:
+`OutboxError: STATE_UNAVAILABLE` while reading local outbox status. The service
+503/replay test was among the 42 passing native checks; five other required jobs passed;
+Sonar SKIPPED. No root cause is inferred from this generic error. Added bounded
+synthetic failure-chain metadata to that test, without retry/suppression or changed
+predicate/timeout; original error is re-raised. No installed runtime change.
+Exact updated-worktree native/strict HTTPS/disposable PostgreSQL check passed
+(1 passed, 67.17 s); Ruff/diff-check and independent diagnostic review passed.
+Diagnostic head `54f83b34acabb42fcab6d912a63866fc1c47b272`,
+[CI 37733855050](https://github.com/BorisDruzak/storage-console/actions/runs/37733855050):
+FAIL in the same native queue-pressure observer; 42 other native checks and five
+other required jobs passed, Sonar SKIPPED. Bounded metadata proves underlying
+SQLite `SQLITE_BUSY` (numeric code 5) on `BEGIN IMMEDIATE`, busy budget 1 second.
+The test observer used the runtime's writable outbox to read status, competing
+for the producer/delivery writer lock. This is distinct from the initial service
+503/replay timeout, whose cause is still not established.
+
+Correction is test-only: separate read-only Outbox observer with the same path,
+collector identity and limits; real runtime/capture/delivery keep the writable
+outbox. A deterministic owned reserved-writer-lock check fails RED with the old
+observer (`STATE_UNAVAILABLE`, 1 failed, 17.58 s). The read-only observer must pass
+that check and the unchanged actual native HTTPS/PostgreSQL queue-pressure,
+lost-ACK, duplicate, pending-zero and checkpoint acceptance. GREEN observed:
+1 passed, 64.85 s, same busy/deadline/predicate; Ruff/diff-check passed. No retries, skips,
+longer timeouts or production runtime changes. Final exact head and merged-main
+CI remain required; C is held.
+
+### Operator-performed reboot acceptance — 2026-10-08
+
+The user stated “отправил в ребут проверяй”. The operator performed the reboot;
+Codex issued no reboot, service start/run/install or interactive login command
+while verifying automatic startup. Read-only administrative SSH probes were used.
+
+- New boot observed at 09:57:47 (Asia/Yekaterinburg). At +54 seconds, delayed-start
+  service was still STOPPED and Console showed OBSERVE with retained inventory;
+  this intermediate observation was not represented as HEALTHY.
+- Automatic service process began at 10:00:06, approximately 139.36 seconds after
+  boot, session 0. Registered Automatic (Delayed), LocalSystem and bounded
+  recovery configuration preserved; actual process token is SYSTEM. No competing
+  foreground runtime or leftover temporary console helper task.
+- Successful logon auditing was already enabled and remained unchanged. Read-only
+  Security 4624 and active-session checks found no human interactive logon since
+  boot, including before service startup; 151 successful logon events observed at
+  final probe. Service/system logons were excluded from human-interactive counts.
+- Console API at 10:00:22 confirmed HEALTHY with new collector observation
+  10:00:15: approximately 155.32 seconds boot-to-observed-HEALTHY. Another API
+  observation at 10:06:26 confirmed continued HEALTHY/new heartbeat. Same one
+  source, one volume, one collector and 10,146 inventory objects.
+- Post-boot queue drained to pending=0/quarantine=0; auth not suspended. Heartbeat
+  sequence 1266 then 1274, newer than last saved pre-reboot acceptance checkpoint
+  1217; that checkpoint is not claimed as the immediate reboot cursor. Inventory
+  checkpoint remains complete at sequence 20. Identity, credential binding and
+  config bytes unchanged; all 98 installed modules equal the accepted wheel,
+  original installation unchanged and protected rollback backup hash verified.
+- Existing state/installation/scope-root ACLs, SMB configuration and audit policy
+  compare unchanged against pre-handover evidence. No USN configuration operation
+  was performed. Boot changed through the operator's action only.
+- Fresh strict-TLS browser acceptance after reboot PASS: actual login, HEALTHY
+  source, one source/volume, 10,146 objects, volume detail and reload, no page
+  errors. Private post-boot evidence/screenshots retained outside public Git.
+
+Full regression, independent source review and exact code head/main CI already
+completed above. This documentary checkpoint requires its own fresh independent
+review/head and merged-main CI before starting C. C remains NOT STARTED here.
 
 ~~~text
 PR: https://github.com/BorisDruzak/storage-console/pull/11 (MERGED)
@@ -327,19 +417,20 @@ Install/stop/start/idempotency: PASS disposable + approved FILESERVER trial
 Foreground handover: PASS approved FILESERVER Ctrl+C, old runtime exit 130
 Network outage/backlog: 503 replay + retained 401 suspension PASS disposable
 Pending/quarantine/freshness: actual FILESERVER drain 0/0 + new heartbeat/inventory HEALTHY
-Controlled real service trial: EXPLICITLY AUTHORIZED/RUN/PASS; reboot remains separate
-Real FILESERVER reboot approved: NO explicit approval/window received
-Real FILESERVER reboot acceptance: NOT RUN, no-login auto-start NOT VERIFIED
+Controlled real service trial: EXPLICITLY AUTHORIZED/RUN/PASS
+Real FILESERVER reboot approved: operator performed reboot; user requested verification
+Real FILESERVER reboot acceptance: PASS; auto-start/no human login, fresh heartbeat, queue 0/0
 Rollback verified: PASS exact final artifact files, existing config/binding preserved
 Deployed central SHA: dda125d08f97fac78ccea466ec89fd0ad6f79776 (accepted Stage A)
-Next stage authorized: NO
+Next stage authorized: NO; final native failure diagnosis/exact head+main CI required
 ~~~
 
-Do not mark PASS without explicitly approved real reboot acceptance.
+B acceptance is limited to the reviewed code, installed artifact and actual pilot.
+Measured delayed startup latency is an observation, not a guaranteed fixed timeout.
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: BLOCKED — GATE B PASS required; Stage C NOT STARTED
+GATE C: BLOCKED — GATE B final native CI required; Stage C NOT STARTED
 
 ~~~text
 PR:
