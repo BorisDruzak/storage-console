@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+import subprocess
 import threading
 import time
 from contextlib import closing
@@ -9,6 +10,7 @@ from dataclasses import replace
 import pytest
 from sqlalchemy import func, select
 from test_windows_runtime_native import installed_python as installed_python
+from windows_capture_diagnostics import read_trace, trace_program
 
 from collectors.common.outbox import Limits, Outbox, OutboxError
 from collectors.common.transport import DeliveryOutcome
@@ -30,12 +32,25 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
     authenticated_setup,
     tmp_path,
     installed_python,
+    monkeypatch,
 ):
     client, engine, collector, token, _ = authenticated_setup
     data = tmp_path / "data"
     data.mkdir()
     for index in range(10):
         (data / f"synthetic-{index}.txt").write_bytes(b"synthetic")
+    diagnostic_path = tmp_path / "synthetic-capture-codes.json"
+    real_popen = subprocess.Popen
+    worker_command = [str(installed_python), "-I", "-m", "collectors.windows._capture_worker"]
+
+    def diagnostic_popen(args, **kwargs):
+        if args == worker_command:
+            args = [str(installed_python), "-I", "-c", trace_program(diagnostic_path)]
+        return real_popen(args, **kwargs)
+
+    # Installed modules/stdin/Job/settings are unchanged; only this worker entry
+    # is instrumented. Other native tests retain the ordinary -I -m entrypoint.
+    monkeypatch.setattr(subprocess, "Popen", diagnostic_popen)
     with serving_ingest(client.app, tmp_path / "tls") as (origin, ca):
         with ProtectedState(tmp_path / "state", create=True) as state:
             settings = RuntimeSettings(
@@ -163,6 +178,14 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                     if completed and pending == 0:
                         break
                     time.sleep(0.05)
+                if not completed or failures:
+                    print("SYNTHETIC_CAPTURE_FAILURE:" + json.dumps({
+                        "trace": read_trace(diagnostic_path),
+                        "failures": failures,
+                        "events": [{"kind": e.kind, "code": e.code,
+                                    "records": e.records, "batches": e.batches}
+                                   for e in runtime.events],
+                    }), flush=True)
                 assert completed and not failures, (runtime.events, observer.status())
                 assert high_water >= 3 and sender.lost and sender.duplicates == 1
                 assert observer.status().pending_count == 0

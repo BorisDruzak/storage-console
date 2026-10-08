@@ -49,6 +49,15 @@ monitor (runtime busy budget неизменен); slow HTTPS receipt и штат
 Runtime на FILESERVER не меняется: продолжает автоматически запущенный SYSTEM
 процесс, queue 0/0 и HEALTHY подтверждены повторно. GATE B остаётся BLOCKED до
 fresh full exact head/main CI, включая target Python 3.13. USN / Stage C не начат.
+[PR #15](https://github.com/BorisDruzak/storage-console/pull/15) head `a4333e3f40…`
+/ CI `37738636490`: все шесть jobs SUCCESS, native 43 passed без skips. Exact
+merged-main `30ac6c69ac…` / CI `37739444011`: FAIL, native 42 passed / 1 failed,
+пять других jobs SUCCESS, Sonar SKIPPED. Service replay PASS; capture integration
+получил `NATIVE_FAILED` после 6 records / 3 batches. Причина пока не установлена.
+Добавлена только test-only bounded диагностика installed worker (runpy/exception
+codes, без exception text/locals/paths); обычный entrypoint проверяют другие
+native tests. Это diagnostic execution, не fix; budgets и deadlines не меняются.
+GATE B BLOCKED, C NOT STARTED до диагностики/full exact head+main CI.
 Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:

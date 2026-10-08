@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: BLOCKED — live service/reboot PASS; bounded native fixture corrections awaiting final CI
+GATE B: BLOCKED — live service/reboot PASS; native capture failure diagnosis and final CI required
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -413,6 +413,62 @@ Additional RED -> GREEN checks use actual Windows/native execution:
 
 No collector, installation artifact, backend, frontend or CI workflow is changed.
 C remains NOT STARTED until all required final publication checks pass.
+
+### Final native capture diagnostic checkpoint
+
+[PR #15](https://github.com/BorisDruzak/storage-console/pull/15) head
+`a4333e3f4017f13ff9f07c33363f1b985eef0372`, exact
+[CI 37738636490](https://github.com/BorisDruzak/storage-console/actions/runs/37738636490):
+all six required jobs SUCCESS, Sonar SKIPPED. Target Python 3.13 installed CLI
+14 passed, native 43 passed without skips (330.03 s); backend 622 passed / 58
+skipped / 79 warnings, deployment 54 passed, frontend 121 / Playwright 12 passed.
+Merged as `30ac6c69acff0828203479422c3f6fad48a5d90d`, tree equal to accepted head.
+Exact merged-main
+[CI 37739444011](https://github.com/BorisDruzak/storage-console/actions/runs/37739444011):
+FAIL, native 42 passed / 1 failed (407.56 s); five other required jobs SUCCESS,
+Sonar SKIPPED. Service slow-receipt/replay passed. Integration's original
+completion assertion failed: inventory `NATIVE_FAILED`, 6 records / 3 batches,
+pending=0 / quarantine=0. No observer BUSY diagnostic appeared.
+
+Partial counts prove failure inside inventory capture after successful flushes;
+worker initialization, nonzero exit and report-decode failures would have zero
+counts. Underlying Outbox, native iterator or other producer error is not yet
+established. Do not infer writer contention from the generic native code.
+
+Added test-only diagnostic entrypoint for that exact owned installed capture
+worker command. It keeps isolated Python, installed modules, private stdin,
+strict stdout report, Job assignment and settings. Standard-library runpy invokes
+the same installed worker; narrow exception tracing retains the last 24 events
+with class/function/line and bounded numeric errno/winerror/SQLite codes. No
+exception text, frame locals, filenames, records, identities or credentials.
+Expected CAPACITY/iterator-control exceptions do not consume the diagnostic cap.
+Metadata lives in a separate synthetic temporary file; callback/write failures
+do not change worker behavior, and original acceptance assertions remain.
+Other native checks retain the ordinary uninstrumented `-I -m` entrypoint.
+
+This is instrumented installed-wheel diagnostic execution, not a runtime fix.
+Local actual Windows/strict HTTPS/disposable PostgreSQL diagnostic execution:
+1 passed, 67.89 s. Bounded callback probe captures the numeric SQLite error without
+SQL text, preserving exit/stdout/stderr. Final capped-source native regression,
+independent review and exact head plus merged-main CI remain required. Runtime,
+installed artifacts, budgets, monitoring cadence and deadlines are unchanged.
+C remains NOT STARTED; real FILESERVER reboot acceptance remains independently PASS.
+
+Independent review identified one Important diagnostic issue: first-event cap
+could fill with routine handled sidecar FileNotFound/FileExists probes before
+the actual midscan failure. Controlled 100-probe noise followed by numeric SQLite
+error reproduces RED: root event absent. A bounded deque of the last 24 events
+passes GREEN: root code retained, 24 records / 1810 bytes, no SQL/message text,
+original exit/stdout/stderr unchanged. No blanket missing-file filter conceals
+real DB/native disappearance. Fresh reviewer verification: no Important findings.
+Permanent portable pytest regression reproduces first-cap RED (1 failed, 0.56 s,
+root code absent), then last-event-buffer GREEN (1 passed, 0.15 s); it also verifies
+bounded metadata, absent SQL/message text and unchanged binary stdout/exit.
+Local native job before the tail-buffer correction: 43 passed, 2 dependency
+warnings, no skips (245.34 s). Final corrected-tail actual Windows/strict HTTPS/
+disposable PostgreSQL integration: 1 passed, 2 dependency warnings (67.58 s).
+Full target Python 3.13 exact-head/main CI remain required, not substituted by
+the portable diagnostic regression or local Python 3.14.3 checks.
 
 ### Operator-performed reboot acceptance — 2026-10-08
 
