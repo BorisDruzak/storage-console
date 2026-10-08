@@ -32,9 +32,12 @@ SUCCESS, native 43 passed без skips; Sonar SKIPPED. Диагностика н
 GATE B BLOCKED: final head `7d957032…` / CI `37732725825` упал в другом native
 queue-pressure/lost-ACK test: `STATE_UNAVAILABLE` при чтении outbox status.
 Native 42 passed, включая сервисный replay test; пять других jobs PASS.
-Добавляется bounded numeric failure-chain диагностика без suppression/retry.
-Причина ещё не доказана; runtime на FILESERVER не меняется. Переход C только после
-fresh exact head/main CI. USN / Stage C не начат. Operator checklist:
+Diagnostic head `54f83b34…` / CI `37733855050` доказал SQLite code 5
+на `BEGIN IMMEDIATE`: test observer запрашивал writer lock для чтения status.
+Test-only correction — отдельный read-only observer с прежними limits, runtime
+сохраняет writable outbox. Reserved-lock RED воспроизведён; прежние assertions
+и deadlines сохранены. Runtime на FILESERVER не меняется. Переход C только после
+GREEN и fresh exact head/main CI. USN / Stage C не начат. Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).

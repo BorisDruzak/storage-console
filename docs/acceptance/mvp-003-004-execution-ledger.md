@@ -114,7 +114,7 @@ before a concrete Stage B implementation and its required native acceptance.
 
 ## Stage B — Windows Service
 
-GATE B: BLOCKED — live service/reboot PASS; final native CI state-read failure under investigation
+GATE B: BLOCKED — live service/reboot PASS; native observer lock correction awaiting final CI
 
 Code checkpoint: [PR #11](https://github.com/BorisDruzak/storage-console/pull/11)
 merged as `c28ef069236a67da2f03bbaa5637fa29e7b88002`.
@@ -346,7 +346,24 @@ synthetic failure-chain metadata to that test, without retry/suppression or chan
 predicate/timeout; original error is re-raised. No installed runtime change.
 Exact updated-worktree native/strict HTTPS/disposable PostgreSQL check passed
 (1 passed, 67.17 s); Ruff/diff-check and independent diagnostic review passed.
-Final exact head and merged-main CI remain required; C is held.
+Diagnostic head `54f83b34acabb42fcab6d912a63866fc1c47b272`,
+[CI 37733855050](https://github.com/BorisDruzak/storage-console/actions/runs/37733855050):
+FAIL in the same native queue-pressure observer; 42 other native checks and five
+other required jobs passed, Sonar SKIPPED. Bounded metadata proves underlying
+SQLite `SQLITE_BUSY` (numeric code 5) on `BEGIN IMMEDIATE`, busy budget 1 second.
+The test observer used the runtime's writable outbox to read status, competing
+for the producer/delivery writer lock. This is distinct from the initial service
+503/replay timeout, whose cause is still not established.
+
+Correction is test-only: separate read-only Outbox observer with the same path,
+collector identity and limits; real runtime/capture/delivery keep the writable
+outbox. A deterministic owned reserved-writer-lock check fails RED with the old
+observer (`STATE_UNAVAILABLE`, 1 failed, 17.58 s). The read-only observer must pass
+that check and the unchanged actual native HTTPS/PostgreSQL queue-pressure,
+lost-ACK, duplicate, pending-zero and checkpoint acceptance. GREEN observed:
+1 passed, 64.85 s, same busy/deadline/predicate; Ruff/diff-check passed. No retries, skips,
+longer timeouts or production runtime changes. Final exact head and merged-main
+CI remain required; C is held.
 
 ### Operator-performed reboot acceptance — 2026-10-08
 

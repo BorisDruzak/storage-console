@@ -1,13 +1,15 @@
 import json
 import os
+import sqlite3
 import threading
 import time
+from contextlib import closing
 
 import pytest
 from sqlalchemy import func, select
 from test_windows_runtime_native import installed_python as installed_python
 
-from collectors.common.outbox import OutboxError
+from collectors.common.outbox import Outbox, OutboxError
 from collectors.common.transport import DeliveryOutcome
 from collectors.windows.capture_process import CaptureProcess
 from collectors.windows.configuration import Loaded, RuntimeSettings, activate, load
@@ -48,6 +50,16 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                 state, collector, origin, Scope((str(data),)), token, ca.read_bytes(), settings
             )
             loaded = load(state)
+            observer = Outbox(
+                loaded.outbox.path, collector, loaded.outbox.limits, read_only=True,
+            )
+            # A status observer must read while a producer reserves the writer lock.
+            with closing(sqlite3.connect(loaded.outbox.path, autocommit=True)) as writer:
+                writer.execute("BEGIN IMMEDIATE")
+                try:
+                    assert observer.status().pending_count == 0
+                finally:
+                    writer.execute("ROLLBACK")
 
             class LoseOnce:
                 collector_id = collector
@@ -87,7 +99,7 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                 deadline = time.monotonic() + 60
                 while time.monotonic() < deadline and thread.is_alive():
                     try:
-                        pending = loaded.outbox.status().pending_count
+                        pending = observer.status().pending_count
                     except OutboxError as error:
                         # Synthetic failure metadata only, never exception text/paths/locals.
                         chain = []
@@ -123,9 +135,9 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                     if completed and pending == 0:
                         break
                     time.sleep(0.05)
-                assert completed and not failures, (runtime.events, loaded.outbox.status())
+                assert completed and not failures, (runtime.events, observer.status())
                 assert high_water >= 3 and sender.lost and sender.duplicates == 1
-                assert loaded.outbox.status().pending_count == 0
+                assert observer.status().pending_count == 0
             finally:
                 started = time.monotonic()
                 stop.set()
@@ -137,5 +149,5 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                 assert (
                     connection.scalar(select(func.count()).select_from(collector_heartbeats)) >= 2
                 )
-            assert loaded.outbox.checkpoint("windows:inventory").revision == 6
+            assert observer.checkpoint("windows:inventory").revision == 6
             assert len(runtime.events) <= 64
