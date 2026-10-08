@@ -17,18 +17,19 @@ PR #11 merged как `c28ef069236a67da2f03bbaa5637fa29e7b88002`; exact head/main
 проверены native operator lifecycle. По явному указанию пользователя пакет перенесён
 на FILESERVER, выполнены foreground Ctrl+C → service и stop/start: LocalSystem,
 тот же config/identity/binding, heartbeat/inventory HEALTHY и очередь 0/0 подтверждены.
-Live reboot B PASS: пользователь сам отправил FILESERVER в reboot и поручил проверку.
+GATE B PASS: пользователь сам отправил FILESERVER в reboot и поручил проверку.
 Служба автоматически запустилась в session 0 от LocalSystem примерно через 139 секунд
 после boot, без интерактивного входа. Console HEALTHY примерно через 155 секунд;
 новый heartbeat, inventory и очередь 0/0 подтверждены. Codex не выполнял reboot
 или ручной start/run после boot. Существующие ACL/SMB/audit policy неизменны;
 USN configuration не менялась. Browser login/source/inventory/reload после reboot
 PASS, strict TLS без bypass. Evidence и screenshots остаются приватными.
-GATE B BLOCKED: initial CI документального PR #14 упал только на native synthetic
-503 → stop/start → drain timeout; остальные пять jobs PASS. Причина ещё не доказана;
-локальное native воспроизведение PASS. Добавлена bounded failure-only диагностика
-без изменения runtime, predicate или timeout. Переход C только после fresh exact
-head/main CI. USN / Stage C не начат. Operator checklist:
+Initial CI документального PR #14 упал на native synthetic replay timeout;
+причина не установлена, локальное воспроизведение PASS. Добавлена bounded
+failure-only диагностика без изменения runtime, predicate или timeout. Fresh head
+`fda8a7597ee665e48f78875ba7b9f668278066d8` / CI `37732147714`: все шесть jobs
+SUCCESS, native 43 passed без skips; Sonar SKIPPED. Диагностика не объявлена fix.
+Переход C после exact final head/main CI. USN / Stage C не начат. Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:
 [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
