@@ -2,7 +2,7 @@
 
 Контрольный журнал к docs/tasks/mvp-003-004-three-stage-delivery-train.md.
 
-**GATE A PASS. GATE B PASS: final exact head/main CI и live service/reboot подтверждены. C: implementation in progress, gate pending.**
+**GATE A PASS. GATE B PASS. GATE C PASS: exact code SHA/CI, deployment, controlled live acceptance, privacy, rollback and operator-consented cleanup verified. After C — STOP.**
 
 ## Known baseline
 
@@ -583,7 +583,8 @@ Measured delayed startup latency is an observation, not a guaranteed fixed timeo
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: BLOCKED — exact-SHA CI, immutable release and live acceptance pending
+Historical checkpoint — GATE C was BLOCKED pending exact-SHA CI/release/live acceptance.
+Final result is recorded in “Stage C — corrected live acceptance” below.
 
 Baseline main SHA: `8a1916d96aaca75287ff9b0865c9b5b98c8454ec`.
 Baseline exact-main CI: `37742833424`, all six required jobs SUCCESS, Sonar SKIPPED.
@@ -745,7 +746,7 @@ Final test archive SHA256:
 Gitleaks on that public archive reported no leaks. Immutable B compatibility/C byte
 recovery was rerun successfully. These checks preceded the first live C attempt.
 
-### Stage C first live attempt — FAIL; correction in progress
+### Stage C first live attempt — historical FAIL, superseded by corrected acceptance
 
 - Draft [PR #17](https://github.com/BorisDruzak/storage-console/pull/17), source
   `b771db2659aa01b1896a8c99c4a46c39321df99b`,
@@ -813,3 +814,134 @@ immutable artifact and fresh controlled live acceptance are still pending.
 - Never paste real production filenames, credentials, raw paths or diagnostics.
 - Separate disposable environment tests from live FILESERVER acceptance.
 - Do not advance B without A PASS, or C without B PASS.
+
+## Stage C — corrected live acceptance (2026-10-08)
+
+GATE C: PASS. Exact merged-main CI and post-merge runtime verified; this section
+records final evidence. The acceptance follow-up contains tests/documentation only;
+no further product development is authorized by this gate.
+Source: `385f427e18f93051eb98bc10c7f23089326b3792`.
+[PR #17](https://github.com/BorisDruzak/storage-console/pull/17) merged as
+`22667a67b6c5faceb914a114197e92b3a7bac2b7`; its tree equals the reviewed source.
+[Exact-head CI](https://github.com/BorisDruzak/storage-console/actions/runs/37764490272):
+six required jobs SUCCESS; Sonar SKIPPED (unconfigured).
+[Exact merged-main CI](https://github.com/BorisDruzak/storage-console/actions/runs/37767139793): six required jobs SUCCESS; Sonar SKIPPED.
+
+- Final RED→GREEN includes accumulated NEW|DATA before CLOSE, paired/orphan NEW,
+  durable reopen/buffer boundaries, destination changes and retained DATA.
+  Full Python 3.13/PostgreSQL regression: 700 passed, 66 Windows-only skipped;
+  Windows native/installed-worker/HTTPS/PostgreSQL: 68 passed, no skips.
+  Ruff/mypy/OpenAPI, deployment 54 and migration cycle PASS; frontend 125 Vitest,
+  types/build/lint/i18n and 12 Playwright PASS. Independent final source review
+  reported no verified Critical/Important findings.
+- Immutable wheel: 139361 bytes; SHA256
+  `8c770a4c6471d75373216ce603a807cd28c47d4bd4288f03322bcc6d558ddd89`.
+  All 103 installed modules byte-equal source. Operator ZIP SHA256
+  `d286352fc79ccdc976788869cb655d8de9e3d848b250c1973c2f095b26c988d1`.
+  Accepted B wheel retained unchanged. Actual owned SYSTEM C→B→C service
+  acceptance with strict HTTPS/PostgreSQL: 1 passed, 83.51 seconds; exactly one
+  native file rename, retained cursor/config/binding and honest B Activity UNKNOWN.
+- Corrected central deployment and FILESERVER LocalSystem service verified;
+  config/enrollment/binding unchanged, no foreground competitor. Private pre/post
+  database and offline collector-state backups were hash/integrity verified.
+  The accepted operator reboot belongs to Stage B; Codex initiated no reboot.
+- Actual FILESERVER create→write→file rename→parent rename→delete passed twice,
+  before and after controlled service restart/API outage. Fresh bounded window:
+  two stable FileIds, ten file events, all four types, exactly one RENAME per file,
+  no logical duplicate IDs, accurate old/new and DELETE-after-parent-rename paths.
+  Actor/client/confidence remain null, provenance NTFS_USN.
+  Earlier failed-candidate historical events remain retained; the fresh proof
+  does not claim those earlier duplicate rename summaries never occurred.
+- Actual authenticated Russian Chromium UI, strict TLS with trusted CA, source/type
+  filters, Asia/Yekaterinburg display, reload and mobile passed without page errors.
+  Measured CREATE `10:47:07.661885Z` → rendered `10:47:21.605Z`:
+  **13.944 seconds**, including normal collector delivery and UI polling, below 60s.
+- Controlled SYSTEM service stop/start passed with advanced heartbeat and unchanged
+  config/binding. Brief HTTPS loss was simulated by stopping only the owned central
+  API; capture continued. After restoration, **23 original queued batches** matched
+  their original byte SHA256 in actual receipts; queue/quarantine 0/0, auth not
+  suspended. Fresh source HEALTHY; inventory and Activity COMPLETE,
+  CONTINUOUS_SINCE_BASELINE. Overview/capacity continued.
+- Privacy qualification: FILESERVER existing-journal native experiment used an
+  isolated narrower scope within the delegated synthetic directory. A sibling
+  marker outside that experimental scope was absent from outgoing payload and
+  SQLite bytes; all four in-scope types present, journal configuration unchanged.
+  **That experiment did not upload** or change the actual enrollment scope.
+  Previously executed native HTTPS/PostgreSQL integration proved positive delivery,
+  not sibling exclusion. Independent review caught that documentary overclaim.
+  The strengthened installed-worker HTTPS/PostgreSQL test now also performs
+  outside sibling CRUD and verifies its marker and native FileId are absent from
+  actual request bytes, all persisted change rows and Activity API. In-scope CRUD
+  proves nonempty delivery and traversal past those sibling operations. Actual
+  Windows execution PASS: 1 passed, 2 warnings, 59.61 seconds; final independent
+  review reports no verified Critical/Important. Product source unchanged.
+  The FILESERVER experimental sibling remains inside the real approved root
+  and may legitimately appear in the real full-scope stream.
+- Existing ACL, SMB and audit-policy invariants unchanged; existing journal only
+  QUERY/READ. Same operator-accepted boot (CIM timestamp jitter bounded under 1s),
+  no competing collector or helper scheduled task. No production contents collected.
+- Explicit operator consent received for cleanup. Only the dedicated synthetic
+  folder was removed at `2026-10-08T10:54:56.8713081Z`: resolved absolute path and
+  approved parent checked, no reparse points, six synthetic remaining entries,
+  parent preserved. No real department files touched.
+- Rollback: drain C payloads through compatible C ingestion before switching to B,
+  or retain exact queued bytes for C recovery; preserve cursor/cache and binding.
+  Actual immutable C→B→C proof and earlier live C→accepted-B rollback passed.
+  Central rollback requires a compatible verified database snapshot or retained C
+  API; downgrading indexes alone is insufficient. New reason-cycle cache must not
+  be handed to the superseded C reader.
+
+All raw security evidence, production paths, identities, screenshots and credentials
+remain private. Sonar SKIPPED is not a Quality Gate PASS.
+After final GATE C PASS: STOP; attribution, SMB/VSS/ACL, PVE/PBS, Diagnostics and
+Discovery remain outside this issue.
+
+Post-merge deployment verification: central exact SHA
+`22667a67b6c5faceb914a114197e92b3a7bac2b7`; four services healthy,
+revision labels, strict TLS/auth, Alembic check and 7200s inventory threshold PASS.
+Actual API image: `sha256:eedd91a40e43e0e41463304deb0e9ba0c017f34cd88d2062ad4cca1a1068470b`;
+web image: `sha256:b9e0632b3f0da67e9ff06cef349569983ce5ba8ccfa88242328fa0fd2cd58724`.
+Verified pre/post database backup SHA256:
+`69cf0902df39d9688ea6a9deb64839596fbf07b7975cde521bc3dc1322a21ce9` /
+`69d790ba74ccdf0a89cc470fc6479f5c1aaf08bae5aaade17bfd3996c647ba85`.
+Collector artifact remains source385, all modules identical to the merged source;
+no reenrollment/restart/reboot for this central publication. Post-merge real
+API/browser inspection of the existing corrected evidence PASS: all four types,
+stable FileId, one rename, Russian filters/timezone/reload/mobile/strict TLS.
+This read-only repetition is not a second latency measurement. Queue/quarantine
+0/0, auth active, SYSTEM running, config/binding unchanged. Source HEALTHY,
+Activity COMPLETE / CONTINUOUS_SINCE_BASELINE; inventory remains within accepted
+7200s TTL. Cleanup does not claim an immediate full inventory recount.
+
+Final GATE C checklist: all sixteen requirements PASS, with evidence above for
+approved scope; existing-journal QUERY/READ only; native four types; canonical
+volume/stable FileId/cache; atomic durable cursor/outbox; explicit gap regressions;
+privacy including transported sibling exclusion; actual HTTPS/PG replay; bounded
+authenticated Activity API; Russian real-event UI/no actor inference; measured
+13.944s latency; restart/outage; continuing inventory/heartbeat/Overview; exact
+head/merged-main six-job CI and honest Sonar SKIPPED; delegated operator live
+scenario/consented cleanup; actual rollback and retained recovery state.
+
+Acceptance follow-up test commit:
+`6007fca6753c1a16336a0fb7743bbf94dfae33a1` —
+`test(usn): prove sibling exclusion through HTTPS ingestion`.
+Only native test evidence and final documentation differ from the deployed code.
+Source/compiled collector module bytes remain those of the accepted release.
+After GATE C: **STOP**. No attribution, SMB/VSS/ACL, PVE/PBS, Diagnostics,
+Discovery, remediation or fleet rollout was performed.
+
+Acceptance-follow-up CI first attempt
+[37768400795](https://github.com/BorisDruzak/storage-console/actions/runs/37768400795)
+FAILED in the pre-existing native runtime pressure test, before USN/privacy steps.
+It read queue-empty before reading inventory completion and later reread a changing
+queue; the assertion observed four pending batches after its earlier empty snapshot.
+The test now reads completion before queue status and asserts that same bounded
+post-completion empty snapshot; ongoing heartbeat producers do not promise a
+permanently empty queue. Pressure, lost ACK/one duplicate, PG effects, heartbeat,
+checkpoint and bounded shutdown assertions remain. Product code unchanged.
+This corrects a demonstrated observer ordering defect; no claim is made about the
+separate older partial-capture timeout whose root cause remains unestablished.
+Replacement actual native runtime + USN HTTPS/PostgreSQL regression: 2 passed,
+2 warnings, 126.58 seconds; Ruff PASS. Final independent test review reports no
+verified Critical/Important. Replacement exact-SHA CI must pass before this
+follow-up is merged or Issue #8 is closed.

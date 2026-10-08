@@ -141,6 +141,12 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
             try:
                 deadline = time.monotonic() + 60
                 while time.monotonic() < deadline and thread.is_alive():
+                    # Observe completion first, then the queue: otherwise a producer
+                    # can finish between an old empty-queue read and the event read.
+                    completed = any(
+                        event.kind == "inventory" and event.code is None and event.records == 12
+                        for event in runtime.events
+                    )
                     try:
                         pending = observer.status().pending_count
                     except OutboxError as error:
@@ -171,10 +177,6 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                         }), flush=True)
                         raise
                     high_water = max(high_water, pending)
-                    completed = any(
-                        event.kind == "inventory" and event.code is None and event.records == 12
-                        for event in runtime.events
-                    )
                     if completed and pending == 0:
                         break
                     time.sleep(0.05)
@@ -188,7 +190,8 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                     }), flush=True)
                 assert completed and not failures, (runtime.events, observer.status())
                 assert high_water >= 3 and sender.lost and sender.duplicates == 1
-                assert observer.status().pending_count == 0
+                # Heartbeats remain live; assert the same post-completion snapshot.
+                assert pending == 0
             finally:
                 started = time.monotonic()
                 stop.set()

@@ -2,15 +2,27 @@
 
 ## Issue #8 — delivery train A → B → C
 
-Stage C live gate FAIL / correction in progress: draft PR #17 exact-head
-`b771db2659aa01b1896a8c99c4a46c39321df99b` passed all six CI jobs (Sonar SKIPPED),
-and exact wheel/central/LocalSystem installation were verified. Real controlled
-rename exposed redundant CLOSE|NEW partial events after a correct rename pair.
-Focused RED→GREEN now covers durable reason-cycle suppression and exactly one
-native RENAME; full regression/review/new exact-SHA CI and fresh live acceptance
-remain required. Collector safely rolled back to accepted B; central C ingest
-retained. No C merge/gate PASS, no reboot or journal/ACL/SMB/audit-policy mutation.
-Evidence: [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
+GATE A PASS → GATE B PASS → **GATE C PASS; STOP**.
+Stage C [PR #17](https://github.com/BorisDruzak/storage-console/pull/17) merged as
+`22667a67b6c5faceb914a114197e92b3a7bac2b7`; central deployed at that exact SHA.
+[Exact-main CI](https://github.com/BorisDruzak/storage-console/actions/runs/37767139793):
+all six required jobs SUCCESS; Sonar SKIPPED (unconfigured). Reviewed collector
+source `385f427e18f93051eb98bc10c7f23089326b3792` is byte-equal merged code.
+Full regression 700 Python/PostgreSQL passed (66 Windows-only skips), native
+Windows 68 passed, frontend 125 Vitest/12 Playwright; independent review passed.
+Actual FILESERVER SYSTEM service and strict-TLS Russian Activity acceptance:
+two fresh CRUD sequences, stable FileIds, exactly one rename per file, accurate
+paths, no logical duplicates, actor/client/confidence unknown; measured 13.944s.
+Restart and 23 byte-identical outage replay batches PASS; queue/quarantine 0/0.
+Privacy qualification on FILESERVER plus strengthened installed-worker native
+HTTPS/PG sibling-marker/FileId exclusion PASS (1 passed, 59.61s).
+Immutable C→B→C rollback PASS; protected backup/config/binding preserved.
+Dedicated synthetic directory removed with explicit operator consent. Codex
+initiated no reboot; existing ACL/SMB/audit/USN configuration unchanged.
+Initial failed rename-summary candidate remains documented as historical FAIL;
+corrected source/live evidence supersedes it. Final follow-up adds test proof
+and acceptance documentation only; no later product stage is started.
+Evidence and limits: [execution ledger](acceptance/mvp-003-004-execution-ledger.md).
 
 GATE A PASS на runtime `dda125d08f97fac78ccea466ec89fd0ad6f79776` после
 merged PR #9 и [exact-main push CI](https://github.com/BorisDruzak/storage-console/actions/runs/37686825905):
@@ -78,28 +90,15 @@ Live SYSTEM autostart/no-login/reboot PASS; повторно HEALTHY, COMPLETE i
 не повторился; причина не установлена и не объявлена исправленной. Instrumented
 pressure test может менять timing; обычный entrypoint проверяется отдельно.
 GATE B PASS для ограниченного pilot. C разрешён только в read-only USN/Activity
-scope. C plan опубликован в локальной ветке, initial parser/native NTFS и atomic
+scope. Historical C checkpoint (superseded by final PASS above): C plan опубликован в локальной ветке, initial parser/native NTFS и atomic
 state/scoped-normalization RED→GREEN проверяются в изоляции; полного C gate пока нет.
 Пользователь делегировал отдельную тестовую папку: создана внутри approved scope,
 existing journal QUERY PASS, без изменения journal configuration/реальных файлов.
-Stage C candidate реализует scoped QUERY/READ USN, atomic cursor/cache/outbox,
-latched continuity gap, stopped-state activation/rebaseline и typed Activity API/UI.
-Независимый source review после RED→GREEN исправлений без Critical/Important.
-Полный final Python 3.13.16/PostgreSQL regression: 694 passed / 66 native-only skips;
-migration cycle/check, Ruff/mypy/OpenAPI и 54 deployment checks PASS.
-Windows отдельно: 62 USN/native/HTTPS/PG и 45 прежних CLI/native/runtime checks PASS.
-Installed USN → strict HTTPS → PostgreSQL → Activity: lost-ACK exact replay,
-logical dedup и COMPLETE polling со стандартным config PASS (59.68 s).
-Frontend: 125 Vitest / 12 Playwright, lint/i18n/types/build/API drift PASS.
-Shared SQLite совместим с immutable B reader/writer; partial C RENAME payloads
-требуют C delivery или сохранённого C state, что отражено в rollback runbook.
-GATE C остаётся BLOCKED: отдельный PR/exact CI, immutable artifacts/deployment,
-live browser/operator CRUD, measured latency/restart/network/privacy/rollback pending.
-Operator checklist:
-[Windows Service](pilot/windows-service-ru.md).
-Актуальные SHA, результаты и незакрытые проверки:
-[execution ledger](acceptance/mvp-003-004-execution-ledger.md).
-Любая следующая перезагрузка реального FILESERVER требует отдельного явного разрешения.
+Stage C accepted implementation: scoped QUERY/READ USN with atomic cache/cursor/
+outbox, explicit continuity gaps, authenticated bounded Activity API and Russian
+real-event UI. Existing enrollment and transport remain; no actor attribution.
+Final proof and recovery limitations are in the Issue #8 ledger. After C STOP;
+remaining product domains require a separate issue.
 
 ## MVP-PILOT-002 — inventory dashboard (Issue #6)
 
