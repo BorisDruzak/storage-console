@@ -5,7 +5,7 @@ from __future__ import annotations
 import ctypes
 import os
 import re
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -370,7 +370,7 @@ class NativeInventory:
             except (ValueError, UnicodeError, ValidationError):
                 yield Observation(error_code="METADATA_INVALID")
 
-    def _root(self, api: _Api, root: str) -> Iterator[Observation]:
+    def _root(self, api: _Api, root: str) -> Generator[Observation]:
         with ExitStack() as stack:
             # Resolve the local volume before opening any metadata handle. A
             # subsequent drive-letter remap cannot turn CreateFile into SMB access.

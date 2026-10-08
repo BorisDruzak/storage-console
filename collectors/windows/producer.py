@@ -223,6 +223,7 @@ def capture_heartbeat(
     box: Outbox,
     *,
     error_code: str | None = None,
+    cursor: str | None = None,
     clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> str:
     if error_code is not None and error_code not in CODES:
@@ -231,7 +232,8 @@ def capture_heartbeat(
     sequence = 1 if state.value is None else cast(dict[str, int], state.value)["sequence"] + 1
     try:
         now = clock()
-        record = HeartbeatRecord(occurred_at=now, version="0.1.0", error_code=error_code)
+        record = HeartbeatRecord(occurred_at=now, version="0.1.0", error_code=error_code,
+                                 cursor=cursor)
         batch = BatchEnvelope[HeartbeatRecord](
             collector_id=box.collector_id,
             batch_id=str(uuid4()),

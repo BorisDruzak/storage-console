@@ -95,7 +95,7 @@ def test_existing_paths_and_deleted_watermarks_survive_upgrade(migration_setup, 
                 occurred_at=at + timedelta(seconds=5),
             )
         )
-    command.upgrade(config, "0005")
+    command.upgrade(config, "head")
     command.check(config)
 
     with engine.connect() as connection:
@@ -121,7 +121,7 @@ def test_existing_paths_and_deleted_watermarks_survive_upgrade(migration_setup, 
         assert history[1]["valid_from_at"] == at + timedelta(seconds=10)
         assert history[1]["valid_until_at"] is None
     command.downgrade(config, "0004")
-    command.upgrade(config, "0005")
+    command.upgrade(config, "head")
     command.check(config)
 
 
@@ -181,7 +181,7 @@ def test_backfill_crosses_keyset_pages_and_refuses_lossy_downgrade(migration_set
                 )
             ],
         )
-    command.upgrade(config, "0005")
+    command.upgrade(config, "head")
     command.check(config)
     with engine.connect() as connection:
         assert connection.scalar(select(func.count()).select_from(object_path_history)) == 514
@@ -265,7 +265,7 @@ def test_new_path_only_deletion_refuses_destructive_legacy_round_trip(
                     valid_from_at=at,
                 )
             )
-    command.upgrade(config, "0005")
+    command.upgrade(config, "head")
     from packages.shared.ingest import paths
 
     with engine.begin() as connection:
@@ -286,10 +286,10 @@ def test_new_path_only_deletion_refuses_destructive_legacy_round_trip(
         )
     with pytest.raises(RuntimeError, match="PATH_DELETIONS_REQUIRE_COMPATIBLE_ROLLBACK"):
         command.downgrade(config, "0004")
-    command.upgrade(config, "0005")
+    command.upgrade(config, "head")
     command.check(config)
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0005"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0006"
         if has_inventory:
             obj = connection.execute(select(filesystem_objects)).mappings().one()
             assert obj["deleted_at"] is None and obj["current_relative_path"] == "a/x"
@@ -333,7 +333,7 @@ def test_first_inventory_hydration_preserves_legacy_delete_semantics(migration_s
                     **event.model_dump(),
                 )
             )
-    command.upgrade(config, "0005")
+    command.upgrade(config, "head")
     with engine.begin() as connection:
         if not legacy:
             change(connection, source, event)

@@ -132,6 +132,240 @@
         "title": "AceRecord",
         "type": "object"
       },
+      "Activity": {
+        "additionalProperties": false,
+        "properties": {
+          "continuity": {
+            "enum": [
+              "CONTINUOUS_SINCE_BASELINE",
+              "GAP",
+              "UNKNOWN"
+            ],
+            "title": "Continuity",
+            "type": "string"
+          },
+          "evaluated_at": {
+            "format": "date-time",
+            "title": "Evaluated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "quality": {
+            "enum": [
+              "COMPLETE",
+              "PARTIAL",
+              "STALE",
+              "ESTIMATED",
+              "UNAVAILABLE"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "total": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "window_end_at": {
+            "format": "date-time",
+            "title": "Window End At",
+            "type": "string"
+          },
+          "window_start_at": {
+            "format": "date-time",
+            "title": "Window Start At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "evaluated_at",
+          "quality",
+          "continuity",
+          "window_start_at",
+          "window_end_at"
+        ],
+        "title": "Activity",
+        "type": "object"
+      },
+      "ActivityItem": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "null"
+          },
+          "client": {
+            "title": "Client",
+            "type": "null"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "null"
+          },
+          "event_type": {
+            "enum": [
+              "CREATE",
+              "WRITE",
+              "RENAME",
+              "DELETE",
+              "METADATA_CHANGE",
+              "SECURITY_CHANGE"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "file_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "new_relative_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Relative Path"
+          },
+          "object_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Id"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "old_relative_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Relative Path"
+          },
+          "parent_file_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent File Id"
+          },
+          "path_quality": {
+            "enum": [
+              "COMPLETE",
+              "UNAVAILABLE"
+            ],
+            "title": "Path Quality",
+            "type": "string"
+          },
+          "provenance": {
+            "enum": [
+              "NTFS_USN",
+              "UNKNOWN"
+            ],
+            "title": "Provenance",
+            "type": "string"
+          },
+          "reason_mask": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Mask"
+          },
+          "source_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Event Id"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "volume_identity": {
+            "title": "Volume Identity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "object_id",
+          "volume_identity",
+          "file_id",
+          "parent_file_id",
+          "occurred_at",
+          "event_type",
+          "old_relative_path",
+          "new_relative_path",
+          "reason_mask",
+          "source_event_id",
+          "provenance",
+          "path_quality"
+        ],
+        "title": "ActivityItem",
+        "type": "object"
+      },
       "ApiError": {
         "additionalProperties": false,
         "properties": {
@@ -1102,6 +1336,15 @@
               }
             ],
             "title": "Parent File Id"
+          },
+          "path_quality": {
+            "default": "COMPLETE",
+            "enum": [
+              "COMPLETE",
+              "UNAVAILABLE"
+            ],
+            "title": "Path Quality",
+            "type": "string"
           },
           "reason_mask": {
             "anyOf": [
@@ -3061,6 +3304,199 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/activity": {
+      "get": {
+        "operationId": "activity_api_v1_activity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "CREATE",
+                    "WRITE",
+                    "RENAME",
+                    "DELETE",
+                    "METADATA_CHANGE",
+                    "SECURITY_CHANGE"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End At"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Activity"
+                }
+              }
+            },
+            "description": "Successful Response",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store",
+                  "type": "string"
+                }
+              },
+              "X-Evidence-Valid-For-Ms": {
+                "description": "Relative evidence lifetime from snapshot time; clients subtract complete request elapsed time.",
+                "schema": {
+                  "maximum": 35000,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
+        "summary": "Activity",
+        "tags": [
+          "read"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",

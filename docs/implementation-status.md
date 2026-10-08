@@ -72,6 +72,19 @@ scope. C plan опубликован в локальной ветке, initial p
 state/scoped-normalization RED→GREEN проверяются в изоляции; полного C gate пока нет.
 Пользователь делегировал отдельную тестовую папку: создана внутри approved scope,
 existing journal QUERY PASS, без изменения journal configuration/реальных файлов.
+Stage C candidate реализует scoped QUERY/READ USN, atomic cursor/cache/outbox,
+latched continuity gap, stopped-state activation/rebaseline и typed Activity API/UI.
+Независимый source review после RED→GREEN исправлений без Critical/Important.
+Полный final Python 3.13.16/PostgreSQL regression: 694 passed / 66 native-only skips;
+migration cycle/check, Ruff/mypy/OpenAPI и 54 deployment checks PASS.
+Windows отдельно: 62 USN/native/HTTPS/PG и 45 прежних CLI/native/runtime checks PASS.
+Installed USN → strict HTTPS → PostgreSQL → Activity: lost-ACK exact replay,
+logical dedup и COMPLETE polling со стандартным config PASS (59.68 s).
+Frontend: 125 Vitest / 12 Playwright, lint/i18n/types/build/API drift PASS.
+Shared SQLite совместим с immutable B reader/writer; partial C RENAME payloads
+требуют C delivery или сохранённого C state, что отражено в rollback runbook.
+GATE C остаётся BLOCKED: отдельный PR/exact CI, immutable artifacts/deployment,
+live browser/operator CRUD, measured latency/restart/network/privacy/rollback pending.
 Operator checklist:
 [Windows Service](pilot/windows-service-ru.md).
 Актуальные SHA, результаты и незакрытые проверки:

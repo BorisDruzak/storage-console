@@ -583,7 +583,7 @@ Measured delayed startup latency is an observation, not a guaranteed fixed timeo
 
 ## Stage C — NTFS USN to real Activity
 
-GATE C: BLOCKED — implementation/full regression/review/CI/live acceptance pending
+GATE C: BLOCKED — exact-SHA CI, immutable release and live acceptance pending
 
 Baseline main SHA: `8a1916d96aaca75287ff9b0865c9b5b98c8454ec`.
 Baseline exact-main CI: `37742833424`, all six required jobs SUCCESS, Sonar SKIPPED.
@@ -641,6 +641,109 @@ Stop/development complete:
 ~~~
 
 ## Rules for updates
+
+### Stage C current development checkpoint (not Gate C acceptance)
+
+At this development checkpoint, product changes remained uncommitted on the Stage C branch based on
+`a756654bb0e868fd1f200e4d327e003097b3c6fd`; no Stage C PR, exact CI, deployed
+candidate or live CRUD acceptance exists yet. The delegated dedicated folder is
+created, but still has no controlled test files. Accepted B runtime remains installed.
+
+- Protected USN activation RED five failures -> GREEN with existing configuration:
+  19 passed. Default disabled; enable/disable survives restart without changing
+  config bytes or credential binding; invalid/duplicate-key/scope-mismatched sidecar
+  fails explicitly. CLI includes stopped-state enable/disable/rebaseline operations.
+- Independent runtime RED two missing-interface failures -> GREEN. Subsequent
+  inventory-stop exception review reproduced a skipped USN stop, then correction
+  ensured sibling cleanup and lock release. Configuration/CLI/runtime regression:
+  36 passed at that checkpoint, before the later progress-age additions.
+- Bootstrap review found enumeration/cursor ancestry race. Portable mutation test
+  RED -> fenced bootstrap GREEN, including native NTFS capture. No cache commits
+  when an approved object or parent changes during enumeration; outside-only volume
+  noise is read without persisting its names. Prior WRITE/move-in findings were
+  closed by independent component re-review.
+- Native QUERY/READ terminal errors initially cleared on the next successful query:
+  five PostgreSQL-independent failures reproduced this. They are now latched in
+  protected state; relevant bootstrap/error/native capture checks: eight passed.
+- Cache capacity and explicit rebaseline each had RED -> GREEN: seven atomic-state
+  checks passed. Capacity rolls back cursor/cache/batch together; heartbeat retains
+  independent checkpoints. Rebaseline keeps queued bytes/receipts and credentials.
+- Installed isolated `-I` USN worker built from current source: one actual Windows
+  native test passed in 10.54 seconds; scoped Cyrillic CRUD, durable cache reopen,
+  stable FileId and no logical reread duplication. Local interpreter is Python 3.14,
+  not substituted for the required Windows Python 3.13 CI gate.
+- Full frontend regression: 125 Vitest passed; API generation/check, TypeScript
+  build, ESLint and i18n gate passed. Activity now uses typed API, five-second polling,
+  preserved absolute evidence expiry, source/type filters, bounded paging, FileId,
+  USN provenance and explicit unknown continuity/path/actor/client/confidence.
+- Outbox/delivery/priority regression after cache bounds: 84 passed, four existing
+  platform skips. Ruff passed before subsequent test additions; mypy Linux-platform
+  check passed on 22 affected source files. Final whole-source checks remain required.
+- Whole-source review exposed partial RENAME ingest assertion. Actual PostgreSQL
+  RED reproduced it for a known object; proven-side-only alias update corrected it.
+  Activity/dedup/alias regression: 40 selected checks completed successfully, including
+  move-out/move-in before and after inventory hydration. Later freshness checks add
+  two more cases; full final regression is still pending.
+- Whole-source review exposed fresh heartbeat falsely retaining continuous USN after
+  a blocked worker. RED -> GREEN with independent progress age and bounded child
+  deadline. Backlog beyond eight raw transitions also reproduced false completion;
+  now returns USN_LAG. Combined bootstrap/native/runtime checks: 13 passed.
+- Actual PostgreSQL freshness RED showed a 35-second lifetime exceeding the USN proof
+  interval. New typed cursor carries an absolute progress timestamp; API proof age
+  and its evidence lifetime are bounded to 15 seconds. Fresh, aged and existing
+  projection/filter checks: three passed in 27.50 seconds.
+
+- Default 30-second heartbeat exceeded the 15-second proof lifetime: a targeted
+  runtime test reproduced the mismatch RED. USN activation now bounds publication
+  to five seconds without rewriting config; five runtime cases GREEN. Installed
+  native USN -> strict HTTPS -> PostgreSQL -> Activity with default settings,
+  byte-identical lost-ACK replay and logical dedup: one passed in 59.68 seconds.
+  Four five-second Activity polls stayed COMPLETE beyond one proof lifetime.
+- New Windows USN parser/native/cache/scope/bootstrap/activation/runtime/installed
+  worker checks: 56 passed, no skips, 17.17 seconds on local Python 3.14. Playwright
+  regression: 12 passed, 12.6 seconds; these use controlled API fixtures and do not
+  replace live browser acceptance. Adaptive oversized transitions passed 17
+  relevant checks without advancing beyond unconsumed records.
+- Immutable accepted B wheel reader/writer on owned state passed; C replay reopened
+  with unchanged pending bytes and credential binding. B deliberately rejects
+  partial C RENAME payloads. The runbook requires C delivery before package rollback
+  or preservation for C recovery; shared SQLite schema alone is not event compatibility.
+- Independent source/component review found no remaining verified Critical/Important
+  after cadence and partial-rename corrections. Full first target-version regression
+  failed seven legacy migration checks (682 passed, 66 skipped): they pinned 0005
+  before checking against new 0006 head. All original path/downgrade assertions remain;
+  updated migration suite passed nine checks. Corrected full regression is running.
+  Ruff, mypy 101 source plus six deployment modules, runtime OpenAPI check and 54
+  deployment checks passed. Public candidate Gitleaks scan reported no leaks.
+
+- Corrected canonical Python 3.13.16/PostgreSQL full regression: 689 passed,
+  66 Windows-only skipped, 59 warnings, 349.34 seconds. Migration upgrade/check,
+  downgrade to base, upgrade/check passed. Candidate archive SHA256:
+  `bc0af43ebe66e25db23d5acef4772936be5108b586a7191f0c267f7945a4567e`.
+  Existing local Windows CLI/native/inventory/runtime regression: 45 passed,
+  no skips, 344.10 seconds. Disposable source verification does not close live gates.
+
+Still pending: browser real-API acceptance; separate Stage C PR and exact-head/main CI;
+immutable artifacts/backups/deployment; controlled live folder scenario, measured
+latency, restart/network loss/replay, invariants and rollback. Gate C remains open.
+
+Final ancestry review before publication reproduced two additional path-integrity
+failures: a descendant renamed while its ancestor was outside retained its old
+name after re-entry; a pending WRITE used renamed ancestry under its earlier time.
+Both RED failures were corrected. Outside descendants become redacted tombstones
+without losing pending inside WRITE/OLD evidence. WRITE keeps its first parent and
+path digest; changed or unproven historical ancestry yields an unknown path.
+Restart/pending-pair/re-entry-descendant/cross-parent controls passed; independent
+review found no remaining verified Important. Latest combined native USN/runtime/
+installed-worker/HTTPS/PG/Activity checks: 62 passed, no skips, 77.37 seconds.
+The previous 689/692 full-pass snapshots predate these last corrections. Final
+frozen-source Python 3.13.16/PostgreSQL regression: 694 passed, 66 Windows-only
+skipped, 59 warnings, 342.83 seconds. Ruff, mypy 101+6, runtime OpenAPI, 54 deployment
+checks and complete migration upgrade/check/downgrade/upgrade/check passed.
+Final test archive SHA256:
+`41b9ca845fa4ab7c416c74e5538a32596e78560f1d934ce2e53fe62ffd131931`.
+Gitleaks on that public archive reported no leaks. Immutable B compatibility/C byte
+recovery was rerun successfully. No Stage C code is deployed yet; CI/live gates remain open.
 
 - Change only own gate after verifying relevant evidence.
 - Describe failures as FAIL or BLOCKED, never ambiguous success.

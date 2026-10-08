@@ -159,6 +159,16 @@
     "UNAVAILABLE": "Unavailable"
   },
   "activity": {
+    "provenance": "Event source",
+    "fileId": "Object identity",
+    "usn": "NTFS USN journal",
+    "pathUnknown": "Part of the path is unknown",
+    "pagination": "Event pages",
+    "continuity": {
+      "CONTINUOUS_SINCE_BASELINE": "Continuity confirmed since observation baseline",
+      "GAP": "Continuity unconfirmed: journal gap detected",
+      "UNKNOWN": "Observation continuity is unknown"
+    },
     "time": "Time",
     "event": "Event",
     "actor": "User",

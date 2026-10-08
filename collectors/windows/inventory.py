@@ -12,6 +12,8 @@ from packages.contracts.inventory import (
     VolumeRecord,
 )
 
+from .usn import USN_CODES
+
 CODES = frozenset(
     {
         "INVALID_SCOPE",
@@ -30,7 +32,7 @@ CODES = frozenset(
         "STOPPED",
         "STATE_MISMATCH",
     }
-)
+) | USN_CODES
 _DEVICE = re.compile(r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)", re.IGNORECASE)
 
 

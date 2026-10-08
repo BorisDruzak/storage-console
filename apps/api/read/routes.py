@@ -25,6 +25,7 @@ from packages.shared.models.core import (
     volumes,
 )
 
+from .activity import register as register_activity
 from .inventory import summaries
 from .overview import domain_health, freshness_summary, overall_state
 from .sources import database_time, freshness, require_source, snapshot, source, source_data
@@ -196,4 +197,5 @@ def router(engine: Engine, inventory_stale_seconds: int = 7200) -> APIRouter:
                 offset=offset,
             )
 
+    register_activity(result, engine)
     return result
