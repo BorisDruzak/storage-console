@@ -38,10 +38,14 @@ def _outbox_failure(error: OutboxError) -> str:
     }.get(error.code, "NATIVE_FAILED")
 
 
-def _state(box: Outbox, stream: str, scope: Scope | None = None) -> Checkpoint:
+def _state(
+    box: Outbox, stream: str, scope: Scope | None = None, *, retry_locks: bool = False,
+) -> Checkpoint:
     try:
         state = box.checkpoint(stream)
     except OutboxError as error:
+        if retry_locks:
+            raise
         raise CaptureError(_outbox_failure(error)) from None
     if state.revision == 0 and state.value is None:
         return state
@@ -228,7 +232,7 @@ def capture_heartbeat(
 ) -> str:
     if error_code is not None and error_code not in CODES:
         raise CaptureError("METADATA_INVALID")
-    state = _state(box, _HEARTBEAT)
+    state = _state(box, _HEARTBEAT, retry_locks=True)
     sequence = 1 if state.value is None else cast(dict[str, int], state.value)["sequence"] + 1
     try:
         now = clock()
@@ -252,6 +256,8 @@ def capture_heartbeat(
             {"kind": _HEARTBEAT, "sequence": sequence},
         )
     except OutboxError as error:
+        if error.code != "CAPACITY":
+            raise
         raise CaptureError(_outbox_failure(error)) from None
     except (ValueError, TypeError, ValidationError):
         raise CaptureError("METADATA_INVALID") from None

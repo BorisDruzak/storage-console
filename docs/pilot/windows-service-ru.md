@@ -102,10 +102,29 @@ Startup deadline 30 секунд; stop использует existing runtime sto
 CLI ждёт не более 150 секунд. При failed cleanup завершается только собственный
 service process; native capture принадлежит Job Object KILL_ON_JOB_CLOSE.
 
-Explicit STOP/SHUTDOWN не запускает recovery. Abrupt crash: один restart через
-10 секунд, затем NONE; failure count reset через 86400 секунд. Нет reboot action,
-arbitrary recovery command или restart storm. Startup/config/auth failures не
+Explicit STOP/SHUTDOWN не запускает recovery. Abrupt crash: restart через
+10, 30 и 60 секунд; последующие сбои повторяют задержку 60 секунд. Failure count
+reset через 86400 секунд. Нет reboot action или arbitrary recovery command.
+`service install` обновляет только распознанную прежнюю политику (restart/NONE),
+проверив полную identity регистрации; disabled registration не изменяется.
+Startup/config/auth failures не
 должны исправляться re-enrollment, снятием suspension или изменением ACL.
+
+Runtime повторяет только SQLITE_BUSY/SQLITE_LOCKED (включая extended codes)
+с interruptible backoff 0.1–2 секунды и бюджетом 30 секунд на операцию.
+Повреждение SQLite, IOERR/FULL и неизвестные ошибки остаются fatal. При повторе
+после ошибки acknowledge сохраняется durable lease; ingest остаётся idempotent.
+Очередь и checkpoints не очищаются.
+
+Application Event 1 сохраняет исходный machine code и отдельный
+`RUNTIME_DIAGNOSTIC` с JSON: stage, exception type, numeric sqlite_errorcode,
+до 12 project module/function/line frames. Сообщения исключений, SQL, locals,
+credentials и абсолютные пути не записываются. Fatal delivery exception
+передаётся в host после cleanup; детали также записываются до cleanup, чтобы
+вторичная ошибка остановки не скрыла первичный сбой. Временная блокировка
+записывается один раз на retry episode, без сообщения на каждую попытку.
+Сохранение зависит от доступности Windows Event Log; при отказе системного
+журналирования отсутствие записи не означает отсутствие сбоя.
 
 При outage queue/checkpoints сохраняются. После восстановления strict HTTPS
 backlog доставляется existing idempotent ingest. Pending claim после stop/crash

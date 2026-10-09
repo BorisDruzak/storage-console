@@ -11,6 +11,8 @@ from typing import Protocol
 from .errors import SecurityError
 
 SERVICE_NAME = "SosnadminStorageCollector"
+LEGACY_RECOVERY = ((1, 10000), (0, 0))
+RECOVERY = ((1, 10000), (1, 30000), (1, 60000))
 
 
 def _path(value: str) -> str:
@@ -84,6 +86,7 @@ class Backend(Protocol):
     def start(self, spec: ServiceSpec) -> None: ...
     def stop(self, spec: ServiceSpec) -> None: ...
     def delete(self, spec: ServiceSpec) -> None: ...
+    def configure_recovery(self, spec: ServiceSpec) -> None: ...
 
 
 class ServiceManager:
@@ -102,7 +105,7 @@ class ServiceManager:
         if status is not None and (
             status.command != self.spec.command or status.account.casefold() != "localsystem"
             or status.service_type != 0x10 or status.start_type not in {2, 4}
-            or not status.delayed or status.recovery != ((1, 10000), (0, 0))
+            or not status.delayed or status.recovery not in {LEGACY_RECOVERY, RECOVERY}
             or status.recovery_reset_seconds != 86400 or status.recover_non_crash
             or status.failure_command
         ):
@@ -120,6 +123,11 @@ class ServiceManager:
         if status is None:
             self.backend.create(self.spec)
             status = self._required()
+        elif status.recovery == LEGACY_RECOVERY and status.start_type != 4:
+            self.backend.configure_recovery(self.spec)
+            status = self._required()
+            if status.recovery != RECOVERY:
+                raise SecurityError("SCM_FAILED")
         return status
 
     def _wait(self, target: str, pending: str, code: str) -> ServiceStatus:

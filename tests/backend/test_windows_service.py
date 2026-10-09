@@ -80,7 +80,7 @@ def backend(scm, spec):
             self.operations.append("create")
             self.current = scm.ServiceStatus(
                 "STOPPED", spec.command, 2, "LocalSystem", 0x10, 0, 0,
-                True, ((1, 10000), (0, 0)), 86400, False,
+                True, scm.RECOVERY, 86400, False,
             )
 
         def start(self, requested):
@@ -229,7 +229,7 @@ def test_runtime_return_is_not_mistaken_for_operator_stop():
     host = service.RuntimeHost(lambda stop: lambda event: event.set(),
                                lambda *args: states.append(args), failures.append)
     assert host.run() == 1
-    assert failures == ["RUNTIME_FAILED"]
+    assert failures[0] == "RUNTIME_FAILED" and len(failures) == 2
     assert ("STOPPED", 0) not in states
 
 
@@ -241,7 +241,7 @@ def test_startup_security_failure_reports_error_without_running():
     host = service.RuntimeHost(fail, lambda *args: states.append(args), failures.append)
     assert host.run() == 1
     assert states == [("START_PENDING",), ("STOPPED", 1066)]
-    assert failures == ["STATE_BUSY"]
+    assert failures[0] == "STATE_BUSY" and len(failures) == 2
 
 
 def test_crash_stopped_is_not_reported_as_operator_stopped(scm, spec, backend):

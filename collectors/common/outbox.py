@@ -5,6 +5,8 @@ import math
 import os
 import sqlite3
 import stat
+import threading
+import time
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -74,9 +76,16 @@ _SCHEMA = (
 class OutboxError(Exception):
     """Fixed code only: never include SQL, paths, payloads or underlying exception text."""
 
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, *, sqlite_errorcode: int | None = None) -> None:
         self.code = code
+        self.sqlite_errorcode = sqlite_errorcode
         super().__init__(code)
+
+    @property
+    def retryable(self) -> bool:
+        return self.sqlite_errorcode is not None and self.sqlite_errorcode & 255 in {
+            sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED,
+        }
 
 
 @dataclass(frozen=True)
@@ -165,6 +174,7 @@ class Outbox:
         self.collector_id = collector_id
         self.limits = limits if limits is not None else Limits()
         self._read_only = read_only
+        self._busy_budget = threading.local()
         if read_only:
             # CLI status must not create, migrate, resume or decrypt local state.
             with self._transaction() as db:
@@ -258,12 +268,30 @@ class Outbox:
             ):
                 raise OutboxError("UNSAFE_STATE")
 
+    @contextmanager
+    def busy_budget(self, seconds: float) -> Iterator[None]:
+        previous = getattr(self._busy_budget, "deadline", None)
+        self._busy_budget.deadline = time.monotonic() + seconds
+        try:
+            yield
+        finally:
+            self._busy_budget.deadline = previous
+
+    def _busy_seconds(self) -> float:
+        deadline = getattr(self._busy_budget, "deadline", None)
+        if deadline is None:
+            return float(self.limits.busy_timeout_seconds)
+        remaining = float(deadline) - time.monotonic()
+        if remaining <= 0:
+            raise OutboxError("STATE_UNAVAILABLE", sqlite_errorcode=sqlite3.SQLITE_BUSY)
+        return min(float(self.limits.busy_timeout_seconds), remaining)
+
     def _connect(self) -> sqlite3.Connection:
         self._file()
         db = sqlite3.connect(
             self.path.as_uri() + "?mode=ro" if self._read_only else self.path,
             uri=self._read_only,
-            timeout=self.limits.busy_timeout_seconds,
+            timeout=self._busy_seconds(),
             autocommit=True,
         )
         db.row_factory = sqlite3.Row
@@ -278,6 +306,7 @@ class Outbox:
             # Refuse WAL state instead of switching journal modes or deleting sidecars.
             if db.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
                 raise OutboxError("SCHEMA_UNSUPPORTED")
+            db.execute(f"PRAGMA busy_timeout={int(self._busy_seconds() * 1000)}")
             db.execute("BEGIN" if self._read_only else "BEGIN IMMEDIATE")
             if not initializing:
                 if (
@@ -289,8 +318,13 @@ class Outbox:
                 if len(identity) != 1 or identity[0][0] != str(self.collector_id):
                     raise OutboxError("IDENTITY_CONFLICT")
             yield db
+            db.execute(f"PRAGMA busy_timeout={int(self._busy_seconds() * 1000)}")
             db.execute("COMMIT")
-        except (sqlite3.Error, OSError):
+        except sqlite3.Error as error:
+            raise OutboxError(
+                "STATE_UNAVAILABLE", sqlite_errorcode=getattr(error, "sqlite_errorcode", None),
+            ) from None
+        except OSError:
             raise OutboxError("STATE_UNAVAILABLE") from None
         finally:
             if db is not None:
@@ -300,8 +334,11 @@ class Outbox:
                             db.execute("ROLLBACK")
                     finally:
                         db.close()
-                except sqlite3.Error:
-                    raise OutboxError("STATE_UNAVAILABLE") from None
+                except sqlite3.Error as error:
+                    raise OutboxError(
+                        "STATE_UNAVAILABLE",
+                        sqlite_errorcode=getattr(error, "sqlite_errorcode", None),
+                    ) from None
 
     def checkpoint(self, stream: str) -> Checkpoint:
         _stream(stream)

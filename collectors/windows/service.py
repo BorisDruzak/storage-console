@@ -11,6 +11,7 @@ from collections.abc import Callable
 from contextlib import ExitStack
 from pathlib import Path
 
+from .diagnostics import detail, valid_detail
 from .errors import SecurityError
 from .scm import ServiceSpec
 
@@ -51,6 +52,7 @@ class RuntimeHost:
 
     def run(self) -> int:
         running = False
+        stage = "prepare"
         try:
             self._report("START_PENDING")
             runtime = self.prepare(self.stop)
@@ -58,6 +60,7 @@ class RuntimeHost:
                 if not self.requested_stop.is_set():
                     self._report("RUNNING")
                     running = True
+            stage = "runtime"
             runtime(self.stop)
             if not self.requested_stop.is_set():
                 raise SecurityError("RUNTIME_FAILED")
@@ -66,8 +69,9 @@ class RuntimeHost:
         except Exception as error:
             code = error.code if isinstance(error, SecurityError) else "RUNTIME_FAILED"
             self.log(code)
+            self.log(detail(error, stage))
             # Failed initialization is fail-closed. Unexpected RUNNING termination
-            # must leave SCM without STOPPED so the one crash recovery can apply.
+            # must leave SCM without STOPPED so crash recovery can apply.
             if not running or self.requested_stop.is_set():
                 self._report("STOPPED", 1066)
             return 1
@@ -99,15 +103,18 @@ def dispatch(spec: ServiceSpec) -> int:
             self.host = RuntimeHost(self.prepare, self.report, self.log)
 
         def log(self, code: str) -> None:
-            # Static machine codes only. Never exception text, identity, path or token.
-            safe = code if code.isascii() and all(c.isupper() or c == "_" for c in code) else (
+            # Fixed codes or schema-validated diagnostics; never exception messages/locals.
+            diagnostic = valid_detail(code)
+            safe = "RUNTIME_DIAGNOSTIC" if diagnostic else code if (
+                code.isascii() and all(c.isupper() or c == "_" for c in code)
+            ) else (
                 "RUNTIME_FAILED"
             )
             handle = native.RegisterEventSourceW(None, spec.name)
             if handle:
-                strings = (W * 1)(safe)
+                strings = (W * 2)(safe, code) if diagnostic else (W * 1)(safe)
                 try:
-                    native.ReportEventW(handle, 1, 0, 1, None, 1, 0, strings, None)
+                    native.ReportEventW(handle, 1, 0, 1, None, len(strings), 0, strings, None)
                 finally:
                     native.DeregisterEventSource(handle)
 
@@ -118,7 +125,7 @@ def dispatch(spec: ServiceSpec) -> int:
                 state.validate_file("outbox.sqlite3")
                 loaded = load(state)
                 self.stop_seconds = loaded.config.settings.stop_seconds + 3
-                runtime = Runtime(loaded)
+                runtime = Runtime(loaded, diagnostic=self.log)
             except Exception:
                 stack.close()
                 raise
@@ -198,7 +205,7 @@ def dispatch(spec: ServiceSpec) -> int:
                     # A failed cleanup may leave a non-daemon delivery thread.
                     # Terminate this own-process host instead of waiting forever.
                     # Reported STOPPED prevents recovery for explicit stop/startup
-                    # failure; an unexpected exit without STOPPED recovers once.
+                    # failure; unexpected exits without STOPPED use SCM backoff.
                     os._exit(1)
             except BaseException:
                 self.log("SCM_FAILED")
