@@ -169,7 +169,8 @@ class NativeBackend:
                 self.api.CloseServiceHandle(handle)
 
     def configure_recovery(self, spec: ServiceSpec) -> None:
-        with self._service(spec, 2) as handle:
+        # SC_ACTION_RESTART also requires SERVICE_START, without changing service ACLs.
+        with self._service(spec, 2 | 0x10) as handle:
             if handle is None:
                 raise SecurityError("SERVICE_NOT_INSTALLED")
             actions = (Action * len(RECOVERY))(*(Action(*item) for item in RECOVERY))

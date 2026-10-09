@@ -3,6 +3,7 @@
 import ctypes
 import importlib
 import threading
+from contextlib import contextmanager
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -10,6 +11,28 @@ import pytest
 
 from collectors.windows import cli
 from collectors.windows.errors import SecurityError
+
+
+def test_native_recovery_update_requests_rights_required_for_restart(spec):
+    from collectors.windows._scm_native import NativeBackend
+
+    class API:
+        def ChangeServiceConfig2W(self, handle, level, pointer):
+            # Win32 requires START as well as CHANGE_CONFIG for SC_ACTION_RESTART.
+            assert handle & 0x10, "SERVICE_START_RIGHT_REQUIRED"
+            assert handle & 2
+            return 1
+
+    class Backend(NativeBackend):
+        def __init__(self):
+            self.api = API()
+
+        @contextmanager
+        def _service(self, requested, access):
+            assert requested == spec
+            yield access
+
+    Backend().configure_recovery(spec)
 
 
 @pytest.mark.parametrize("action", ["install", "start", "status", "stop", "uninstall"])
