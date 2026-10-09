@@ -271,7 +271,8 @@ class Runtime:
             except Exception as caught:
                 self._diagnostic(detail(caught, "cleanup"))
                 if primary is None:
-                    code = caught.code if isinstance(caught, SecurityError) else "RUNTIME_FAILED"
+                    code = (caught.code if isinstance(caught, (SecurityError, CaptureError))
+                            else "RUNTIME_FAILED")
                     raise RuntimeFailure(code, caught, "cleanup") from None
             finally:
                 self._run_lock.release()

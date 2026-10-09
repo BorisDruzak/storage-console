@@ -1,3 +1,4 @@
+import json
 import threading
 import time
 from dataclasses import replace
@@ -82,8 +83,10 @@ def test_completed_inventory_does_not_clear_usn_gap(tmp_path):
 
 
 def test_inventory_stop_failure_still_closes_usn_and_releases_runtime(tmp_path):
+    from collectors.windows.diagnostics import RuntimeFailure
     loaded = replace(prepared(tmp_path), usn_enabled=True)
     calls, failures = [], []
+    details = []
 
     class Capture:
         def __init__(self, kind):
@@ -106,8 +109,9 @@ def test_inventory_stop_failure_still_closes_usn_and_releases_runtime(tmp_path):
     def run():
         try:
             runtime.run(stop)
-        except CaptureError as error:
+        except RuntimeFailure as error:
             failures.append(error.code)
+            details.append(error.detail)
 
     thread = threading.Thread(target=run)
     thread.start()
@@ -121,6 +125,8 @@ def test_inventory_stop_failure_still_closes_usn_and_releases_runtime(tmp_path):
     assert not thread.is_alive()
     assert calls[-2:] == ["stop:inventory", "stop:usn"]
     assert failures == ["NATIVE_FAILED"]
+    assert json.loads(details[0])["stage"] == "cleanup"
+    assert json.loads(details[0])["exception"] == "CaptureError"
     assert runtime._run_lock.acquire(blocking=False)
     runtime._run_lock.release()
 
