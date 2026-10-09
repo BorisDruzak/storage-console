@@ -304,6 +304,10 @@ def test_uninstall_cancels_queued_recovery_and_keeps_state(service, tmp_path, au
     service.uninstall()
     time.sleep(12)
     assert service.status() is None
+    # An abrupt process kill may leave a hot rollback journal. A read-only
+    # observer cannot perform SQLite recovery; reopen as the normal writer would.
+    recovered = Outbox(box.path, config.collector_id, box.limits)
+    assert recovered.credential_binding() == config.credential_version
     assert box.credential_binding() == config.credential_version
     assert (tmp_path / "state" / "config.json").exists()
 

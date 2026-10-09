@@ -77,6 +77,40 @@ def test_heartbeat_state_read_preserves_lock_error_for_runtime_retry(tmp_path):
         lock.close()
 
 
+def test_inventory_resumes_after_real_exclusive_sqlite_lock(tmp_path, monkeypatch):
+    from test_windows_producer import NOW, SCOPE, observations
+
+    from collectors.windows.producer import capture_inventory
+
+    loaded = prepared(tmp_path)
+    box = loaded.outbox
+    box.limits = replace(box.limits, busy_timeout_seconds=1)
+    enqueue = box.enqueue
+    writer = sqlite3.connect(box.path, autocommit=True)
+    retries = []
+    attempts = []
+
+    def enqueue_under_lock(*args):
+        if not attempts:
+            writer.execute("BEGIN EXCLUSIVE")
+        attempts.append(args)
+        return enqueue(*args)
+
+    def release_writer(seconds):
+        retries.append(seconds)
+        writer.execute("ROLLBACK")
+
+    monkeypatch.setattr(box, "enqueue", enqueue_under_lock)
+    try:
+        report = capture_inventory(box, SCOPE, observations(1), clock=lambda: NOW,
+                                   capacity_wait_seconds=3, wait=release_writer)
+    finally:
+        writer.close()
+    assert report.completed and report.records == 2 and report.batches == 1
+    assert retries and len(attempts) == 2 and attempts[0] == attempts[1]
+    assert box.checkpoint("windows:inventory").revision == 1
+
+
 class BlockedCapture:
     def poll(self):
         return None
@@ -258,4 +292,3 @@ def test_install_upgrades_only_the_recognized_legacy_recovery():
     backend = Backend()
     status = scm.ServiceManager(spec, backend).install()
     assert status.recovery == ((1, 10000), (1, 30000), (1, 60000))
-

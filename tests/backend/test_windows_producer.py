@@ -1,10 +1,11 @@
 import json
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
 
-from collectors.common.outbox import Limits, Outbox
+from collectors.common.outbox import Limits, Outbox, OutboxError
 from collectors.windows.inventory import CaptureError, Observation, Scope
 from collectors.windows.producer import capture_heartbeat, capture_inventory
 from packages.contracts.inventory import FileObjectRecord, VolumeRecord
@@ -106,6 +107,49 @@ def test_pressure_keeps_committed_checkpoint_and_closes_provider(tmp_path):
     assert outbox.status().pending_count == 1
     assert outbox.checkpoint("windows:inventory").revision == 1
     assert outbox.checkpoint("windows:inventory").value["completed"] is False
+
+
+@pytest.mark.parametrize("code", [sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED])
+def test_inventory_retries_only_temporary_lock_without_advancing_batch(tmp_path, monkeypatch, code):
+    outbox = box(tmp_path)
+    enqueue = outbox.enqueue
+    attempts = []
+
+    def blocked(*args):
+        attempts.append(args)
+        if len(attempts) == 1:
+            raise OutboxError("STATE_UNAVAILABLE", sqlite_errorcode=code)
+        return enqueue(*args)
+
+    monkeypatch.setattr(outbox, "enqueue", blocked)
+    result = capture_inventory(outbox, SCOPE, observations(1), clock=lambda: NOW,
+                               capacity_wait_seconds=1)
+    assert result.completed and result.records == 2 and result.batches == 1
+    assert attempts[0] == attempts[1]
+    assert outbox.checkpoint("windows:inventory").revision == 1
+    assert len(drain(outbox)) == 1
+
+
+@pytest.mark.parametrize("code", [sqlite3.SQLITE_BUSY, sqlite3.SQLITE_CORRUPT])
+def test_inventory_lock_retry_is_bounded_and_does_not_retry_corruption(tmp_path, monkeypatch, code):
+    outbox = box(tmp_path)
+    tick = [0.0]
+    attempts = []
+
+    def blocked(*args):
+        attempts.append(tick[0])
+        raise OutboxError("STATE_UNAVAILABLE", sqlite_errorcode=code)
+
+    def wait(seconds):
+        tick[0] += seconds
+
+    monkeypatch.setattr(outbox, "enqueue", blocked)
+    result = capture_inventory(outbox, SCOPE, observations(1), clock=lambda: NOW,
+                               capacity_wait_seconds=0.25, monotonic=lambda: tick[0], wait=wait)
+    assert not result.completed and result.records == 0
+    assert result.errors == ("NATIVE_FAILED",)
+    assert outbox.checkpoint("windows:inventory").revision == 0
+    assert attempts == ([0.0, 0.1, 0.2] if code == sqlite3.SQLITE_BUSY else [0.0])
 
 
 def test_partial_native_failure_is_fixed_and_last_checkpoint_incomplete(tmp_path):
