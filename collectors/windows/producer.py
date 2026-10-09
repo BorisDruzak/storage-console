@@ -3,6 +3,7 @@
 import math
 import time
 from collections.abc import Callable, Iterator
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import cast
@@ -142,28 +143,36 @@ def capture_inventory(
             return
         batch = _inventory_batch(box, bucket, clock())
         deadline = monotonic() + capacity_wait_seconds
+        last: OutboxError | None = None
         while True:
             if stopped():
                 raise OutboxError("STOPPED")
+            remaining = deadline - monotonic()
+            if last is not None and remaining <= 0:
+                raise last
             try:
-                box.enqueue(
-                    "inventory",
-                    batch,
-                    _INVENTORY,
-                    revision,
-                    {
-                        "kind": _INVENTORY,
-                        "scope": scope.fingerprint,
-                        "scan_id": scan_id,
-                        "sequence": batches + 1,
-                        "completed": final,
-                    },
-                )
+                # Use the existing bounded backpressure budget for transient writer
+                # contention too. Retain the same batch and checkpoint on every retry.
+                with box.busy_budget(remaining) if remaining > 0 else nullcontext():
+                    box.enqueue(
+                        "inventory",
+                        batch,
+                        _INVENTORY,
+                        revision,
+                        {
+                            "kind": _INVENTORY,
+                            "scope": scope.fingerprint,
+                            "scan_id": scan_id,
+                            "sequence": batches + 1,
+                            "completed": final,
+                        },
+                    )
                 break
             except OutboxError as error:
                 remaining = deadline - monotonic()
-                if error.code != "CAPACITY" or remaining <= 0:
+                if (error.code != "CAPACITY" and not error.retryable) or remaining <= 0:
                     raise
+                last = error
                 wait(min(0.1, remaining))
         revision += 1
         persisted += len(bucket)

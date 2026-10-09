@@ -115,6 +115,8 @@ Runtime повторяет только SQLITE_BUSY/SQLITE_LOCKED (включа�
 
 На Windows проверка обычного rollback journal с `st_nlink=0` повторно проверяет
 путь до трёх раз с паузами 1 ms: commit может в этот момент удалять journal.
+Инвентаризация повторяет запись того же batch/checkpoint при BUSY/LOCKED в пределах
+существующего `capacity_wait_seconds`; остаток бюджета ограничивает ожидание SQLite.
 Принимается только исчезнувший либо заново проверенный безопасный файл.
 Устойчивый zero-link, hardlink, directory и reparse point остаются запрещены;
 основной database и WAL/SHM не получают такого исключения.

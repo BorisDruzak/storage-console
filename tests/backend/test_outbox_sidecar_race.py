@@ -4,6 +4,7 @@ import sqlite3
 import stat
 import threading
 import time
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
@@ -112,16 +113,17 @@ def test_journal_retry_rejects_unsafe_replacement(tmp_path, monkeypatch, nlink, 
 @pytest.mark.skipif(os.name != "nt", reason="Native Windows SQLite delete race")
 def test_native_journal_commits_do_not_fail_validation(tmp_path):
     box = Outbox(tmp_path / "state" / "outbox.sqlite3", uuid4())
-    with sqlite3.connect(box.path) as db:
+    with closing(sqlite3.connect(box.path)) as db:
         db.execute("CREATE TABLE synthetic_counter(value INTEGER)")
         db.execute("INSERT INTO synthetic_counter VALUES(0)")
+        db.commit()
     stop = threading.Event()
     ready = threading.Event()
     failures = []
     commits = []
 
     def writer():
-        with sqlite3.connect(box.path) as db:
+        with closing(sqlite3.connect(box.path)) as db:
             ready.set()
             try:
                 while not stop.is_set():
@@ -144,5 +146,5 @@ def test_native_journal_commits_do_not_fail_validation(tmp_path):
     assert not thread.is_alive()
     assert not failures
     assert len(commits) > 20
-    with sqlite3.connect(box.path) as db:
+    with closing(sqlite3.connect(box.path)) as db:
         assert db.execute("PRAGMA quick_check").fetchone()[0] == "ok"
