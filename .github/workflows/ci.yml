@@ -73,6 +73,7 @@ jobs:
       - name: Native SCM, LocalSystem, runtime and HTTPS ingest
         run: >-
           python -m pytest tests/backend/test_windows_service.py
+          tests/backend/test_runtime_recovery.py
           tests/backend/test_windows_service_native.py
           tests/backend/test_windows_runtime_native.py
           tests/backend/test_windows_runtime_integration.py -q

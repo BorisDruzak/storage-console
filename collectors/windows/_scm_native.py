@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from typing import Any
 
 from .errors import SecurityError
-from .scm import ServiceSpec, ServiceStatus
+from .scm import RECOVERY, ServiceSpec, ServiceStatus
 
 D = ctypes.c_uint32
 P = ctypes.c_void_p
@@ -157,8 +157,8 @@ class NativeBackend:
             try:
                 delayed = D(1)
                 check(self.api.ChangeServiceConfig2W(handle, 3, ctypes.byref(delayed)))
-                actions = (Action * 2)(Action(1, 10000), Action(0, 0))
-                recovery = Recovery(86400, None, None, 2, actions)
+                actions = (Action * len(RECOVERY))(*(Action(*item) for item in RECOVERY))
+                recovery = Recovery(86400, None, None, len(actions), actions)
                 check(self.api.ChangeServiceConfig2W(handle, 2, ctypes.byref(recovery)))
                 flag = D(0)
                 check(self.api.ChangeServiceConfig2W(handle, 4, ctypes.byref(flag)))
@@ -167,6 +167,14 @@ class NativeBackend:
                 raise
             finally:
                 self.api.CloseServiceHandle(handle)
+
+    def configure_recovery(self, spec: ServiceSpec) -> None:
+        with self._service(spec, 2) as handle:
+            if handle is None:
+                raise SecurityError("SERVICE_NOT_INSTALLED")
+            actions = (Action * len(RECOVERY))(*(Action(*item) for item in RECOVERY))
+            recovery = Recovery(86400, None, None, len(actions), actions)
+            check(self.api.ChangeServiceConfig2W(handle, 2, ctypes.byref(recovery)))
 
     def start(self, spec: ServiceSpec) -> None:
         with self._service(spec, 0x10) as handle:

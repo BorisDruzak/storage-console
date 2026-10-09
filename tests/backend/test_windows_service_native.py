@@ -130,7 +130,7 @@ def activate_fixture(service, tmp_path, origin, ca, *, settings=None):
 def test_actual_scm_registration_is_bounded_idempotent_and_disabled_is_preserved(service):
     before = service.status()
     assert before.state == "STOPPED" and before.account == "LocalSystem"
-    assert before.delayed and before.recovery == ((1, 10000), (0, 0))
+    assert before.delayed and before.recovery == ((1, 10000), (1, 30000), (1, 60000))
     assert not before.recover_non_crash and before.recovery_reset_seconds == 86400
     assert service.install() == before
     backend = service.backend
@@ -262,7 +262,7 @@ def test_local_system_dpapi_tls_outage_stop_start_and_auth_suspension(
     service.stop()
 
 
-def test_one_crash_restart_then_no_restart_storm(service, tmp_path, authorities, servers):
+def test_second_crash_also_recovers_with_backoff(service, tmp_path, authorities, servers):
     _, origin = servers()
     config, box = activate_fixture(service, tmp_path, origin, authorities[0] / "ca.pem")
     service.start()
@@ -271,11 +271,14 @@ def test_one_crash_restart_then_no_restart_storm(service, tmp_path, authorities,
     eventually(lambda: (current := service.status()).state == "RUNNING" and
                current.pid != old_pid, seconds=25)
     assert box.credential_binding() == config.credential_version
-    crash(service)
+    second_pid = crash(service)
     eventually(lambda: service.status().state == "STOPPED")
     time.sleep(15)
     assert service.status().state == "STOPPED"
+    eventually(lambda: (current := service.status()).state == "RUNNING" and
+               current.pid != second_pid, seconds=30)
     assert box.credential_binding() == config.credential_version
+    service.stop()
     service.uninstall()
     assert service.status() is None
 
