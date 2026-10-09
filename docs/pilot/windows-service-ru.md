@@ -112,6 +112,12 @@ Startup/config/auth failures не
 
 Runtime повторяет только SQLITE_BUSY/SQLITE_LOCKED (включая extended codes)
 с interruptible backoff 0.1–2 секунды и бюджетом 30 секунд на операцию.
+
+На Windows проверка обычного rollback journal с `st_nlink=0` повторно проверяет
+путь до трёх раз с паузами 1 ms: commit может в этот момент удалять journal.
+Принимается только исчезнувший либо заново проверенный безопасный файл.
+Устойчивый zero-link, hardlink, directory и reparse point остаются запрещены;
+основной database и WAL/SHM не получают такого исключения.
 Повреждение SQLite, IOERR/FULL и неизвестные ошибки остаются fatal. При повторе
 после ошибки acknowledge сохраняется durable lease; ingest остаётся idempotent.
 Очередь и checkpoints не очищаются.

@@ -255,18 +255,29 @@ class Outbox:
             raise OutboxError("UNSAFE_STATE")
         for suffix in ("-journal", "-wal", "-shm"):
             sidecar = Path(str(self.path) + suffix)
-            if sidecar.is_symlink() or sidecar.is_junction():
-                raise OutboxError("UNSAFE_STATE")
-            try:
-                info = sidecar.lstat()
-            except FileNotFoundError:
-                continue
-            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
-                raise OutboxError("UNSAFE_STATE")
-            if os.name == "posix" and (
-                info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) != 0o600
-            ):
-                raise OutboxError("UNSAFE_STATE")
+            for attempt in range(3):
+                if sidecar.is_symlink() or sidecar.is_junction():
+                    raise OutboxError("UNSAFE_STATE")
+                try:
+                    info = sidecar.lstat()
+                except FileNotFoundError:
+                    break
+                if (not stat.S_ISREG(info.st_mode)
+                        or getattr(info, "st_file_attributes", 0) & 0x400):
+                    raise OutboxError("UNSAFE_STATE")
+                if (os.name == "nt" and suffix == "-journal"
+                        and info.st_nlink == 0 and attempt < 2):
+                    # A committing writer may be deleting its rollback journal.
+                    # Revalidate the path; never accept a zero-link file itself.
+                    time.sleep(0.001)
+                    continue
+                if info.st_nlink != 1:
+                    raise OutboxError("UNSAFE_STATE")
+                if os.name == "posix" and (
+                    info.st_uid != os.geteuid() or stat.S_IMODE(info.st_mode) != 0o600
+                ):
+                    raise OutboxError("UNSAFE_STATE")
+                break
 
     @contextmanager
     def busy_budget(self, seconds: float) -> Iterator[None]:
