@@ -21,7 +21,7 @@ from test_collector_transport import servers as servers
 from test_windows_runtime_native import installed_python as installed_python
 
 from collectors.common.outbox import Outbox
-from collectors.windows._scm_native import D, NativeBackend, P, Status, check
+from collectors.windows._scm_native import Action, D, NativeBackend, P, Recovery, Status, check
 from collectors.windows.configuration import RuntimeSettings, activate
 from collectors.windows.errors import SecurityError
 from collectors.windows.inventory import Scope
@@ -94,6 +94,18 @@ def principal(pid):
         if token.value:
             api.kernel.CloseHandle(token)
         api.kernel.CloseHandle(process)
+
+
+def test_native_install_migrates_the_legacy_recovery_policy(service):
+    backend = service.backend
+    with backend._service(service.spec, 2 | 0x10) as handle:
+        actions = (Action * 2)(Action(1, 10000), Action(0, 0))
+        legacy = Recovery(86400, None, None, 2, actions)
+        check(backend.api.ChangeServiceConfig2W(handle, 2, ctypes.byref(legacy)))
+    assert service.status().recovery == ((1, 10000), (0, 0))
+    result = service.install()
+    assert result.recovery == ((1, 10000), (1, 30000), (1, 60000))
+    assert result.state == "STOPPED"
 
 
 def crash(service):
