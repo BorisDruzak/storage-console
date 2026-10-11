@@ -71,3 +71,16 @@ CLI/wheel и disposable Windows → HTTPS → PostgreSQL → русская Web 
 Переход A→B→C строго по PASS gates. Реальный FILESERVER не перезагружать без
 отдельного явного согласия оператора. USN допускается только read-only;
 нет автоматических ACL/SMB/audit policy изменений. По завершении Stage C — STOP.
+
+## MVP-005 — история изменений и статистика (новый приоритет)
+
+Вместо повтора 72-часового USN soak — выполнить
+[сквозную задачу](mvp-005-history-and-statistics.md) A → B → C:
+
+- **A:** защищённая история изменений по произвольным датам, путь/файл/тип, keyset pagination, история объекта, безопасный CSV; сначала закрыть текущую видимость сырых путей всем ролям с общим read.
+- **B:** реальная статистика событий из PostgreSQL — по дням, типам, часам, каталогам; три графика в Web Console.
+- **C:** сохранять реальные срезы полной ёмкости NTFS-томов при existing inventory ingest, показывать историю used/free/total. Не путать ёмкость всего тома с размером monitored root.
+
+После каждого этапа — RED→GREEN, отдельный PR, exact-main CI, реальная Web Console, приёмка
+в [журнале](../acceptance/mvp-005-execution-ledger.md). Нет повторного 72h soak, reboot,
+изменений Collector/USN/ACL/SMB, автоматического расширения scope. После C — STOP.
