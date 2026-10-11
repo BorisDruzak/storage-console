@@ -52,6 +52,8 @@ By day / event type / weekday x hour:
 Top directories and unknown path bucket:
 Repeated RENAME and replay counted once:
 Timezone tests:
+Received_at first-ingest timing / historical NULL handling / replay unchanged:
+Measured ingest delay min/median/p95/max and missing count:
 Source/path RBAC and pagination bounds:
 Web desktop/mobile real charts:
 Post-deploy backup/rollback:
