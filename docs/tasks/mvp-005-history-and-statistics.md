@@ -99,6 +99,12 @@ Required measures (counts of STORED normalized events only):
 - source filter; business timezone Asia/Yekaterinburg (UTC option), no mistaken grouping around midnight/DST boundary;
 - unique FileId metrics only if qualified by source/volume and clearly named object IDs, not "unique files" or "users".
 
+Additionally capture truthful ingestion timing for newly received events:
+- Add a nullable database-side received_at timestamp to normalized change_events, populated at actual first insert/acceptance, retained unchanged on idempotent replay. Historical rows remain NULL; never backfill a fictitious timestamp from event time or migration time.
+- Calculate observed ingestion delay = received_at - occurred_at only where both timestamps are trustworthy. Show measured min/median/p95/max or an explicit unavailable status and count of records without received_at. Negative/skewed timestamps are not silently clamped into a positive delay; surface clock-skew/invalid evidence separately.
+- Label this metric "задержка получения сервером", NOT end-to-end browser rendering time. Include time-series of delivered events, but do not confuse receipt times with USN occurrence times.
+- RED→GREEN with source clock skew, replay unchanged first received_at, historical NULL values, authorized API and SQL aggregates. Ensure added index/schema is backward-compatible with existing ingest/USN.
+
 Web: a discoverable **«Статистика активности»** page using actual typed API. Show KPI cards and at least THREE real charts: (1) operations by day, (2) operation type distribution, (3) weekday/hour heatmap or equivalent hour chart, plus a top-directory table. Period/source controls, chart drill-down to History if feasible, accessible table equivalents, responsive desktop/mobile and Russian UI. No static/fake figures. An existing lightweight chart library may be added if necessary; no global UI rewrite.
 
 RED→GREEN: replay and rename counted once, Cyrillic and unknown path bucket, multiple sources, exact calendar boundaries around UTC/Asia-Yekaterinburg, 100k-event query plan, authorized vs unauthorized roles, loading/empty/error, Playwright charts on real API. Independent SQL reference aggregates match. Exact PR/main CI and real browser demonstration. GATE B PASS only with nonempty real source and correctly matched numeric series.
