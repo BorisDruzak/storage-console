@@ -2,8 +2,9 @@
 
 Задача: docs/tasks/storage-audit-001-windows-security-attribution.md
 
-**Статус:** A PASS → B PASS → C PARTIAL; новые live-действия BLOCKED до закрытия
-compatibility/CI gates и отдельного расширения исчерпанного пилотного лимита.
+**Статус:** A PASS → B PASS → C PARTIAL; живое продолжение ожидает закрытия
+живого испытания по согласованному закрытому плану. Оператор отдельно снял лимит числа операций;
+узкий scope, объём данных, 30 секунд Audit-only 503 и итоговый Audit STOPPED сохранены.
 Следующий этап не начинается до предыдущего PASS.
 
 ## Выполнение 2026-10-13 — этап A
@@ -480,6 +481,72 @@ pending replay are not accepted. The extended <=36-operation allowance is exhaus
   runner so manual controller pauses cannot consume the freshness window. C stays
   draft; its final exact-head/main acceptance and merge are not claimed. Original
   USN-SOAK-001 remains FAIL; no new long-term PASS is inferred.
+
+### Поздний volume witness и разрешённое продолжение
+
+- Read-only RCA четвёртого прохода: фактические Security/USN совпадения существовали,
+  но часовой volume inventory поступил позднее обычного ±120-second receipt window.
+  Уже закрытое dated alias coverage не вызывало повторного сопоставления старых
+  изменений. Сильные identity/coverage/delete-chain критерии не ослаблялись.
+- PR #30: https://github.com/BorisDruzak/storage-console/pull/30,
+  `fix(audit): reconcile changes after late volume witnesses`. Для принятого forward
+  WINDOWS volume observation транзакционно создаётся отдельная idempotent job на
+  реально продвинутый source/volume interval; pagination по time/UUID, page 32.
+  Duplicate, старые/equal receipts, object-only batches и heartbeat её не создают.
+  Миграция 0008 добавляет только source/volume/time/id index; history/RBAC и runtime
+  существующего USN не изменены. Issue #22 остаётся в своём scope.
+- RED: обе arrival-order проверки оставались UNKNOWN после достаточного позднего
+  witness; GREEN: обе проходят. RED EXPLAIN на 100k synthetic rows фильтровал 19,845
+  посторонних строк; GREEN first/middle/last pages ≤33 rows, ≤65 filtered rows,
+  ≤128 shared buffers, без sequential scan, все 65 target rows посещены ровно один раз.
+  Проверены retry, изоляция source/volume, receipt replay, отсутствие identity/coverage,
+  transactional rejection и 0007→0008→0007→head с сохранением immutable evidence.
+- Focused backend: 31 PASS; Audit/USN/ingest/schema/deployment regression:
+  308 PASS, 17 native Windows SKIP на Linux. Independent review: zero remaining
+  Critical/Important. Ruff, mypy122/strict deployment6, OpenAPI, Alembic check,
+  tracked-source Gitleaks и diff check PASS.
+- Первый head `4fe373acd1bc727c2609c569d55f5e97183dba67`, run 38474010920:
+  пять jobs PASS, backend 882 PASS/85 SKIP и три FAIL. Две migration assertions
+  фиксировали старый head 0007; прежняя USN timing fixture зависела от 1.2-second
+  wall-clock deadline. Эти ошибки сохранены в истории приёмки, не скрыты rerun.
+- Отдельные test commits: `9f6b3d222ebf71e3bb05b2df7b0e415d30aef3fe`
+  (`test(migrations): preserve current revision on rejected rollback`, один migration
+  test file) и `0e691e3fdfc61c6caa4a258fb86a6163683635dc`
+  (`test(collector): control heartbeat proof timing deterministically`, один USN test
+  file). Protected revision проверяется сразу после rejected downgrade; controlled
+  clock ждёт capture completion до следующего шага. Production USN не менялся.
+  Target 14 PASS, пять timing повторов PASS, disabled heartbeat cap даёт expected RED.
+  Fresh static/schema/secret checks PASS; focused review zero Critical/Important.
+- Exact PR head `0e691e3fdfc61c6caa4a258fb86a6163683635dc`, run 38477066486:
+  все шесть обязательных jobs SUCCESS, Sonar SKIPPED. Backend 885 PASS/85 SKIP;
+  Windows CLI14/Audit84/SCM81/USN67/real-USN HTTPS1 PASS. PR объединён в
+  `05eaa7fadd3d6d9c9833f40f6811b68db771a755`; exact main run 38478424249: все шесть jobs SUCCESS, Sonar SKIPPED.
+- Fresh verified PostgreSQL backup текущего central EF/schema0007 и hash-verified
+  protected off-VM copy готовы. Read-only table-size/EXPLAIN: 710 changes, 917,504
+  bytes total, 0.396 ms. После exact main six-job PASS canonical stop old API/worker → migrate → start
+  matching API/worker/Web выполнен. Central deployed
+  `05eaa7fadd3d6d9c9833f40f6811b68db771a755`, schema0008; healthcheck PASS.
+  Actual new-index EXPLAIN: Index Only Scan, 14 rows, six shared buffers, 0.241 ms.
+- Оператор ответил «Разрешаю любой лимит»: operation-count cap снят. Следующий
+  закрытый план выбирает 23:00–23:25 UTC вокруг обычного inventory; плановые 12 CRUD
+  включают прежний согласованный shared-file negative. Те же две учётки/ПК и папка,
+  ≤2 MiB, 30 секунд exact Audit-only 503, без forced inventory/USN изменений. Уже
+  существующая valid Audit generation/state сохраняется, новый baseline не создаётся.
+- До выполнения независимое ревью private automatic runner обязательно. Actual
+  local guards: 8 admission, 8 target-chain, 6 executed-finally outcome и 4 pair lifecycle/timing checks PASS,
+  без host/file операций. B/старый 4660 не заменяет A DELETE; actual 503 interval,
+  exact enabled-WINDOWS source/volume/path witness и durable rollback failure
+  проверяются отдельно. Shared pair и полный dependent flow прошли focused independent review: zero
+  remaining Critical/Important. Bounded supervisor timeout сохраняет client UNKNOWN
+  и owned folder, но не задерживает Stop/policy/SACL rollback; исходный cfg не пишет.
+- Read-only перед продолжением: Audit STOPPED/PID0, native registration verified,
+  current_healthy_verified=false, queue0/GAP null/checkpoint retained, old USN Running
+  с прежним PID. Read-only strict resume anchor/same boot подтверждены без изменения new/old state;
+  old latched GAP сохранён целиком. Actual admin/mobile/reload после central deploy
+  PASS, Audit STALE/USN HEALTHY, 14 UNKNOWN, unauthenticated Audit401.
+  Новый проход ещё НЕ выполнен. C остаётся PARTIAL до реальных
+  CORRELATED_HIGH для обеих учёток, negative AMBIGUOUS/UNKNOWN, queued replay и
+  полного rollback/UI/acceptance; Git publication и CI этого не заменяют.
 
 ~~~text
 Explicit approval reference (not this technical task):
