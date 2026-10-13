@@ -1,5 +1,6 @@
 from . import (
     activity,
+    audit,
     authorization,
     core,
     discovery,
@@ -15,6 +16,7 @@ from .base import metadata
 __all__ = [
     "metadata",
     "activity",
+    "audit",
     "authorization",
     "core",
     "discovery",

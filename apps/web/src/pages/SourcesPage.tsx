@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { AuditSourceStatus, AuditBrowser } from '../audit/AuditEvidence';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Actor } from '../auth/client';
@@ -37,7 +38,7 @@ type Authority = { actor?: Actor; onPermissionDenied?: () => void };
 function SourceDetail({ id, actor, onPermissionDenied }: { id: string } & Authority) {
   const { t } = useTranslation();
   const query = useQuery({ ...queries.source(id), retry: false });
-  return <ReadState query={query}>{query.data ? <article><h2>{query.data.hostname}</h2><code>{query.data.id}</code><SourceEvidence source={query.data} /><a href={link('health', { source_id: id, tab: 'volumes' })}>{t('storage.volumes')}</a><CollectorControls source={query.data} actor={actor} onPermissionDenied={onPermissionDenied} /></article> : null}</ReadState>;
+  return <ReadState query={query}>{query.data ? <article><h2>{query.data.hostname}</h2><code>{query.data.id}</code><SourceEvidence source={query.data} />{actor?.roles.includes('storage_admin') && query.data.source_type === 'FILESERVER' ? <><AuditSourceStatus source={id} /><AuditBrowser source={id} /></> : null}<a href={link('health', { source_id: id, tab: 'volumes' })}>{t('storage.volumes')}</a><CollectorControls source={query.data} actor={actor} onPermissionDenied={onPermissionDenied} /></article> : null}</ReadState>;
 }
 export function SourcesPage(props: Authority) {
   return <SourcesContent key={`${props.actor?.id ?? ''}:${props.actor?.roles.join(',') ?? ''}`} {...props} />;

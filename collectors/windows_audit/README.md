@@ -80,3 +80,55 @@ bookmark age, counters, backlog, gap и fixed-code read errors. Номера м�
 root передаётся только после его отдельного утверждения; без него SACL UNKNOWN.
 Не выполнять auditpol /set, SACL/GPO changes, очистку Security или CRUD на FILESERVER
 в стадиях A/B. Нет 5145, WEF, SIEM, raw XML/EVTX archive, content collection или remediation.
+
+## Центральная доставка и правила v1 (этап B)
+
+`mode: deliver` включает собственную HTTPS delivery thread. Capture_only остаётся
+по умолчанию. UUID/token берутся из регистрации AUDIT_WINDOWS на существующем
+FILESERVER source; существующий WINDOWS collector и его credential не заменяются.
+Нужен зарегистрированный canonical volume. Immutable batches из audit.sqlite3
+повторяются теми же байтами; новый формат heartbeat не меняет receipt digest старого
+USN heartbeat. AUTH_REQUIRED и HTTP_REJECTED/REDIRECT сохраняют suspension/quarantine,
+свидетельства не удаляются. Перед операторским разрешением повторной доставки
+проверить binding/token/контракт; вручную очищать очередь запрещено.
+
+Чувствительные API `/api/v1/audit/*` и legacy Activity требуют
+read_sensitive_activity (storage_admin). Поиск использует POST body + Origin/CSRF.
+UI различает факт доступа в Security Event, вывод об исполнителе USN и текущую
+coverage; SID, LogonId и числовые идентификаторы передаются также точными строками.
+Никакого определения физического ПК по IP или личности человека не выполняется.
+
+Rule windows-security-usn-v1 допускает HIGH только для единственной DELETE chain
+4663 DELETE -> 4660 -> USN FILE_DELETE. Нужны совпадающие host/boot/generation,
+SID/logon/process/nonzero handle, строгий RecordID order, ограниченное время,
+4624 session, независимое предшествующее WINDOWS inventory FileId/link_count=1
+не старше 60 секунд, датированные volume aliases и coverage обоих потоков до/после.
+Это отдельные witnesses; target change не подтверждает собственную identity.
+Повторный worker идемпотентен; поздний второй контекст отменяет actor и даёт AMBIGUOUS.
+
+CREATE disposition, границы aggregated WRITE и двухименная audit chain для RENAME
+отсутствуют в текущих потоках. Для этих операций v1 показывает access candidates,
+UNKNOWN/ACCESS_OBSERVED и причину, без автоматического HIGH. Нужные для пилота
+inventory/heartbeat witnesses должны поступить обычным расписанием; ради теста
+не менять и не перезапускать существующий USN Collector. Если witnesses отсутствуют,
+пилот остаётся PARTIAL/BLOCKED. Исходный USN-SOAK-001 FAIL этим не отменяется.
+
+Миграция 0007 добавляет audit-only tables/indexes и immutable triggers на evidence,
+identity/health observations (UPDATE/DELETE/TRUNCATE запрещены). Retention является
+будущим операторским решением. До central deploy: custom pg_dump, pg_restore --list,
+SHA256 и копия вне VM; сохранить старые API/Web images/env. Rollback API/Web к
+предыдущему release допустим с additive schema; удаление новых audit tables или
+восстановление БД — только явная maintenance операция с backup. Нельзя выполнять
+широкий downgrade через 0005: он намеренно блокирует потерю path-only history.
+
+Deliver mode требует список operator-approved `audit_sids` (до 16 SID) в sealed
+config. AuditQuerySystemPolicy и GetNamedSecurityInfoW каждые 30 секунд read-only
+подтверждают effective File System Success и inheritable write/append/delete ACE
+для всех этих SID на каждом approved root и существующих descendants. Только
+selected scope: максимум 256 объектов, без reparse; превышение лимита или
+защищённый descendant без необходимых ACE не дают verified. Root inheritance
+сама по себе не доказывает SACL descendants. Это периодические dated witnesses,
+не гарантия неизменности policy между наблюдениями. ACL/права и policy не меняются. Нет
+подтверждения при старте -> NOT_CONFIGURED; потеря после старта -> latched
+AUDIT_CONFIGURATION_CHANGED / GAP. После C rollback нельзя оставлять configured
+службу с отсутствующей SACL в HEALTHY: статус автоматически теряет подтверждение.

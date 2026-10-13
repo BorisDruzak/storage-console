@@ -11,6 +11,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.requests import Request
 
+from apps.api.audit_ingest import router as audit_ingest_router
+from apps.api.audit_read import router as audit_read_router
 from apps.api.body_limit import IngestBodyLimit
 from apps.api.ingest import router as ingest_router
 from apps.api.read.routes import router as read_router
@@ -60,9 +62,17 @@ def create_app(
     application.state.user_auth = user_auth
     application.include_router(auth_router())
     application.include_router(ingest_router(database))
+    application.include_router(audit_ingest_router(database))
+    application.include_router(audit_read_router(database))
     application.include_router(read_router(database, config.inventory_stale_seconds))
     application.include_router(source_router(database))
     application.add_middleware(IngestBodyLimit, max_bytes=config.max_ingest_bytes)
+    application.add_middleware(
+        IngestBodyLimit,
+        max_bytes=16384,
+        path_prefix="/api/v1/audit/",
+        detail="AUDIT_REQUEST_TOO_LARGE",
+    )
     application.add_middleware(AuthTransport)
     application.add_middleware(ControlTransport)
 

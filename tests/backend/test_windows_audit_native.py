@@ -3,6 +3,7 @@
 import ctypes
 import json
 import os
+import re
 from hashlib import sha256
 from pathlib import Path
 from typing import cast
@@ -235,11 +236,92 @@ $acl.AddAuditRule($rule);Set-Acl -LiteralPath $args[0] -AclObject $acl;"""
         assert result.returncode == 0, "DISPOSABLE_POLICY_RESTORE_FAILED"
 
 
+@pytest.mark.parametrize("mode", ["capture_only", "deliver"])
 def test_installed_wheel_own_scm_system_dpapi_and_restart(
     installed_python,
     tmp_path,
     authorities,
     owned_security_scope,
+    authenticated_setup,
+    mode,
+):
+    if mode == "capture_only":
+        _installed_wheel_scm(installed_python, tmp_path, authorities, owned_security_scope)
+        return
+    from sqlalchemy import func, insert, select, update
+
+    from packages.shared.models.audit import audit_evidence
+    from packages.shared.models.core import collectors, volumes
+    from tests.deployment.collector_delivery import serving_ingest
+
+    client, engine, collector, token, source = authenticated_setup
+    with engine.begin() as conn:
+        conn.execute(
+            update(collectors)
+            .where(collectors.c.id == collector)
+            .values(collector_type="AUDIT_WINDOWS")
+        )
+        conn.execute(
+            insert(volumes).values(
+                source_node_id=source, unique_identity="synthetic-volume", filesystem="NTFS"
+            )
+        )
+
+    def received():
+        with engine.connect() as conn:
+            return conn.scalar(select(func.count()).select_from(audit_evidence)) >= 2
+
+    codes = []
+    lost_acks = []
+
+    async def observed_app(scope, receive, send):
+        async def observed_send(message):
+            if message["type"] == "http.response.start" and len(codes) < 16:
+                codes.append(message["status"])
+            if (
+                scope["path"] == "/api/v1/ingest/audit-events"
+                and message["type"] == "http.response.start"
+                and message["status"] == 202
+                and received()
+            ):
+                # Persist the actual receipt, but withhold the successful ACK.
+                # Restart must retain the queued body; successful ACKs may remove it.
+                if len(lost_acks) < 16:
+                    lost_acks.append(True)
+                message = {**message, "status": 503}
+            await send(message)
+
+        await client.app(scope, receive, observed_send)
+
+    with serving_ingest(observed_app, tmp_path / "tls") as (origin, ca):
+        _installed_wheel_scm(
+            installed_python,
+            tmp_path,
+            authorities,
+            owned_security_scope,
+            {
+                "mode": "deliver",
+                "audit_sids": [principal(os.getpid())],
+                "collector_id": str(collector),
+                "source_id": str(source),
+                "origin": origin,
+                "ca_file": str(ca),
+                "token": token,
+            },
+            received,
+            lambda: {"http_status_codes": codes},
+        )
+        assert lost_acks, "NATIVE_LOST_ACK_NOT_EXERCISED"
+
+
+def _installed_wheel_scm(
+    installed_python,
+    tmp_path,
+    authorities,
+    owned_security_scope,
+    config_override=None,
+    received=None,
+    extra_diagnostics=None,
 ):
     import subprocess
 
@@ -262,6 +344,8 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
         "initial_baseline": True,
     }
     config["ca_file"] = str(authorities[0] / "ca.pem")
+    if config_override:
+        config.update(config_override)
     probe = subprocess.run(
         [
             str(installed_python),
@@ -301,10 +385,71 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
         target.unlink()
 
         def accepted():
+            if received:
+                return received()
             value = json.loads((Path(spec.state_path) / "audit-status.json").read_bytes())
             return value.get("backlog", 0) >= 2
 
-        eventually(accepted, seconds=45)
+        def safe_diagnostics():
+            value = json.loads((Path(spec.state_path) / "audit-status.json").read_bytes())
+            result = {
+                key: value.get(key)
+                for key in (
+                    "health",
+                    "mode",
+                    "backlog",
+                    "gap",
+                    "policy_verified",
+                    "sacl_verified",
+                    "bounds_error",
+                    "read_errors",
+                    "counters",
+                    "delivery",
+                )
+            }
+            if extra_diagnostics:
+                result.update(extra_diagnostics())
+            scm = manager.status()
+            result.update(
+                scm_state=scm.state, scm_exit_code=scm.exit_code, same_pid=scm.pid == status.pid
+            )
+            import sqlite3
+
+            from collectors.windows_audit.configuration import MachineCipher
+
+            database = (Path(spec.state_path) / "audit.sqlite3").as_uri() + "?mode=ro"
+            with sqlite3.connect(database, uri=True, timeout=2) as connection:
+                row = connection.execute("SELECT payload FROM delivery WHERE id=1").fetchone()
+            if row:
+                result["retained_delivery"] = json.loads(MachineCipher().unprotect(row[0]))
+            from collectors.windows.diagnostics import valid_detail
+
+            script = (
+                '$events=@(Get-WinEvent -LogName Application -FilterXPath "'
+                "*[System[Provider[@Name='"
+                + spec.name
+                + "']]]\" -MaxEvents 8 -ErrorAction SilentlyContinue);"
+                "$values=@($events|ForEach-Object {"
+                "$_.Properties|ForEach-Object {[string]$_.Value}});"
+                "ConvertTo-Json -InputObject $values -Compress"
+            )
+            events = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-Command", script],
+                capture_output=True,
+                timeout=10,
+            )
+            if events.returncode == 0:
+                values = json.loads(events.stdout.decode())
+                result["service_diagnostics"] = [
+                    value
+                    for value in values
+                    if valid_detail(value)
+                    or (value.isascii() and all(c.isupper() or c == "_" for c in value))
+                    or re.fullmatch(r"AUDIT_WIN32_[0-9]{1,10}", value)
+                ]
+            return result
+
+        eventually(accepted, seconds=45, diagnostics=safe_diagnostics)
         manager.stop()
         from collectors.windows_audit.configuration import MachineCipher
         from collectors.windows_audit.store import AuditStore
@@ -315,7 +460,9 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
             )
             before = queue.peek()
             bookmark, cache = queue.checkpoint()
-            assert before is not None and cache["counters"]["accepted"] > 0
+            assert (received is not None or before is not None) and cache["counters"][
+                "accepted"
+            ] > 0
             assert queue.peek() == before, "LOST_ACK_CHANGED_BODY"
         manager.start()
         restarted_pid = manager.status().pid
@@ -348,3 +495,9 @@ def uuid4_from(value):
     from uuid import UUID
 
     return UUID(value)
+
+
+def test_native_read_only_policy_and_sacl_cover_owned_runner_sid(owned_security_scope):
+    from collectors.windows_audit.readiness import readiness
+
+    assert readiness([str(owned_security_scope)], [principal(os.getpid())]) == (True, True)

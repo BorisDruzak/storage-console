@@ -44,6 +44,10 @@ class AuditStore:
                 "id TEXT UNIQUE NOT NULL, body BLOB NOT NULL)"
             )
             db.execute(
+                "CREATE TABLE IF NOT EXISTS delivery (id INTEGER PRIMARY KEY CHECK(id=1), "
+                "payload BLOB NOT NULL)"
+            )
+            db.execute(
                 "INSERT OR IGNORE INTO state(id,collector) VALUES(1,?)", (str(collector_id),)
             )
             if db.execute("SELECT collector FROM state WHERE id=1").fetchone()[0] != str(
@@ -127,7 +131,12 @@ class AuditStore:
             return result
 
     def latch_gap(self, code: str) -> None:
-        if code not in {"AUDIT_LOG_CLEARED", "AUDIT_BOOKMARK_STALE", "AUDIT_BOOT_CHANGED"}:
+        if code not in {
+            "AUDIT_LOG_CLEARED",
+            "AUDIT_BOOKMARK_STALE",
+            "AUDIT_BOOT_CHANGED",
+            "AUDIT_CONFIGURATION_CHANGED",
+        }:
             raise AuditStoreError("AUDIT_GAP_CODE_INVALID")
         with self._transaction() as db:
             db.execute("UPDATE state SET gap=coalesce(gap,?) WHERE id=1", (code,))
@@ -139,3 +148,17 @@ class AuditStore:
             ).fetchone()
             gap = db.execute("SELECT gap FROM state WHERE id=1").fetchone()[0]
         return {"backlog": count, "encrypted_bytes": size, "gap": gap}
+
+    def delivery_state(self) -> dict[str, Any]:
+        with self._transaction() as db:
+            row = db.execute("SELECT payload FROM delivery WHERE id=1").fetchone()
+        return json.loads(self.cipher.unprotect(row[0])) if row else {}
+
+    def save_delivery(self, value: dict[str, Any]) -> None:
+        encoded = self.cipher.protect(json.dumps(value, separators=(",", ":")).encode())
+        with self._transaction() as db:
+            db.execute(
+                "INSERT INTO delivery(id,payload) VALUES(1,?) "
+                "ON CONFLICT(id) DO UPDATE SET payload=excluded.payload",
+                (encoded,),
+            )

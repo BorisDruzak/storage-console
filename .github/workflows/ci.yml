@@ -70,6 +70,12 @@ jobs:
         run: python -m pytest tests/backend/test_windows_cli.py tests/backend/test_windows_cli_native.py -q
       - name: Disposable PostgreSQL for native service tests
         run: python tests/deployment/prepare_windows_postgres.py
+      - name: Independent Security audit, strict native bookmark and installed SCM
+        run: >-
+          python -m pytest tests/backend/test_windows_audit_events.py
+          tests/backend/test_windows_audit_store.py tests/backend/test_windows_audit_runtime.py
+          tests/backend/test_windows_audit_native.py tests/backend/test_windows_audit_delivery.py
+          tests/backend/test_windows_audit_https.py tests/backend/test_windows_audit_readiness.py -q
       - name: Native SCM, LocalSystem, runtime and HTTPS ingest
         run: >-
           python -m pytest tests/backend/test_windows_service.py
@@ -87,11 +93,6 @@ jobs:
           tests/backend/test_windows_usn_runtime.py tests/backend/test_windows_usn_worker_native.py -q
       - name: Native USN to real HTTPS, PostgreSQL and Activity with lost ACK
         run: python -m pytest tests/backend/test_windows_usn_integration.py -q
-      - name: Independent Security audit, strict native bookmark and installed SCM
-        run: >-
-          python -m pytest tests/backend/test_windows_audit_events.py
-          tests/backend/test_windows_audit_store.py tests/backend/test_windows_audit_runtime.py
-          tests/backend/test_windows_audit_native.py -q
       - name: Stop disposable PostgreSQL
         if: always()
         run: python tests/deployment/prepare_windows_postgres.py --stop

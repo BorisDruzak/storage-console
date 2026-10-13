@@ -70,6 +70,7 @@ test('overview remains usable on desktop and mobile without overflow', async ({ 
 });
 
 test('activity and recovery shells expose domain structure with unavailable evidence', async ({page})=>{
+  await page.route('**/api/v1/auth/me', route => route.fulfill({json:{id:'6a83a99d-247d-4e58-8c49-089c703ab42d',username:'synthetic-admin',roles:['storage_admin']}}));
   await page.route('**/api/v1/activity?*',route=>route.fulfill({
     headers:{'X-Evidence-Valid-For-Ms':'35000','Cache-Control':'no-store'},
     contentType:'application/json',body:JSON.stringify({items:[],total:0,limit:50,offset:0,
@@ -86,6 +87,7 @@ test('activity and recovery shells expose domain structure with unavailable evid
 });
 
 test('test-only domain observations render event storm and independent recovery states',async({page},testInfo)=>{
+  await page.route('**/api/v1/auth/me', route => route.fulfill({json:{id:'6a83a99d-247d-4e58-8c49-089c703ab42d',username:'synthetic-admin',roles:['storage_admin']}}));
   test.skip(!!process.env.PLAYWRIGHT_BASE_URL,'Synthetic fixture entry is excluded from production dist');
   const errors:string[]=[];
   page.on('pageerror',error=>errors.push(error.message));
@@ -112,6 +114,7 @@ test('test-only domain observations render event storm and independent recovery 
 });
 
 test('stale domain fixture suppresses current confidence and platform health',async({page})=>{
+  await page.route('**/api/v1/auth/me', route => route.fulfill({json:{id:'6a83a99d-247d-4e58-8c49-089c703ab42d',username:'synthetic-admin',roles:['storage_admin']}}));
   test.skip(!!process.env.PLAYWRIGHT_BASE_URL,'Synthetic fixture entry is excluded from production dist');
   await page.goto('/test-fixtures/domains.html?stale=1#activity');
   await expect(page.getByText('Устаревшие данные',{exact:true})).toBeVisible();

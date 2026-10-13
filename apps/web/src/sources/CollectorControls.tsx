@@ -38,7 +38,7 @@ function Panel({ source, actor, onPermissionDenied }: Props) {
   }
   return <section className="source-controls"><h2>{t('sourceControl.collectors')}</h2>
     {request.error ? <p role="alert">{t(`sourceControl.errors.${request.error}`)}</p> : null}
-    {admin ? <><p>{t('sourceControl.rotationHelp')}</p><button disabled={request.pending} onClick={() => issue(signal => enrollCollector(source.id, type, signal))}>{t('sourceControl.enroll')}</button></> : null}
+    {admin ? <><p>{t('sourceControl.rotationHelp')}</p><button disabled={request.pending} onClick={() => issue(signal => enrollCollector(source.id, type, signal))}>{t('sourceControl.enroll')}</button>{source.source_type === 'FILESERVER' ? <button disabled={request.pending} onClick={() => issue(signal => enrollCollector(source.id, 'AUDIT_WINDOWS', signal))}>{t('securityAudit.enroll')}</button> : null}</> : null}
     {request.pending ? <p role="status">{t('sourceControl.pending')}</p> : null}
     {credential && admin ? <section className="credential-panel" aria-label={t('sourceControl.oneTime')}>
       <h3>{t('sourceControl.oneTime')}</h3><p>{t('sourceControl.keyHelp')}</p>

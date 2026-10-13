@@ -289,7 +289,7 @@ def test_new_path_only_deletion_refuses_destructive_legacy_round_trip(
     command.upgrade(config, "head")
     command.check(config)
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0006"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0007"
         if has_inventory:
             obj = connection.execute(select(filesystem_objects)).mappings().one()
             assert obj["deleted_at"] is None and obj["current_relative_path"] == "a/x"

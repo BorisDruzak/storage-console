@@ -10,6 +10,8 @@ from pathlib import PureWindowsPath
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from collectors.windows.diagnostics import RuntimeFailure
+
 P, D, W = ctypes.c_void_p, ctypes.c_uint32, ctypes.c_wchar_p
 RESUME_FLAGS = 0x10003  # StartAfterBookmark | Strict
 INITIAL_FLAGS = 0x10002  # StartAtOldestRecord | Strict; explicit initial baseline only
@@ -21,6 +23,20 @@ class EventLogError(Exception):
     def __init__(self, code: int) -> None:
         self.code = code
         super().__init__("AUDIT_BOOKMARK_STALE" if code in STALE else "AUDIT_READ_FAILED")
+
+
+class AuditReadFailure(RuntimeFailure):
+    """Preserve only the original traceback and a bounded Win32 error number."""
+
+    def __init__(self, error: EventLogError) -> None:
+        super().__init__("AUDIT_READ_FAILED", error, "runtime")
+        self.native_code = (
+            error.code if type(error.code) is int and 0 <= error.code < 2**32 else None
+        )
+
+
+class EventLogPending(Exception):
+    """A timed-out native read does not prove the subscription was drained."""
 
 
 def api() -> Any:
@@ -106,10 +122,14 @@ class SecurityReader:
         anchor_digest: str | None = None,
     ) -> None:
         self.api, self.bookmark, self.subscription, self.signal = api(), None, None, None
+        self._draining = False
         self.kernel = vars(ctypes)["WinDLL"]("kernel32", use_last_error=True)
         self.kernel.CreateEventW.argtypes = [P, D, D, W]
         self.kernel.CreateEventW.restype = P
         self.kernel.CloseHandle.argtypes, self.kernel.CloseHandle.restype = [P], D
+        self.kernel.WaitForSingleObject.argtypes = [P, D]
+        self.kernel.WaitForSingleObject.restype = D
+        self.kernel.ResetEvent.argtypes, self.kernel.ResetEvent.restype = [P], D
         try:
             if bookmark is None and not initial_baseline:
                 raise EventLogError(1168)
@@ -117,7 +137,7 @@ class SecurityReader:
             check(self.bookmark)
             if bookmark and anchor_digest:
                 self._validate_anchor(anchor_digest)
-            self.signal = self.kernel.CreateEventW(None, True, False, None)
+            self.signal = self.kernel.CreateEventW(None, True, True, None)
             check(self.signal)
             self.subscription = self.api.EvtSubscribe(
                 None,
@@ -151,11 +171,26 @@ class SecurityReader:
             self.api.EvtClose(query)
 
     def next(self) -> tuple[str, str] | None:
+        if not self._draining:
+            ready = self.kernel.WaitForSingleObject(self.signal, 0)
+            if ready == 258:  # WAIT_TIMEOUT: no subscription signal; never block SCM stop.
+                return None
+            if ready != 0:  # WAIT_OBJECT_0 is the only valid event-object result.
+                raise EventLogError(vars(ctypes)["get_last_error"]())
+            # Reset before draining, retaining this state across bounded next()
+            # calls. An arrival after the empty snapshot retains its wakeup.
+            check(self.kernel.ResetEvent(self.signal))
+            self._draining = True
         handles, returned = (P * 1)(), D()
         if not self.api.EvtNext(self.subscription, 1, handles, 0, 0, ctypes.byref(returned)):
             code = vars(ctypes)["get_last_error"]()
-            if code in {259, 1460}:
+            # Pull subscriptions also report ERROR_INVALID_OPERATION with zero
+            # results when drained (same native edge handled by upstream pywin32).
+            if code == 259 or (code == 4317 and returned.value == 0):
+                self._draining = False
                 return None
+            if code == 1460:
+                raise EventLogPending()
             raise EventLogError(code)
         handle = handles[0]
         try:

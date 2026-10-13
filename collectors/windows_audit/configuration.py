@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from pathlib import Path
 from typing import Literal
 from uuid import UUID
@@ -49,16 +50,22 @@ class AuditConfig(BaseModel):
     source_id: UUID
     generation: UUID
     roots: dict[str, str] = Field(min_length=1, max_length=16)
+    audit_sids: list[str] = Field(default_factory=list, max_length=16)
     origin: str = Field(max_length=2048)
     ca_file: str = Field(max_length=32768)
     token: SecretStr = Field(repr=False)
     configured: bool = False  # Operator-verified effective policy AND narrow SACL.
     initial_baseline: bool = False
-    mode: Literal["capture_only"] = "capture_only"  # Central audit ingest is Stage B.
+    mode: Literal["capture_only", "deliver"] = "capture_only"
 
     @model_validator(mode="after")
     def validate_settings(self) -> AuditConfig:
         AuditScope(self.roots)
+        if len(set(self.audit_sids)) != len(self.audit_sids) or any(
+            re.fullmatch(r"S-1-[0-9]+(?:-[0-9]+){1,15}", sid) is None or len(sid) > 184
+            for sid in self.audit_sids
+        ):
+            raise ValueError("AUDIT_PRINCIPALS_INVALID")
         if not 32 <= len(self.token.get_secret_value()) <= 4096:
             raise ValueError("AUDIT_CREDENTIAL_INVALID")
         Transport(
@@ -72,6 +79,8 @@ class AuditConfig(BaseModel):
 
 def activate(state: ProtectedState, config: AuditConfig) -> None:
     # Initialization only; a new identity/generation cannot overwrite an existing queue.
+    if (state.root / "outbox.sqlite3").exists():
+        raise ValueError("AUDIT_USN_STATE_FORBIDDEN")
     if (state.root / CONFIG_NAME).exists() or (state.root / QUEUE_NAME).exists():
         raise ValueError("AUDIT_ALREADY_INITIALIZED")
     value = config.model_dump(mode="json")

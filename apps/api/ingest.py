@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, insert, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -31,6 +32,11 @@ from packages.shared.ingest.hygiene import hygiene
 from packages.shared.ingest.recovery import recovery
 from packages.shared.ingest.telemetry import diagnostic, telemetry
 from packages.shared.jobs import enqueue
+from packages.shared.models.audit import (
+    audit_health_observations,
+    audit_identity_observations,
+    audit_streams,
+)
 from packages.shared.models.core import collector_heartbeats, collectors, source_nodes
 from packages.shared.models.jobs import ingest_batches
 from packages.shared.models.security import audit_log
@@ -79,6 +85,29 @@ def accept[T: Record](engine: Engine, kind: str, batch: BatchEnvelope[T], token:
             ):
                 raise HTTPException(401, detail="COLLECTOR_AUTH_REQUIRED")
             source = collector["source_node_id"]
+            is_audit = collector["collector_type"] == "AUDIT_WINDOWS"
+            audit_present = (
+                is_audit
+                or connection.scalar(
+                    select(collectors.c.id)
+                    .where(
+                        collectors.c.source_node_id == source,
+                        collectors.c.collector_type == "AUDIT_WINDOWS",
+                        collectors.c.enabled.is_(True),
+                    )
+                    .limit(1)
+                )
+                is not None
+            )
+            if is_audit and (
+                kind != "heartbeat"
+                or any(not isinstance(r, HeartbeatRecord) or r.audit is None for r in batch.records)
+            ):
+                raise HTTPException(403, detail="AUDIT_DOMAIN_REQUIRED")
+            if not is_audit and any(
+                isinstance(r, HeartbeatRecord) and r.audit is not None for r in batch.records
+            ):
+                raise HTTPException(403, detail="AUDIT_COLLECTOR_REQUIRED")
             connection.execute(
                 select(source_nodes.c.id).where(source_nodes.c.id == source).with_for_update()
             ).one()
@@ -107,13 +136,71 @@ def accept[T: Record](engine: Engine, kind: str, batch: BatchEnvelope[T], token:
             )
             for record in batch.records:
                 if isinstance(record, HeartbeatRecord):
+                    if audit_present:
+                        connection.execute(
+                            insert(audit_health_observations).values(
+                                collector_id=batch.collector_id,
+                                receipt_id=receipt_id,
+                                occurred_at=record.occurred_at,
+                                payload=record.model_dump(mode="json"),
+                            )
+                        )
+                    if is_audit:
+                        health = record.audit
+                        assert health is not None
+                        old_host = connection.scalar(
+                            select(audit_streams.c.host_id).where(
+                                audit_streams.c.collector_id == batch.collector_id
+                            )
+                        )
+                        if old_host is not None and old_host != health.host_id:
+                            raise HTTPException(409, detail="AUDIT_HOST_CONFLICT")
+                        statement = pg_insert(audit_streams).values(
+                            collector_id=batch.collector_id,
+                            host_id=health.host_id,
+                            health=health.model_dump(mode="json"),
+                            reported_at=record.occurred_at,
+                        )
+                        connection.execute(
+                            statement.on_conflict_do_update(
+                                constraint="uq_audit_stream_collector",
+                                set_={
+                                    "health": statement.excluded.health,
+                                    "reported_at": statement.excluded.reported_at,
+                                },
+                                where=(
+                                    audit_streams.c.reported_at.is_(None)
+                                    | (audit_streams.c.reported_at <= record.occurred_at)
+                                ),
+                            )
+                        )
+                        continue
                     connection.execute(
                         insert(collector_heartbeats).values(
-                            collector_id=batch.collector_id, **record.model_dump()
+                            collector_id=batch.collector_id, **record.model_dump(exclude={"audit"})
                         )
                     )
                 elif isinstance(record, VolumeRecord | ShareRecord | FileObjectRecord):
                     inventory(connection, source, record)
+                    if (
+                        isinstance(record, FileObjectRecord)
+                        and collector["collector_type"] == "WINDOWS"
+                        and audit_present
+                    ):
+                        from packages.shared.audit.keys import path_key
+
+                        connection.execute(
+                            insert(audit_identity_observations).values(
+                                source_node_id=source,
+                                collector_id=batch.collector_id,
+                                receipt_id=receipt_id,
+                                volume_id=record.volume_identity,
+                                file_id=record.file_id,
+                                path_key=path_key(record.relative_path),
+                                occurred_at=record.occurred_at,
+                                payload=record.model_dump(mode="json"),
+                            )
+                        )
                 elif isinstance(record, ChangeRecord):
                     change(connection, source, record)
                 elif isinstance(record, TelemetryRecord):
@@ -140,11 +227,12 @@ def accept[T: Record](engine: Engine, kind: str, batch: BatchEnvelope[T], token:
                 .where(collectors.c.id == batch.collector_id)
                 .values(last_seen_at=func.now())
             )
-            connection.execute(
-                update(source_nodes)
-                .where(source_nodes.c.id == source)
-                .values(last_success_at=func.now())
-            )
+            if not is_audit:
+                connection.execute(
+                    update(source_nodes)
+                    .where(source_nodes.c.id == source)
+                    .values(last_success_at=func.now())
+                )
             connection.execute(
                 insert(audit_log).values(
                     collector_id=batch.collector_id,
@@ -161,6 +249,13 @@ def accept[T: Record](engine: Engine, kind: str, batch: BatchEnvelope[T], token:
                 {"receipt_id": str(receipt_id)},
                 "ingest:" + str(receipt_id),
             )
+            if audit_present and kind in ("changes", "inventory", "heartbeat"):
+                enqueue(
+                    connection,
+                    "audit_correlate",
+                    {"receipt_id": str(receipt_id)},
+                    "audit:" + str(receipt_id),
+                )
     except IngestConflict as error:
         raise HTTPException(409, detail=str(error)) from None
     except SQLAlchemyError:

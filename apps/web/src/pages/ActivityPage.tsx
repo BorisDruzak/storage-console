@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ReadState, timestamp } from '../components/ReadState';
@@ -7,14 +8,18 @@ import { domainReaders, type ActivityEvent, type DomainLoader } from '../domains
 import { groupActivity } from '../domains/activity';
 import { RawValue } from '../components/RawValue';
 import { link, useRoute } from '../navigation';
+import { AuditChange, AuditChangeDetails, AuditBrowser, AuditObjectEvidence } from '../audit/AuditEvidence';
 
 const activitySection='activity';
 const columns=['time','event','actor','client','path','change','confidence','provenance','fileId'] as const;
-export function ActivityPage({load=domainReaders.activity}: {load?:DomainLoader<ActivityEvent>}) {
+export function ActivityPage({load=domainReaders.activity,auditEnabled=false}: {load?:DomainLoader<ActivityEvent>;auditEnabled?:boolean}) {
   const {t,i18n}=useTranslation();
   const route=useRoute();
+  const auditObjectId=route.params.get('audit_object_id');
+  const [selected, setSelected] = useState<{id:string; filterKey:string}|null>(null);
   const offset=route.offset<=10000?route.offset:0;
   const filters={...useDomainFilters(),offset};
+  const filterKey=JSON.stringify(filters);
   const query=useQuery({queryKey:['activity',filters],queryFn:({signal})=>load(filters,signal),retry:false,
     structuralSharing:false,staleTime:2000,refetchInterval:5000});
   const data=query.data;
@@ -38,7 +43,7 @@ export function ActivityPage({load=domainReaders.activity}: {load?:DomainLoader<
         <td><dl><dt>{t('activity.before')}</dt><dd><RawValue value={item.old_path} /></dd><dt>{t('activity.after')}</dt><dd><RawValue value={item.new_path} /></dd></dl></td>
         <td>{data?.availability==='available'&&data.quality==='CURRENT'&&item.confidence!==null? t('activity.percent',{value:Math.round(item.confidence*100)}):t('common.unavailable')}</td>
         <td>{item.provenance==='NTFS_USN'?t('activity.usn'):t('common.unavailable')}</td>
-        <td><RawValue value={item.file_id ?? null} /></td>
+        <td><RawValue value={item.file_id ?? null} />{auditEnabled ? <AuditChange id={item.id} onSelect={id => setSelected({id,filterKey})} /> : null}</td>
       </tr>)}</tbody></table></div>
       {page ? <nav aria-label={t('activity.pagination')}>
         <a href={pageLink(Math.max(0,offset-page.limit))} aria-disabled={offset===0}
@@ -48,5 +53,7 @@ export function ActivityPage({load=domainReaders.activity}: {load?:DomainLoader<
           onClick={e=>{if(offset+page.limit>=page.total||offset+page.limit>10000)e.preventDefault();}}>{t('common.next')}</a>
       </nav>:null}
     </DomainState></ReadState>
+    {auditEnabled && selected?.filterKey===filterKey ? <AuditChangeDetails id={selected.id} /> : null}
+    {auditEnabled ? auditObjectId ? <AuditObjectEvidence key={auditObjectId} id={auditObjectId} /> : <AuditBrowser key={filters.source_id ?? 'all'} source={filters.source_id} /> : null}
   </>;
 }

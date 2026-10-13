@@ -58,7 +58,7 @@ export function ConsoleShell({ actor, onPermissionDenied }: { actor?: Actor; onP
       </header>
       <div className="content">
         <h1 id="main-content" ref={heading} tabIndex={-1}>{t(`navigation.${section}`)}</h1>
-        {section === 'sources' ? <SourcesPage actor={actor} onPermissionDenied={onPermissionDenied} /> : Page?<Page />:<p>{t('common.unavailableEvidence')}</p>}
+        {section === 'sources' ? <SourcesPage actor={actor} onPermissionDenied={onPermissionDenied} /> : section === 'activity' && actor ? actor.roles.includes('storage_admin') ? <ActivityPage auditEnabled /> : <p>{t('securityAudit.adminOnly')}</p> : Page?<Page />:<p>{t('common.unavailableEvidence')}</p>}
       </div>
     </main>
   </div>;

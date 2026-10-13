@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import re
 import sys
 import threading
 import time
@@ -14,6 +15,7 @@ from pathlib import Path
 from collectors.windows.diagnostics import detail, valid_detail
 from collectors.windows.errors import SecurityError
 
+from .native import AuditReadFailure
 from .scm import AuditServiceSpec as ServiceSpec
 
 
@@ -72,6 +74,8 @@ class RuntimeHost:
         except Exception as error:
             code = error.code if isinstance(error, SecurityError) else "RUNTIME_FAILED"
             self.log(code)
+            if isinstance(error, AuditReadFailure) and error.native_code is not None:
+                self.log(f"AUDIT_WIN32_{error.native_code}")
             self.log(detail(error, stage))
             # Failed initialization is fail-closed. Unexpected RUNNING termination
             # must leave SCM without STOPPED so crash recovery can apply.
@@ -114,6 +118,7 @@ def dispatch(spec: ServiceSpec) -> int:
                 if diagnostic
                 else code
                 if (code.isascii() and all(c.isupper() or c == "_" for c in code))
+                or re.fullmatch(r"AUDIT_WIN32_[0-9]{1,10}", code)
                 else ("RUNTIME_FAILED")
             )
             handle = native.RegisterEventSourceW(None, spec.name)

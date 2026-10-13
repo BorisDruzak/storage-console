@@ -4,18 +4,35 @@ import json
 import os
 import threading
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 from uuid import UUID, uuid4
 
 from .events import parse_event
-from .native import STALE, EventLogError
+from .native import STALE, EventLogError, EventLogPending
 from .scope import AuditScope, Selector
 from .store import AuditStore
 
 
 class Reader(Protocol):
     def next(self) -> tuple[str, str] | None: ...
+
+
+class RuntimeStatus:
+    """Cross-thread snapshot; protected file reads pin replacement targets on Windows."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._value: dict[str, Any] = {}
+
+    def publish(self, value: dict[str, Any]) -> None:
+        with self._lock:
+            self._value = json.loads(json.dumps(value))
+
+    def read(self) -> dict[str, Any]:
+        with self._lock:
+            return cast(dict[str, Any], json.loads(json.dumps(self._value)))
 
 
 class Capture:
@@ -48,6 +65,8 @@ class Capture:
             return "gap"
         try:
             self.pending = self.pending or self.reader.next()
+        except EventLogPending:
+            return "pending"
         except EventLogError as error:
             if error.code in STALE:
                 self.store.latch_gap("AUDIT_BOOKMARK_STALE")
@@ -112,10 +131,42 @@ class Capture:
 
 
 def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
+    if config.mode == "capture_only":
+        _capture(state, config, stop)
+        return
+    from .delivery import run_delivery
+
+    shared = RuntimeStatus()
+    delivery = threading.Thread(
+        target=run_delivery,
+        args=(state, config, stop),
+        kwargs={"status_reader": shared.read},
+        name="audit-https",
+    )
+    delivery.start()
+    try:
+        _capture(state, config, stop, publish_status=shared.publish)
+    finally:
+        stop.set()
+        delivery.join(timeout=25)
+        if delivery.is_alive():
+            from collectors.windows.errors import SecurityError
+
+            raise SecurityError("AUDIT_DELIVERY_STOP_TIMEOUT")
+
+
+def _capture(
+    state: Any,
+    config: Any,
+    stop: threading.Event,
+    *,
+    publish_status: Callable[[dict[str, Any]], None] | None = None,
+) -> None:
     from collectors.windows.errors import SecurityError
 
     from .configuration import MachineCipher
-    from .native import SecurityReader, boot_epoch, no_reparse_ancestry
+    from .native import AuditReadFailure, SecurityReader, boot_epoch, no_reparse_ancestry
+    from .readiness import readiness
     from .store import AuditStoreError
 
     store = AuditStore(state.root / "audit.sqlite3", config.collector_id, MachineCipher())
@@ -123,27 +174,35 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
 
     def status(health: str) -> None:
         _, cache = store.checkpoint()
+        value = {
+            **store.status(),
+            **diagnostics,
+            "pid": os.getpid(),
+            "health": health,
+            "mode": config.mode,
+            "counters": cache.get("counters", {}),
+            "last_collected_at": cache.get("last_collected_at"),
+            "last_accepted_at": store.delivery_state().get("last_accepted_at"),
+            "delivery": store.delivery_state(),
+        }
         state.write(
             "audit-status.json",
-            json.dumps(
-                {
-                    **store.status(),
-                    **diagnostics,
-                    "pid": os.getpid(),
-                    "health": health,
-                    "mode": "capture_only",
-                    "counters": cache.get("counters", {}),
-                    "last_collected_at": cache.get("last_collected_at"),
-                    "last_accepted_at": None,
-                },
-                separators=(",", ":"),
-            ).encode(),
+            json.dumps(value, separators=(",", ":")).encode(),
         )
+        if publish_status:
+            publish_status(value)
 
     if not config.configured:
         status("NOT_CONFIGURED")
         stop.wait()
         return
+    if config.mode == "deliver":
+        policy, sacl = readiness(list(config.roots), config.audit_sids)
+        diagnostics.update(policy_verified=policy, sacl_verified=sacl)
+        if not (policy and sacl):
+            status("NOT_CONFIGURED")
+            stop.wait()
+            return
     bookmark, cache = store.checkpoint()
     boot, boot_started_at = boot_epoch()
     if cache.get("boot_id", boot) != boot:
@@ -164,7 +223,7 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
             status("GAP")
             stop.wait()
             return
-        raise SecurityError("AUDIT_READ_FAILED") from None
+        raise AuditReadFailure(error) from None
     with reader:
         capture = Capture(
             store,
@@ -178,6 +237,11 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
         refresh_at = 0.0
         while not stop.is_set():
             if time.monotonic() >= refresh_at:
+                if config.mode == "deliver":
+                    policy, sacl = readiness(list(config.roots), config.audit_sids)
+                    diagnostics.update(policy_verified=policy, sacl_verified=sacl)
+                    if not (policy and sacl):
+                        store.latch_gap("AUDIT_CONFIGURATION_CHANGED")
                 try:
                     bounds = reader.bounds()
                     diagnostics.update(bounds)
@@ -209,12 +273,17 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
                         raise SecurityError("AUDIT_STORE_FAILED") from None
                     health = "BACKPRESSURE"
                     break
-                except EventLogError:
-                    raise SecurityError("AUDIT_READ_FAILED") from None
+                except EventLogError as error:
+                    raise AuditReadFailure(error) from None
                 if result == "gap":
                     health = "GAP"
                     break
+                if result == "pending":
+                    break  # OBSERVE, without advancing the historical coverage timestamp.
                 if result == "idle":
+                    diagnostics["observed_through_at"] = datetime.now(UTC).isoformat()
+                    if config.mode == "deliver" and not diagnostics.get("bounds_error"):
+                        health = "HEALTHY"
                     break
             status(health)
             stop.wait(1 if health != "BACKPRESSURE" else 5)
