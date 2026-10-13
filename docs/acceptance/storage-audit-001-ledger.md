@@ -152,6 +152,13 @@ GATE C: BLOCKED — нет отдельного разрешения на нов
   retained privately for rollback. No FILESERVER modifications.
 - B source SHA/PR/exact head CI/merged SHA/exact main CI/deployed acceptance: PENDING.
   GATE B: IN_PROGRESS; CI and actual central acceptance remain mandatory.
+- PR B #25, initial source 989b9ac59a717e2acadc4eaff41dec9564a23ad8,
+  exact-head run 38414713338: backend/frontend/compose-smoke/production-smoke/secrets
+  SUCCESS, sonar SKIPPED. windows-pilot FAIL: old CLI 14, SCM/runtime 81, USN 67
+  and actual USN HTTPS 1 PASS; new Audit suite 68 PASS, installed-wheel deliver
+  timeout 1 FAIL. RCA UNKNOWN pending fixed-code status/queue/HTTP diagnostics.
+  No acceptance, merge or deployment from this SHA. Audit test moves before long
+  USN regressions; every original regression still runs on a passing final source.
 
 ## Baseline (каждый раз перепроверять)
 

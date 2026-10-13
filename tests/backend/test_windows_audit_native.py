@@ -270,7 +270,17 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
         with engine.connect() as conn:
             return conn.scalar(select(func.count()).select_from(audit_evidence)) >= 2
 
-    with serving_ingest(client.app, tmp_path / "tls") as (origin, ca):
+    codes = []
+
+    async def observed_app(scope, receive, send):
+        async def observed_send(message):
+            if message["type"] == "http.response.start" and len(codes) < 16:
+                codes.append(message["status"])
+            await send(message)
+
+        await client.app(scope, receive, observed_send)
+
+    with serving_ingest(observed_app, tmp_path / "tls") as (origin, ca):
         _installed_wheel_scm(
             installed_python,
             tmp_path,
@@ -286,6 +296,7 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
                 "token": token,
             },
             received,
+            lambda: {"http_status_codes": codes},
         )
 
 
@@ -296,6 +307,7 @@ def _installed_wheel_scm(
     owned_security_scope,
     config_override=None,
     received=None,
+    extra_diagnostics=None,
 ):
     import subprocess
 
@@ -362,7 +374,28 @@ def _installed_wheel_scm(
             value = json.loads((Path(spec.state_path) / "audit-status.json").read_bytes())
             return received() if received else value.get("backlog", 0) >= 2
 
-        eventually(accepted, seconds=45)
+        def safe_diagnostics():
+            value = json.loads((Path(spec.state_path) / "audit-status.json").read_bytes())
+            result = {
+                key: value.get(key)
+                for key in (
+                    "health",
+                    "mode",
+                    "backlog",
+                    "gap",
+                    "policy_verified",
+                    "sacl_verified",
+                    "bounds_error",
+                    "read_errors",
+                    "counters",
+                    "delivery",
+                )
+            }
+            if extra_diagnostics:
+                result.update(extra_diagnostics())
+            return result
+
+        eventually(accepted, seconds=45, diagnostics=safe_diagnostics)
         manager.stop()
         from collectors.windows_audit.configuration import MachineCipher
         from collectors.windows_audit.store import AuditStore
