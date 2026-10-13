@@ -175,6 +175,23 @@ GATE C: BLOCKED — нет отдельного разрешения на нов
   delivery exception metadata and SCM state in the owned native fixture to identify
   the remaining failure; do not expose messages, locals or private paths.
 
+- Native diagnostic progression: fe12bf0627be963bda746b37f77467acd77523c3 /
+  run 38422046726: 70 PASS, 1 FAIL; delivery exception absent, SCM PID changed.
+  b3d76ea70ded1e4d3227ac29be55c4f66a5efd03 / run 38423492872:
+  own Application provider reports AUDIT_READ_FAILED. No unrelated event contents exported.
+  3446b02e905b1dc3b1e6c6e16b9ce6a53a6f2545 / run 38425375281:
+  71 PASS, 1 FAIL; bounded numeric diagnostics identify EvtNext Win32 4317,
+  rather than a delivery failure. Independent diagnostic review Critical/Important 0;
+  runtime/delivery 25 PASS, Ruff/mypy 122 files PASS.
+- Pull subscription RCA: empty EvtNext may return ERROR_INVALID_OPERATION (4317)
+  with zero returned events; treating this as fatal restarted the own SCM host before
+  queued audit delivery. Follow the Microsoft manual-reset signal protocol, accepting
+  4317 only for a zero-result EvtNext. Invalid handles and strict stale errors still
+  fail/latch; no implicit new baseline. Portable RED 3 failures plus 3 negative passes,
+  GREEN runtime/delivery 31 PASS, Ruff/mypy PASS. Exact native CI remains required.
+  References: https://learn.microsoft.com/en-us/windows/win32/wes/subscribing-to-events
+  and https://github.com/mhammond/pywin32/blob/main/win32/src/win32evtlog.i.
+
 ## Baseline (каждый раз перепроверять)
 
 - Baseline documentation main перед созданием задачи: 34d49cc5c1aa42953ce3d400ff9e9ddc448bcac9.

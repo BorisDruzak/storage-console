@@ -122,6 +122,9 @@ class SecurityReader:
         self.kernel.CreateEventW.argtypes = [P, D, D, W]
         self.kernel.CreateEventW.restype = P
         self.kernel.CloseHandle.argtypes, self.kernel.CloseHandle.restype = [P], D
+        self.kernel.WaitForSingleObject.argtypes = [P, D]
+        self.kernel.WaitForSingleObject.restype = D
+        self.kernel.ResetEvent.argtypes, self.kernel.ResetEvent.restype = [P], D
         try:
             if bookmark is None and not initial_baseline:
                 raise EventLogError(1168)
@@ -129,7 +132,7 @@ class SecurityReader:
             check(self.bookmark)
             if bookmark and anchor_digest:
                 self._validate_anchor(anchor_digest)
-            self.signal = self.kernel.CreateEventW(None, True, False, None)
+            self.signal = self.kernel.CreateEventW(None, True, True, None)
             check(self.signal)
             self.subscription = self.api.EvtSubscribe(
                 None,
@@ -163,10 +166,20 @@ class SecurityReader:
             self.api.EvtClose(query)
 
     def next(self) -> tuple[str, str] | None:
+        ready = self.kernel.WaitForSingleObject(self.signal, 0)
+        if ready == 258:  # WAIT_TIMEOUT: no subscription signal; never block SCM stop.
+            return None
+        if ready != 0:  # WAIT_OBJECT_0 is the only valid event-object result.
+            raise EventLogError(vars(ctypes)["get_last_error"]())
         handles, returned = (P * 1)(), D()
         if not self.api.EvtNext(self.subscription, 1, handles, 0, 0, ctypes.byref(returned)):
             code = vars(ctypes)["get_last_error"]()
-            if code in {259, 1460}:
+            # Pull subscriptions also report ERROR_INVALID_OPERATION with zero
+            # results when drained (same native edge handled by upstream pywin32).
+            if code == 259 or (code == 4317 and returned.value == 0):
+                check(self.kernel.ResetEvent(self.signal))
+                return None
+            if code == 1460:
                 return None
             raise EventLogError(code)
         handle = handles[0]

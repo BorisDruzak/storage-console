@@ -241,3 +241,53 @@ def test_native_read_failure_preserves_numeric_code_without_exception_message():
     assert "confidential" not in failure.detail
     for code in (-1, True, 2**32):
         assert native.AuditReadFailure(native.EventLogError(code)).native_code is None
+
+
+@pytest.mark.parametrize("error", [259, 4317])
+def test_empty_pull_subscription_resets_signal_without_crashing(monkeypatch, error):
+    import ctypes
+    from types import SimpleNamespace
+
+    native = module("native")
+    calls = []
+    reader = native.SecurityReader.__new__(native.SecurityReader)
+    reader.subscription, reader.signal = 100, 101
+    reader.kernel = SimpleNamespace(
+        WaitForSingleObject=lambda handle, timeout: 0,
+        ResetEvent=lambda handle: calls.append(("reset", handle)) or True,
+    )
+    reader.api = SimpleNamespace(EvtNext=lambda *args: False)
+    monkeypatch.setattr(ctypes, "get_last_error", lambda: error, raising=False)
+    assert reader.next() is None
+    assert calls == [("reset", 101)]
+
+
+def test_unsignalled_pull_subscription_does_not_call_evt_next():
+    from types import SimpleNamespace
+
+    reader = module("native").SecurityReader.__new__(module("native").SecurityReader)
+    reader.subscription, reader.signal = 100, 101
+    reader.kernel = SimpleNamespace(WaitForSingleObject=lambda handle, timeout: 258)
+    reader.api = SimpleNamespace()
+    assert reader.next() is None
+
+
+@pytest.mark.parametrize("error,returned", [(6, 0), (15011, 0), (4317, 1)])
+def test_invalid_or_stale_pull_subscription_is_not_an_empty_result(monkeypatch, error, returned):
+    import ctypes
+    from types import SimpleNamespace
+
+    native = module("native")
+    reader = native.SecurityReader.__new__(native.SecurityReader)
+    reader.subscription, reader.signal = 100, 101
+    reader.kernel = SimpleNamespace(WaitForSingleObject=lambda handle, timeout: 0)
+
+    def failed(*args):
+        ctypes.cast(args[-1], ctypes.POINTER(native.D)).contents.value = returned
+        return False
+
+    reader.api = SimpleNamespace(EvtNext=failed)
+    monkeypatch.setattr(ctypes, "get_last_error", lambda: error, raising=False)
+    with pytest.raises(native.EventLogError) as caught:
+        reader.next()
+    assert caught.value.code == error
