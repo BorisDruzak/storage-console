@@ -329,9 +329,9 @@ Remaining blocker / next step authorized:
 
 ## C — operator-approved real pilot
 
-GATE C: PARTIAL / further live execution BLOCKED. Three approved bounded passes
+GATE C: PARTIAL / further live execution BLOCKED. Four approved bounded passes
 were fully rolled back. Strong live attribution for both users and byte-identical
-pending replay are not accepted. The extended <=28-operation allowance is exhausted.
+pending replay are not accepted. The extended <=36-operation allowance is exhausted.
 
 ### Live execution 2026-10-13 UTC (sanitized)
 
@@ -418,24 +418,68 @@ pending replay are not accepted. The extended <=28-operation allowance is exhaus
 - Central deployed **ef1daf13e5e3130565981ab11ee6f401c9e04749**, schema 0007, all four
   services healthy, exact image labels verified. Fresh PostgreSQL custom backups,
   pg_restore --list and hash-verified protected copies off VM preceded each deploy.
-- Own stopped Audit runtime upgraded to exact merge SHA above; wheel SHA-256
+- The third-pass stopped Audit runtime used the exact merge SHA above; wheel SHA-256
   `5e979299e826ef8fc20ced8bf13251ccb79c3c8f07d7b6dd8e11625796862b17`; all 124 installed
   Python file bytes verified. Config, credentials and bookmark SQLite hashes remained
   unchanged. Original USN package/state/token/cadence/PID untouched. The original USN
   whole-package SHA remains unconfirmed; checked critical modules match its baseline.
 - PR #29 `fix(audit): keep boot identity stable across clock corrections`:
-  head `26984c3114b65980b4ae9be84dae3dbe50b0e881`, run 38461692345 pending.
+  head `26984c3114b65980b4ae9be84dae3dbe50b0e881`, merge
+  `982c442e5760d265efba8e59bd2933b4b20e2889`.
   Independent review Critical/Important zero. Focused correction: immutable local Kernel-General boot
   event identity, bounded current-boot consistency check, no old-witness fallback or
   automatic GAP clearance. Nine regression tests RED; 148 Audit/USN tests GREEN,
   nine Windows-native SKIP on Linux; 54 deployment tests, Ruff/mypy131/strict6,
   OpenAPI and source secret scan PASS. Read-only candidate on FILESERVER returned a
-  stable epoch across three calls and retained the existing GAP. Separate PR/head/main
-  CI, reviewed installed wheel and explicit new state/generation are still required.
+  stable epoch across three calls and retained the existing GAP. Exact head run
+  38461692345 and merged-main run 38462941302: all six SUCCESS/Sonar SKIPPED.
+  Main native checks: Windows CLI 14, Audit 84, SCM 81, USN 67 and real-USN HTTPS 1
+  passed; backend 874 PASS/85 SKIP. Own stopped installed wheel SHA-256
+  `d15e06d01e2af2b03ffbdb0cac6018fa03ea5cbe2d42f8be50d10dcb8e0fd6a5`:
+  all 124 Python files verified; old state/config/token hashes preserved.
+  Collector-only correction required no central API/Web redeployment: central
+  remains the separately verified `ef1daf13e5e3130565981ab11ee6f401c9e04749`.
+- Fourth pass 21:00–21:20 UTC was explicitly approved, including a new protected
+  Audit state/generation, eight additional operations (cumulative <=36) and another
+  audit-only 30-second 503. Old state and its latched AUDIT_BOOT_CHANGED were preserved
+  intact. New state retained enrollment, scoped roots/SIDs and credentials, with the
+  stable native boot identity; no old GAP was cleared. Audit current HEALTHY,
+  policy/SACL, generation and native SCM binding were verified before every CRUD.
+  A stopped/GAP negative control refused file operations before budget reservation.
+- Both accounts completed CREATE/WRITE/RENAME. Two real scoped 4624 version-3 network
+  logons and two different Security-provided client IPs reached the centre. No
+  WorkstationName was reported and no computer name was inferred from an IP.
+  An independent ordinary USN inventory observed both renamed FileIds/link_count=1.
+  The controller's manual analysis delayed DELETE beyond the identity-validity
+  window; admission refused without deleting or consuming its operation budget.
+  This was an execution error, not an unavailable inventory or relaxed requirement.
+- Permission to retain the two files and move their remaining DELETE/replay to a
+  later window was requested but had not arrived before cleanup. Both remaining
+  authorized DELETE operations were used only for cleanup; their stale identity
+  witnesses cannot establish CORRELATED_HIGH. At 21:18 UTC the owned empty folder
+  was removed through its pinned NTFS identity, temporary SACL/Success policy and
+  original root ACL were restored, Failure preserved, Audit STOPPED and original
+  USN Running with the same PID. Four passes total **36 operations / 605 bytes**.
+  New Audit queue empty, checkpoint retained and GAP null; this is not pending replay.
+  The fourth-pass 503 was not executed. The proposed two-file transfer is superseded
+  because those files were cleaned up; it does not authorize further CRUD.
+- Final genuine strict-TLS admin browser: 45 total retained audit events (34 scoped
+  4663, seven linked 4660, four scoped 4624), two SIDs, eleven session contexts and
+  two Security-provided client IPs. Fourth-pass Activity: fourteen UNKNOWN, actor
+  NULL throughout. Desktop/mobile/reload had no page errors or overflow. Exact
+  audit-ingest route returned unauthenticated 401, confirming no residual 503.
+  Service STOPPED and last accepted HEALTHY evidence are distinct observations;
+  no claim of a currently collecting stopped service is made. Health-check browser
+  session logged out and closed. Real file-history navigation was also verified,
+  but live strong actor attribution and queued replay remain unaccepted.
 - Issue #23 remains open; final live file-history attribution for both users and
   pending byte-identical replay remain required. Any further CRUD needs a separately
-  approved new window/operation extension and baseline after preserving existing GAP
-  evidence. Original USN-SOAK-001 remains FAIL; no new long-term PASS is inferred.
+  approved new window/operation extension; the new valid Audit generation can resume
+  without another baseline reset if its strict bookmark/continuity still validate.
+  Before another pass, review an automatic dependent inventory-to-DELETE/replay
+  runner so manual controller pauses cannot consume the freshness window. C stays
+  draft; its final exact-head/main acceptance and merge are not claimed. Original
+  USN-SOAK-001 remains FAIL; no new long-term PASS is inferred.
 
 ~~~text
 Explicit approval reference (not this technical task):
