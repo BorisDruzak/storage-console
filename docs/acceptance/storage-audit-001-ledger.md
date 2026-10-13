@@ -329,82 +329,113 @@ Remaining blocker / next step authorized:
 
 ## C — operator-approved real pilot
 
-GATE C: PARTIAL / further live execution BLOCKED. Operator approval was received;
-two bounded passes were performed and fully rolled back. Strong live attribution
-for both users is not accepted. The original <=20-operation allowance is exhausted.
+GATE C: PARTIAL / further live execution BLOCKED. Three approved bounded passes
+were fully rolled back. Strong live attribution for both users and byte-identical
+pending replay are not accepted. The extended <=28-operation allowance is exhausted.
 
 ### Live execution 2026-10-13 UTC (sanitized)
 
-- Separate human approval: «Разрешаю, делай что необходимо». Operator selected two
-  existing domain accounts and two distinct domain computers, authorized execution
-  through the second computer's existing authenticated session, and selected the
-  final state STOPPED with evidence preserved. Names/SIDs/hosts/paths remain private.
-- Applied GPO and effective-policy preflight found no managed FileSystem setting
-  requiring a local bypass. No GPO was changed. Audit FileSystem Success was enabled
-  temporarily; Failure and Audit Logon settings were preserved. Success SACL
-  write/append/delete applied only to the new synthetic directory and two approved
-  SIDs. Existing root/working DACLs, SMB configuration and USN journal were untouched.
-- Installed the separate Audit service from source
+- Operator approved the separate service, narrow SACL/policy and two existing domain
+  accounts on two distinct computers; final Audit state STOPPED, evidence preserved.
+  Actual identities, topology, paths and Security evidence remain private.
+- Effective-policy/GPO preflight found no managed FileSystem setting requiring a
+  bypass. Temporary FileSystem Success and synthetic-directory write/append/delete
+  SACL applied only to the two approved SIDs. Failure, Logon policy, working/root
+  DACLs, GPO, SMB configuration and USN journal were preserved.
+- Initial independent Audit install used source
   `3d018245a91bec2092e10f38fb06e0c51c967970`, wheel SHA-256
-  `b05d99390fd211cc778d0d850a8390132cb441d460e40441847a5f59b21421ab`.
-  Offline bundle/individual hashes and own code ACL validation passed. Separate
-  UUID/token/state/outbox/PID; no old-USN installation, state or credential change.
-- First authorized window 17:50–18:20 UTC: eight successful file operations.
-  Audit restart preserved strict bookmark, with no latched gap and no pending queue.
-  This did not establish actual byte-identical pending replay. Full rollback verified.
-- Repeat authorized window 19:00–19:20 UTC, operator reply «делай сейчас»:
-  both participants performed CREATE/WRITE/RENAME via SMB; a common synthetic file
-  was written by both accounts. DELETE/cleanup completed within the approved scope.
-  Both passes total **20 file operations / 345 bytes written**, with atomic protected
-  operation accounting, single-flight admission and conservative partial-failure
-  reservations. No further CRUD is authorized by that exhausted allowance.
-- At 19:12 UTC, Audit stopped; temporary SACL/Success policy restored, empty owned
-  directory removed through its retained NTFS identity. Original root ACL and old
-  USN PID/state preserved. Configuration, credentials, bookmark and evidence retained.
-  Real strict-TLS desktop/mobile/reload: one original source, USN HEALTHY, stopped
-  Audit becomes STALE independently, no page errors or mobile overflow.
-- Real central audit evidence: **24 scoped 4663 + 5 linked 4660**, two distinct
-  domain SIDs. Central 4624 count remains **0**. A read-only exact SID/logon lookup
-  in retained Windows Security found four matching Type 3 logons, all **version 3**,
-  each with an IP and without WorkstationName. These private Windows facts were
-  not fabricated into central evidence or actor/client fields.
-- RCA: installed Audit parser/contract accepted 4624 versions 0–2 and filtered v3.
-  The ordinary inventory contained FileId/link_count=1 witnesses, but the <=60-second
-  interval was missed in this pass. No CORRELATED_HIGH result is claimed and the
-  engine's identity/time requirements were not relaxed.
-- Real admin audit/source pages checked. Live file-history attribution, live
-  AMBIGUOUS/UNKNOWN outcomes, four nonadmin-role 403/no-payload checks, and genuine
-  interrupted-delivery replay remain required. The additional 30-second audit-only
-  HTTPS-ingest 503 scenario is proposed privately; separate permission is pending.
+  `b05d99390fd211cc778d0d850a8390132cb441d460e40441847a5f59b21421ab`; offline
+  bundle/file hashes and protected own-code ACL validation passed.
+- First pass 17:50–18:20 UTC: eight operations. Audit restart retained bookmark with
+  no gap/queue; this was not pending byte-identical replay. Full rollback verified.
+- Second pass 19:00–19:20 UTC, reply «делай сейчас»: both CREATE/WRITE/RENAME,
+  common-file negative test and bounded cleanup. First two passes: 20 operations,
+  345 bytes. Independent inventory was real but the identity-freshness window was
+  missed. No matching requirements were relaxed.
+- Real evidence from these passes: 24 scoped 4663 + five linked 4660, two SIDs and
+  seven session contexts. A private read-only exact SID/logon lookup found Type 3
+  logons version 3 with IP and no WorkstationName. These facts were not manually
+  backfilled into the centre. Centre 4624 remains zero; no client identity claim.
+- After normal USN retry recovered, second-pass Activity held 11 UNKNOWN, two
+  ACCESS_OBSERVED and six AMBIGUOUS; actor was NULL for all 19 results. No false
+  cross-user attribution was reported. Real strict-TLS admin audit/source pages,
+  desktop/mobile/reload: no page errors or overflow.
+- Four controlled synthetic authorization sessions exercised actual deployed
+  viewer, analyst, storage_operator and auditor restrictions: /auth/me 200, three
+  protected GETs and valid-CSRF audit-search POST all 403/no evidence payload;
+  selected Source Detail loaded, Audit controls hidden. This proves authorization,
+  not actual LDAP authentication. Scoped fixture users disabled and sessions revoked
+  (active count zero); existing accounts/roles unchanged. A cleanup selector failed
+  during concurrent one-off preflight; fixed oneoff=False and explicit cleanup
+  verified zero sessions. No cleanup PASS was claimed before this verification.
+- Final extension, reply «Разрешаю всё необходимое» to the concrete 20:00–20:20 UTC
+  plan: eight additional operations, cumulative limit 28, and 30 seconds audit-only
+  HTTPS-ingest 503. Same directory/accounts/computers and rollback. Per-pass <=8 and
+  cumulative <=28 guarded under the existing atomic single-flight operation ledger.
+- Both participants completed CREATE/WRITE/RENAME, then DELETE after independent
+  ordinary inventory contained both FileIds/link_count=1 (witness ages ~7 seconds).
+  Three passes total **28 successful operations / 475 bytes written**. No USN forced
+  inventory, cadence change, service restart or queue clearing was performed.
+- The exact Audit-ingest route returned 503 for 30 seconds under the deployment lock;
+  self-contained restoration used same-directory verified files and atomic rename.
+  Original configuration restored; real strict-TLS browser POST without collector
+  credentials returned 401 afterwards, proving active 503 was removed. Other routes,
+  TLS, FILESERVER firewall and USN ingest were not blocked. A late review found
+  restoration nginx-test failure could be masked; helper corrected and live route
+  restoration verified independently. This does not establish pending replay.
+- Final queue check showed AUDIT_BOOT_CHANGED, zero queued batches. The service had
+  refused capture at startup; it did not collect the final CRUD as Security evidence.
+  Native read-only RCA: unchanged OS boot and old-USN process creation, but exact
+  SystemTimeOfDay BootTime changed by 3820 ticks (0.382 ms). The old numeric epoch
+  used this mutable value as boot identity. Real final Activity: 14 UNKNOWN, actor
+  NULL throughout. No CORRELATED_HIGH or successful replay is claimed.
+- At 20:07 UTC, Audit STOPPED; temporary SACL/Success policy restored, Failure bit and
+  original root ACL verified, empty owned folder removed through retained NTFS
+  identity. Original USN Running with its unchanged PID; cursor advanced normally,
+  own pilot nodes gone, queue empty. Config/credentials/bookmark/evidence/GAP retained.
+  Centre reports Audit GAP separately from USN HEALTHY. No automatic baseline reset.
 
-### Required compatibility corrections
+### Compatibility corrections and exact deployed provenance
 
 - PR #27 `fix(ingest): preserve USN index inference in prepared plans`:
-  source `d16fd298a75f951f5944d0bda86379515562d180`, merged main
-  `21294c9cdae9597c55c9421957234821cdd1b498`. Existing parameterized partial-index
-  conflict predicate can fail PostgreSQL generic prepared plans with SQLSTATE 42P10
-  / HTTP 503, blocking normal USN changes delivery while heartbeats remain fresh.
-  The same predicate existed before this task; no collector queue was cleared or
-  manually replayed. RED two prepared-plan tests; GREEN eight idempotency tests,
-  65 deployment/schema/targeted checks, Linux Ruff/mypy and source Gitleaks PASS.
-  Independent review Critical/Important 0. Exact head run 38449850312: six SUCCESS,
-  Sonar SKIPPED. Main run 38451204922: five SUCCESS; initial Windows job failed in
-  native USN HTTPS fixture with STATE_UNAVAILABLE while reading the queue. Only that
-  job is being rerun on the same SHA; main gate and deployment are still pending.
+  head `d16fd298a75f951f5944d0bda86379515562d180`, merge
+  `21294c9cdae9597c55c9421957234821cdd1b498`. Pre-existing parameterized partial-index
+  predicate failed PostgreSQL generic prepared plans (42P10/503), blocking changes
+  while heartbeat stayed fresh. RED two tests; GREEN eight idempotency tests and
+  65 targeted/deployment/schema checks. Independent Critical/Important zero. Exact
+  head run 38449850312 all six SUCCESS/Sonar SKIPPED. Main run 38451204922 initially
+  failed native STATE_UNAVAILABLE while reading the USN queue; provider attempt 2
+  completed all six SUCCESS on the same merge SHA. The initial failure's cause was
+  not confirmed. Verified backup and canonical deploy passed; normal USN retry then
+  drained backlog to zero without manually replaying or altering the collector.
 - PR #28 `fix(audit): accept Windows network logon event version 3`:
-  source `151aeeb7eb93bb20beed67b2f1334091c8313b01`. Add v3 only for 4624, keep the
-  same minimal named fields/digest/scoped linking, reject v4 and v3 for other kinds;
-  regenerate additive API/Web schemas. RED v3 returned None; GREEN Audit regression
-  103 PASS, final event/HTTPS selection 25 PASS / 8 native cases SKIPPED on Linux.
-  Ruff, Linux mypy, OpenAPI/codegen, diff and source Gitleaks PASS. Independent review
-  Critical/Important 0. Exact head run 38453315506 pending; no merge/deploy/installed
-  v3-wheel acceptance yet. No schema migration, bookmark reset, USN or MVP-005 edit.
-- Central still deployed at `3d018245a91bec2092e10f38fb06e0c51c967970`, schema 0007.
-  Fresh PostgreSQL custom backup, pg_restore --list and hash-verified DPAPI copy off
-  VM completed before the proposed corrections; rollback preserves this release.
-  Issue #23 stays open. Further pilot requires a reviewed updated wheel, exact head
-  and main CI, verified central deploy, and a separately approved operation/window
-  extension. Original USN-SOAK-001 remains FAIL; no new long-term PASS is inferred.
+  head `151aeeb7eb93bb20beed67b2f1334091c8313b01`, merge
+  `ef1daf13e5e3130565981ab11ee6f401c9e04749`. v3 accepted only for 4624; same minimal
+  fields/scoped linking; v4 and other-event v3 rejected. RED parser returned None;
+  GREEN 103 Audit regression tests and final event/HTTPS selection 25 PASS/eight
+  Windows-native SKIP on Linux. Independent Critical/Important zero. Exact head
+  run 38453315506 and main run 38454679148: all six SUCCESS/Sonar SKIPPED.
+- Central deployed **ef1daf13e5e3130565981ab11ee6f401c9e04749**, schema 0007, all four
+  services healthy, exact image labels verified. Fresh PostgreSQL custom backups,
+  pg_restore --list and hash-verified protected copies off VM preceded each deploy.
+- Own stopped Audit runtime upgraded to exact merge SHA above; wheel SHA-256
+  `5e979299e826ef8fc20ced8bf13251ccb79c3c8f07d7b6dd8e11625796862b17`; all 124 installed
+  Python file bytes verified. Config, credentials and bookmark SQLite hashes remained
+  unchanged. Original USN package/state/token/cadence/PID untouched. The original USN
+  whole-package SHA remains unconfirmed; checked critical modules match its baseline.
+- PR #29 `fix(audit): keep boot identity stable across clock corrections`:
+  head `26984c3114b65980b4ae9be84dae3dbe50b0e881`, run 38461692345 pending.
+  Independent review Critical/Important zero. Focused correction: immutable local Kernel-General boot
+  event identity, bounded current-boot consistency check, no old-witness fallback or
+  automatic GAP clearance. Nine regression tests RED; 148 Audit/USN tests GREEN,
+  nine Windows-native SKIP on Linux; 54 deployment tests, Ruff/mypy131/strict6,
+  OpenAPI and source secret scan PASS. Read-only candidate on FILESERVER returned a
+  stable epoch across three calls and retained the existing GAP. Separate PR/head/main
+  CI, reviewed installed wheel and explicit new state/generation are still required.
+- Issue #23 remains open; final live file-history attribution for both users and
+  pending byte-identical replay remain required. Any further CRUD needs a separately
+  approved new window/operation extension and baseline after preserving existing GAP
+  evidence. Original USN-SOAK-001 remains FAIL; no new long-term PASS is inferred.
 
 ~~~text
 Explicit approval reference (not this technical task):
