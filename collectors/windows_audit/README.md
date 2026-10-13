@@ -58,6 +58,20 @@ AUDIT_GAP latch после 1102, strict miss, replaced RecordID/anchor или bo
 утверждает новый baseline/generation в новом state, сохраняя старую очередь.
 Нет automatic future-only fallback, очистки Security, изменения retention или SACL.
 
+Boot epoch определяется хешем одного последнего неизменяемого события 12
+Microsoft-Windows-Kernel-General из локального System log, через native EvtQuery.
+StartTime должен соответствовать текущему kernel boot-time в пределах двух секунд;
+это проверка принадлежности загрузке, а не идентификатор. Коррекция часов может
+изменить kernel boot-time даже без reboot. System log должен оставаться читаемым
+и сохранять событие текущей загрузки; отсутствующее, неверное или старое событие
+не допускает fallback. XML этого события используется только локально и не
+отправляется как Security evidence.
+
+Upgrade с прежнего числового boot epoch меняет его формат и требует отдельно
+утверждённого нового baseline/generation в новом state. Старые GAP, bookmark,
+очередь и свидетельства сохранить; автоматически преобразовывать или снимать
+GAP запрещено. USN state и registration не участвуют в этой процедуре.
+
 ## Scope и ограничения
 
 4663 передаётся только для File и явно одобренного локального root. Сравнение
