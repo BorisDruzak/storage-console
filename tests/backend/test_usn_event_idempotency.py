@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from test_path_alias_ingest import initial, object_record, paths, upload
 
 from packages.contracts.changes import ChangeRecord
@@ -40,6 +40,42 @@ def test_changed_payload_under_same_usn_identity_is_conflict(ingest_setup):
     with pytest.raises(IngestConflict):
         with engine.begin() as connection:
             change(connection, source, record.model_copy(update={"new_relative_path": "changed"}))
+
+
+@pytest.mark.parametrize("plan_mode", ["auto", "force_generic_plan"])
+def test_prepared_usn_batch_keeps_partial_index_inference_and_replay(ingest_setup, plan_mode):
+    client, engine, collector, token, _ = ingest_setup
+    with engine.connect() as connection:
+        # Production psycopg prepares repeated INSERTs; force its generic plan
+        # too so the conflict target cannot depend on a parameter's value.
+        connection.connection.driver_connection.prepare_threshold = 0
+        connection.execute(text(f"SET plan_cache_mode = {plan_mode}"))
+        connection.commit()
+    records = [event().model_dump(mode="json") for _ in range(25)]
+    batch = dict(
+        collector_id=str(collector), batch_id="prepared-usn-original", schema_version=1,
+        sent_at=records[-1]["occurred_at"], first_event_at=records[0]["occurred_at"],
+        last_event_at=records[-1]["occurred_at"], record_count=len(records), records=records,
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    accepted = client.post("/api/v1/ingest/changes", json=batch, headers=headers)
+    assert accepted.status_code == 202, accepted.text
+    replay = client.post(
+        "/api/v1/ingest/changes",
+        json={**batch, "batch_id": "prepared-usn-replay"}, headers=headers,
+    )
+    assert replay.status_code == 202, replay.text
+    with engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(change_events)) == 25
+    changed = [dict(record) for record in records]
+    changed[-1]["new_relative_path"] = "pilot\\different.txt"
+    conflict = client.post(
+        "/api/v1/ingest/changes",
+        json={**batch, "batch_id": "prepared-usn-conflict", "records": changed}, headers=headers,
+    )
+    assert conflict.status_code == 409
+    with engine.connect() as connection:
+        assert connection.scalar(select(func.count()).select_from(change_events)) == 25
 
 
 @pytest.mark.parametrize("before_inventory", [False, True])
