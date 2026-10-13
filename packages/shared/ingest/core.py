@@ -1,7 +1,7 @@
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import insert, select, tuple_, update
+from sqlalchemy import insert, literal_column, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Connection
 
@@ -340,7 +340,9 @@ def change(connection: Connection, source: UUID, record: ChangeRecord) -> None:
         inserted = connection.scalar(
             pg_insert(change_events).values(**values).on_conflict_do_nothing(
                 index_elements=[change_events.c.source_node_id, change_events.c.source_event_id],
-                index_where=change_events.c.source_event_id.like("ntfs-usn:%"),
+                # A fixed SQL predicate also lets generic prepared plans infer
+                # the partial index; a bound pattern loses that proof.
+                index_where=change_events.c.source_event_id.like(literal_column("'ntfs-usn:%'")),
             ).returning(change_events.c.id)
         )
         if inserted is None:
