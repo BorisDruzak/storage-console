@@ -284,12 +284,20 @@ def test_new_path_only_deletion_refuses_destructive_legacy_round_trip(
                 occurred_at=at + timedelta(seconds=2),
             ),
         )
+    with engine.connect() as connection:
+        protected_revision = connection.scalar(text("SELECT version_num FROM alembic_version"))
     with pytest.raises(RuntimeError, match="PATH_DELETIONS_REQUIRE_COMPATIBLE_ROLLBACK"):
         command.downgrade(config, "0004")
+    with engine.connect() as connection:
+        assert (
+            connection.scalar(text("SELECT version_num FROM alembic_version")) == protected_revision
+        )
     command.upgrade(config, "head")
     command.check(config)
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0007"
+        assert (
+            connection.scalar(text("SELECT version_num FROM alembic_version")) == protected_revision
+        )
         if has_inventory:
             obj = connection.execute(select(filesystem_objects)).mappings().one()
             assert obj["deleted_at"] is None and obj["current_relative_path"] == "a/x"
