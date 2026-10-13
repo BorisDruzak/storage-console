@@ -87,7 +87,7 @@ def render(dll: Any, handle: Any, flag: int = 1) -> str:
     return buffer.value
 
 
-def boot_epoch() -> tuple[str, datetime]:
+def _time_of_day_boot() -> datetime:
     if os.name != "nt":
         raise EventLogError(50)
 
@@ -108,9 +108,67 @@ def boot_epoch() -> tuple[str, datetime]:
     value, used = TimeOfDay(), D()
     if function(3, ctypes.byref(value), ctypes.sizeof(value), ctypes.byref(used)) < 0:
         raise EventLogError(13)
-    return str(value.boot), datetime(1601, 1, 1, tzinfo=UTC) + timedelta(
-        microseconds=value.boot // 10
+    return datetime(1601, 1, 1, tzinfo=UTC) + timedelta(microseconds=value.boot // 10)
+
+
+def boot_epoch() -> tuple[str, datetime]:
+    """An immutable local kernel boot event identifies an epoch, not clock ticks.
+
+    TimeOfDay.BootTime follows clock corrections even during the same boot. Use it
+    only to reject an old System-log witness (within two seconds of kernel time).
+    Missing/rolled-over/invalid witnesses fail closed; never infer a new baseline.
+    The bounded boot record stays local and is never uploaded as audit evidence.
+    """
+    dll = api()
+    provider = "{a68ca8b7-004f-d7b6-a698-07e2de0f1f5d}"
+    query = dll.EvtQuery(
+        None, "System", f"*[System[Provider[@Guid='{provider}'] and EventID=12]]", 0x201
     )
+    check(query)
+    handles, count = (P * 1)(), D()
+    try:
+        check(dll.EvtNext(query, 1, handles, 1000, 0, ctypes.byref(count)))
+        if count.value != 1 or not handles[0]:
+            raise EventLogError(13)
+        xml = render(dll, handles[0])
+        try:
+            if len(xml) > 32768:
+                raise ValueError
+            ns = "{http://schemas.microsoft.com/win/2004/08/events/event}"
+            event = ET.fromstring(xml)
+            system = event.find(ns + "System")
+            if system is None:
+                raise ValueError
+            source = system.find(ns + "Provider")
+            created = system.find(ns + "TimeCreated")
+            if (
+                source is None
+                or source.get("Guid", "").lower() != provider
+                or system.findtext(ns + "EventID") != "12"
+                or system.findtext(ns + "Channel") != "System"
+                or int(system.findtext(ns + "EventRecordID", "0")) <= 0
+                or created is None
+            ):
+                raise ValueError
+            fields = event.findall(ns + "EventData/" + ns + "Data[@Name='StartTime']")
+            if len(fields) != 1:
+                raise ValueError
+            started = datetime.fromisoformat((fields[0].text or "").replace("Z", "+00:00"))
+            written = datetime.fromisoformat(created.get("SystemTime", "").replace("Z", "+00:00"))
+            if (
+                started.utcoffset() != timedelta(0)
+                or written.utcoffset() != timedelta(0)
+                or written < started
+                or abs((_time_of_day_boot() - started).total_seconds()) > 2
+            ):
+                raise ValueError
+            return "kernel-boot:" + sha256(xml.encode()).hexdigest(), started.astimezone(UTC)
+        except (ET.ParseError, ValueError, OverflowError):
+            raise EventLogError(13) from None
+    finally:
+        for handle in (handles[0], query):
+            if handle:
+                dll.EvtClose(handle)
 
 
 class SecurityReader:

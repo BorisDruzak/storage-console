@@ -24,6 +24,28 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def test_installed_boot_witness_survives_distinct_processes(installed_python):
+    import subprocess
+    from datetime import UTC, datetime
+
+    code = (
+        "import json;from collectors.windows_audit.native import boot_epoch;"
+        "boot,started=boot_epoch();print(json.dumps([boot,started.isoformat()]))"
+    )
+    values = []
+    for _ in range(2):
+        result = subprocess.run(
+            [str(installed_python), "-I", "-B", "-c", code],
+            capture_output=True,
+            timeout=10,
+        )
+        assert result.returncode == 0, "NATIVE_BOOT_WITNESS_FAILED"
+        values.append(json.loads(result.stdout))
+    assert values[0] == values[1], "BOOT_EPOCH_CHANGED_WITHOUT_REBOOT"
+    assert values[0][0].startswith("kernel-boot:") and len(values[0][0]) == 76
+    assert datetime.fromisoformat(values[0][1]).tzinfo == UTC
+
+
 def test_native_dpapi_large_cache_and_protected_state(tmp_path):
     from collectors.windows_audit.configuration import MachineCipher
 
