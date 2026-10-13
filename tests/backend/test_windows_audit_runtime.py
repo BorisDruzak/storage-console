@@ -226,3 +226,18 @@ def test_scalar_evt_variant_count_is_undefined_and_not_an_array_flag():
     assert native.decode_uint64(123, 10, 0xFFFFFFFF) == 123
     with pytest.raises(native.EventLogError):
         native.decode_uint64(123, 0x80 | 10, 1)
+
+
+def test_native_read_failure_preserves_numeric_code_without_exception_message():
+    from collectors.windows.diagnostics import valid_detail
+
+    native = module("native")
+    error = native.EventLogError(15016)
+    error.args = ("synthetic confidential event content",)
+    failure = native.AuditReadFailure(error)
+    assert failure.code == "AUDIT_READ_FAILED"
+    assert failure.native_code == 15016
+    assert valid_detail(failure.detail)
+    assert "confidential" not in failure.detail
+    for code in (-1, True, 2**32):
+        assert native.AuditReadFailure(native.EventLogError(code)).native_code is None

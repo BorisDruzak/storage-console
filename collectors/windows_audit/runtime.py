@@ -163,7 +163,7 @@ def _capture(
     from collectors.windows.errors import SecurityError
 
     from .configuration import MachineCipher
-    from .native import SecurityReader, boot_epoch, no_reparse_ancestry
+    from .native import AuditReadFailure, SecurityReader, boot_epoch, no_reparse_ancestry
     from .readiness import readiness
     from .store import AuditStoreError
 
@@ -221,7 +221,7 @@ def _capture(
             status("GAP")
             stop.wait()
             return
-        raise SecurityError("AUDIT_READ_FAILED") from None
+        raise AuditReadFailure(error) from None
     with reader:
         capture = Capture(
             store,
@@ -271,8 +271,8 @@ def _capture(
                         raise SecurityError("AUDIT_STORE_FAILED") from None
                     health = "BACKPRESSURE"
                     break
-                except EventLogError:
-                    raise SecurityError("AUDIT_READ_FAILED") from None
+                except EventLogError as error:
+                    raise AuditReadFailure(error) from None
                 if result == "gap":
                     health = "GAP"
                     break

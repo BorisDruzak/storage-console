@@ -3,6 +3,7 @@
 import ctypes
 import json
 import os
+import re
 from hashlib import sha256
 from pathlib import Path
 from typing import cast
@@ -431,6 +432,7 @@ def _installed_wheel_scm(
                     for value in values
                     if valid_detail(value)
                     or (value.isascii() and all(c.isupper() or c == "_" for c in value))
+                    or re.fullmatch(r"AUDIT_WIN32_[0-9]{1,10}", value)
                 ]
             return result
 

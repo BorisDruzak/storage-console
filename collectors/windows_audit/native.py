@@ -10,6 +10,8 @@ from pathlib import PureWindowsPath
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from collectors.windows.diagnostics import RuntimeFailure
+
 P, D, W = ctypes.c_void_p, ctypes.c_uint32, ctypes.c_wchar_p
 RESUME_FLAGS = 0x10003  # StartAfterBookmark | Strict
 INITIAL_FLAGS = 0x10002  # StartAtOldestRecord | Strict; explicit initial baseline only
@@ -21,6 +23,16 @@ class EventLogError(Exception):
     def __init__(self, code: int) -> None:
         self.code = code
         super().__init__("AUDIT_BOOKMARK_STALE" if code in STALE else "AUDIT_READ_FAILED")
+
+
+class AuditReadFailure(RuntimeFailure):
+    """Preserve only the original traceback and a bounded Win32 error number."""
+
+    def __init__(self, error: EventLogError) -> None:
+        super().__init__("AUDIT_READ_FAILED", error, "runtime")
+        self.native_code = (
+            error.code if type(error.code) is int and 0 <= error.code < 2**32 else None
+        )
 
 
 def api() -> Any:
