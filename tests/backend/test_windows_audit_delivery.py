@@ -68,3 +68,44 @@ def test_auth_suspension_is_separate_from_security_capture(tmp_path):
     )
     delivery.step(now=2000)
     assert len(sender.claims) == 1 and store.status()["backlog"] == 2
+
+
+def test_heartbeat_uses_published_state_without_opening_mutable_capture_file(tmp_path, monkeypatch):
+    import threading
+    from types import SimpleNamespace
+
+    from pydantic import SecretStr
+
+    from collectors.windows_audit import configuration, delivery
+
+    stop = threading.Event()
+    claims = []
+
+    class HeartbeatSender:
+        def send(self, claim):
+            claims.append(claim)
+            stop.set()
+            return DeliveryOutcome("accepted")
+
+    def forbidden_read(*_):
+        raise AssertionError("MUTABLE_STATUS_FILE_MUST_NOT_BE_SHARED")
+
+    monkeypatch.setattr(configuration, "MachineCipher", Cipher)
+    monkeypatch.setattr(delivery, "Transport", lambda *_a, **_kw: HeartbeatSender())
+    config = SimpleNamespace(
+        collector_id=UUID(int=4),
+        host_id=UUID(int=5),
+        generation=UUID(int=6),
+        token=SecretStr("a" * 43),
+        ca_file="unused",
+        origin="https://example.test",
+        configured=True,
+    )
+    delivery.run_delivery(
+        SimpleNamespace(root=tmp_path, read=forbidden_read),
+        config,
+        stop,
+        status_reader=lambda: {"health": "OBSERVE", "policy_verified": True, "sacl_verified": True},
+    )
+    heartbeat = json.loads(claims[0].body)["records"][0]["audit"]
+    assert heartbeat["configured"] is True and heartbeat["state"] == "OBSERVE"

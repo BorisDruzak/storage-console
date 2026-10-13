@@ -1,8 +1,8 @@
 """Own retained queue delivery; pure HTTPS transport never opens the USN outbox."""
 
-import json
 import threading
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -59,7 +59,9 @@ class Delivery:
         self.store.save_delivery(state)
 
 
-def run_delivery(state: Any, config: Any, stop: threading.Event) -> None:
+def run_delivery(
+    state: Any, config: Any, stop: threading.Event, *, status_reader: Callable[[], dict[str, Any]]
+) -> None:
     from .configuration import MachineCipher
 
     store = AuditStore(state.root / "audit.sqlite3", config.collector_id, MachineCipher())
@@ -77,12 +79,7 @@ def run_delivery(state: Any, config: Any, stop: threading.Event) -> None:
         try:
             delivery.step()
             if time.monotonic() >= heartbeat_at and not stop.is_set():
-                queue, status = store.status(), {}
-                try:
-                    if (state.root / "audit-status.json").exists():
-                        status = json.loads(state.read("audit-status.json", 65536))
-                except (OSError, ValueError):
-                    pass
+                queue, status = store.status(), status_reader()
                 outcome_state = store.delivery_state()
                 health = AuditHealth(
                     configured=config.configured

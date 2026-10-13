@@ -159,6 +159,15 @@ GATE C: BLOCKED — нет отдельного разрешения на нов
   timeout 1 FAIL. RCA UNKNOWN pending fixed-code status/queue/HTTP diagnostics.
   No acceptance, merge or deployment from this SHA. Audit test moves before long
   USN regressions; every original regression still runs on a passing final source.
+- Diagnostic source 24d78cbf30740668992f104a928e08aa287a52e1, run 38416807185:
+  same native timeout, fixed-code diagnostics show first ACK/HTTP 202 and remaining
+  backlog despite last HEALTHY frame. Reproduced Windows protected status-reader
+  pin vs atomic replacement on an owned local temporary file: STATE_INVALID.
+  No SCM/policy/FILESERVER mutation for the reproduction. Audit delivery now consumes
+  a locked deep-copied in-memory status published after the sole writer succeeds;
+  common ProtectedState checks unchanged. Portable RED→GREEN and Linux targeted
+  runtime/delivery/actual HTTPS 24 PASS; independent focused review reports no open
+  Critical/Important findings. Native exact CI must still close the original timeout.
 
 ## Baseline (каждый раз перепроверять)
 

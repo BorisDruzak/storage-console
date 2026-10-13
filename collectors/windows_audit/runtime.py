@@ -4,8 +4,9 @@ import json
 import os
 import threading
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 from uuid import UUID, uuid4
 
 from .events import parse_event
@@ -16,6 +17,22 @@ from .store import AuditStore
 
 class Reader(Protocol):
     def next(self) -> tuple[str, str] | None: ...
+
+
+class RuntimeStatus:
+    """Cross-thread snapshot; protected file reads pin replacement targets on Windows."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._value: dict[str, Any] = {}
+
+    def publish(self, value: dict[str, Any]) -> None:
+        with self._lock:
+            self._value = json.loads(json.dumps(value))
+
+    def read(self) -> dict[str, Any]:
+        with self._lock:
+            return cast(dict[str, Any], json.loads(json.dumps(self._value)))
 
 
 class Capture:
@@ -117,10 +134,16 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
         return
     from .delivery import run_delivery
 
-    delivery = threading.Thread(target=run_delivery, args=(state, config, stop), name="audit-https")
+    shared = RuntimeStatus()
+    delivery = threading.Thread(
+        target=run_delivery,
+        args=(state, config, stop),
+        kwargs={"status_reader": shared.read},
+        name="audit-https",
+    )
     delivery.start()
     try:
-        _capture(state, config, stop)
+        _capture(state, config, stop, publish_status=shared.publish)
     finally:
         stop.set()
         delivery.join(timeout=25)
@@ -130,7 +153,13 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
             raise SecurityError("AUDIT_DELIVERY_STOP_TIMEOUT")
 
 
-def _capture(state: Any, config: Any, stop: threading.Event) -> None:
+def _capture(
+    state: Any,
+    config: Any,
+    stop: threading.Event,
+    *,
+    publish_status: Callable[[dict[str, Any]], None] | None = None,
+) -> None:
     from collectors.windows.errors import SecurityError
 
     from .configuration import MachineCipher
@@ -143,23 +172,23 @@ def _capture(state: Any, config: Any, stop: threading.Event) -> None:
 
     def status(health: str) -> None:
         _, cache = store.checkpoint()
+        value = {
+            **store.status(),
+            **diagnostics,
+            "pid": os.getpid(),
+            "health": health,
+            "mode": config.mode,
+            "counters": cache.get("counters", {}),
+            "last_collected_at": cache.get("last_collected_at"),
+            "last_accepted_at": store.delivery_state().get("last_accepted_at"),
+            "delivery": store.delivery_state(),
+        }
         state.write(
             "audit-status.json",
-            json.dumps(
-                {
-                    **store.status(),
-                    **diagnostics,
-                    "pid": os.getpid(),
-                    "health": health,
-                    "mode": config.mode,
-                    "counters": cache.get("counters", {}),
-                    "last_collected_at": cache.get("last_collected_at"),
-                    "last_accepted_at": store.delivery_state().get("last_accepted_at"),
-                    "delivery": store.delivery_state(),
-                },
-                separators=(",", ":"),
-            ).encode(),
+            json.dumps(value, separators=(",", ":")).encode(),
         )
+        if publish_status:
+            publish_status(value)
 
     if not config.configured:
         status("NOT_CONFIGURED")

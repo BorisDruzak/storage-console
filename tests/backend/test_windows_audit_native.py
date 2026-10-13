@@ -371,8 +371,10 @@ def _installed_wheel_scm(
         target.unlink()
 
         def accepted():
+            if received:
+                return received()
             value = json.loads((Path(spec.state_path) / "audit-status.json").read_bytes())
-            return received() if received else value.get("backlog", 0) >= 2
+            return value.get("backlog", 0) >= 2
 
         def safe_diagnostics():
             value = json.loads((Path(spec.state_path) / "audit-status.json").read_bytes())
