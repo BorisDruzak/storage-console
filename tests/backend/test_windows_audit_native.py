@@ -408,6 +408,30 @@ def _installed_wheel_scm(
                 row = connection.execute("SELECT payload FROM delivery WHERE id=1").fetchone()
             if row:
                 result["retained_delivery"] = json.loads(MachineCipher().unprotect(row[0]))
+            from collectors.windows.diagnostics import valid_detail
+
+            script = (
+                '$events=@(Get-WinEvent -LogName Application -FilterXPath "'
+                "*[System[Provider[@Name='"
+                + spec.name
+                + "']]]\" -MaxEvents 8 -ErrorAction SilentlyContinue);"
+                "$values=@($events|ForEach-Object {"
+                "$_.Properties|ForEach-Object {[string]$_.Value}});"
+                "ConvertTo-Json -InputObject $values -Compress"
+            )
+            events = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-Command", script],
+                capture_output=True,
+                timeout=10,
+            )
+            if events.returncode == 0:
+                values = json.loads(events.stdout.decode())
+                result["service_diagnostics"] = [
+                    value
+                    for value in values
+                    if valid_detail(value)
+                    or (value.isascii() and all(c.isupper() or c == "_" for c in value))
+                ]
             return result
 
         eventually(accepted, seconds=45, diagnostics=safe_diagnostics)
