@@ -91,7 +91,8 @@ jobs:
         run: >-
           python -m pytest tests/backend/test_windows_audit_events.py
           tests/backend/test_windows_audit_store.py tests/backend/test_windows_audit_runtime.py
-          tests/backend/test_windows_audit_native.py -q
+          tests/backend/test_windows_audit_native.py tests/backend/test_windows_audit_delivery.py
+          tests/backend/test_windows_audit_https.py tests/backend/test_windows_audit_readiness.py -q
       - name: Stop disposable PostgreSQL
         if: always()
         run: python tests/deployment/prepare_windows_postgres.py --stop

@@ -1,61 +1,19 @@
 """Minimal named-field Security evidence. No localized Message or raw XML retention."""
 
 import ipaddress
-import json
 from datetime import UTC, datetime
-from hashlib import sha256
-from typing import Annotated, Literal, cast
+from typing import Literal, cast
 from uuid import UUID
 from xml.etree import ElementTree as ET
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, ValidationError
+from pydantic import ValidationError
 
-Text = Annotated[str, Field(min_length=1, max_length=32768)]
-Number = Annotated[int, Field(ge=0, le=2**64 - 1, strict=True)]
+from packages.contracts.audit import AuditEvent as AuditEvent
+
 NS = "{http://schemas.microsoft.com/win/2004/08/events/event}"
 AUDITING = UUID("54849625-5478-4994-a5ba-3e3b0328c30d")
 EVENTLOG = UUID("fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148")
 VERSIONS = {4663: {0, 1}, 4660: {0}, 4624: {0, 1, 2}, 1102: {0}}
-
-
-class AuditEvent(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-    host_id: UUID
-    boot_id: Text
-    generation: UUID
-    channel: Literal["Security"] = "Security"
-    record_id: Annotated[int, Field(gt=0, le=2**63 - 1)]
-    provider: UUID
-    event_id: Literal[4663, 4660, 4624, 1102]
-    version: Annotated[int, Field(ge=0, le=2)]
-    occurred_at: AwareDatetime
-    sid: Text | None = None
-    domain: Text | None = None
-    account: Text | None = None
-    logon_id: Number | None = None
-    handle_id: Number | None = None
-    process_id: Number | None = None
-    process_name: Text | None = None
-    object_type: Text | None = None
-    path: Text | None = None
-    access_mask: Number | None = None
-    logon_type: Number | None = None
-    client_ip: Text | None = None
-    workstation: Text | None = None
-    quality: Literal["COMPLETE", "PARTIAL"] = "PARTIAL"
-    volume_id: Text | None = None
-    path_quality: Literal["UNKNOWN"] = "UNKNOWN"
-    linked_record_ids: list[int] = Field(default_factory=list, max_length=8)
-
-    def digest(self) -> str:
-        return sha256(
-            json.dumps(
-                self.model_dump(mode="json"),
-                sort_keys=True,
-                separators=(",", ":"),
-                ensure_ascii=False,
-            ).encode()
-        ).hexdigest()
 
 
 def parse_event(

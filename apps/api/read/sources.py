@@ -67,7 +67,7 @@ def source_data() -> CTE:
             heartbeat,
             (heartbeat.c.collector_id == collectors.c.id) & (heartbeat.c.position == 1),
         )
-        .where(collectors.c.enabled.is_(True))
+        .where(collectors.c.enabled.is_(True), collectors.c.collector_type != "AUDIT_WINDOWS")
         .cte("collector_observations")
     )
     missing = or_(

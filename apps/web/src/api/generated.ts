@@ -16,6 +16,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/changes/{change_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evidence */
+        get: operations["evidence_api_v1_audit_changes__change_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/objects/{object_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Object Identity */
+        get: operations["object_identity_api_v1_audit_objects__object_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search */
+        post: operations["search_api_v1_audit_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/sources/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_api_v1_audit_sources__source_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -339,6 +407,310 @@ export interface components {
             /** Detail */
             detail: string;
         };
+        /** AuditActor */
+        AuditActor: {
+            /** Account */
+            account: string | null;
+            /** Boot Id */
+            boot_id: string;
+            /** Client Ip */
+            client_ip: string | null;
+            /** Domain */
+            domain: string | null;
+            /**
+             * Host Id
+             * Format: uuid
+             */
+            host_id: string;
+            /**
+             * Identity Evidence Id
+             * Format: uuid
+             */
+            identity_evidence_id: string;
+            /** Logon Id */
+            logon_id: string;
+            /** Sid */
+            sid: string;
+            /** Workstation */
+            workstation: string | null;
+        };
+        /** AuditCandidateView */
+        AuditCandidateView: {
+            /** Classification */
+            classification: string;
+            evidence: components["schemas"]["AuditRecordView"];
+            /** Method */
+            method: string;
+            /** Reason */
+            reason: string;
+            /** Rule Version */
+            rule_version: string;
+        };
+        /** AuditEvent */
+        AuditEvent: {
+            /** Access Mask */
+            access_mask?: number | null;
+            /** Account */
+            account?: string | null;
+            /** Boot Id */
+            boot_id: string;
+            /**
+             * Channel
+             * @default Security
+             * @constant
+             */
+            channel: "Security";
+            /** Client Ip */
+            client_ip?: string | null;
+            /** Domain */
+            domain?: string | null;
+            /**
+             * Event Id
+             * @enum {integer}
+             */
+            event_id: 4663 | 4660 | 4624 | 1102;
+            /**
+             * Generation
+             * Format: uuid
+             */
+            generation: string;
+            /** Handle Id */
+            handle_id?: number | null;
+            /**
+             * Host Id
+             * Format: uuid
+             */
+            host_id: string;
+            /** Linked Record Ids */
+            linked_record_ids?: number[];
+            /** Logon Id */
+            logon_id?: number | null;
+            /** Logon Type */
+            logon_type?: number | null;
+            /** Object Type */
+            object_type?: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Path */
+            path?: string | null;
+            /**
+             * Path Quality
+             * @default UNKNOWN
+             * @constant
+             */
+            path_quality: "UNKNOWN";
+            /** Process Id */
+            process_id?: number | null;
+            /** Process Name */
+            process_name?: string | null;
+            /**
+             * Provider
+             * Format: uuid
+             */
+            provider: string;
+            /**
+             * Quality
+             * @default PARTIAL
+             * @enum {string}
+             */
+            quality: "COMPLETE" | "PARTIAL";
+            /** Record Id */
+            record_id: number;
+            /** Sid */
+            sid?: string | null;
+            /** Version */
+            version: number;
+            /** Volume Id */
+            volume_id?: string | null;
+            /** Workstation */
+            workstation?: string | null;
+        };
+        /** AuditHealth */
+        AuditHealth: {
+            /**
+             * Backlog Bytes
+             * @default 0
+             */
+            backlog_bytes: number;
+            /**
+             * Backlog Count
+             * @default 0
+             */
+            backlog_count: number;
+            /** Bookmark Age Seconds */
+            bookmark_age_seconds?: number | null;
+            /** Boot Id */
+            boot_id?: string | null;
+            /** Configured */
+            configured: boolean;
+            /** Error Code */
+            error_code?: string | null;
+            /**
+             * Filtered Count
+             * @default 0
+             */
+            filtered_count: number;
+            /** Gap */
+            gap?: string | null;
+            /** Generation */
+            generation?: string | null;
+            /**
+             * Host Id
+             * Format: uuid
+             */
+            host_id: string;
+            /** Last Accepted At */
+            last_accepted_at?: string | null;
+            /** Last Collected At */
+            last_collected_at?: string | null;
+            /**
+             * Policy Verified
+             * @default false
+             */
+            policy_verified: boolean;
+            /**
+             * Quarantine
+             * @default false
+             */
+            quarantine: boolean;
+            /**
+             * Read Count
+             * @default 0
+             */
+            read_count: number;
+            /** Remaining Record Margin */
+            remaining_record_margin?: number | null;
+            /**
+             * Sacl Verified
+             * @default false
+             */
+            sacl_verified: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "NOT_CONFIGURED" | "OBSERVE" | "HEALTHY" | "GAP" | "BACKPRESSURE" | "ERROR";
+        };
+        /** AuditObject */
+        AuditObject: {
+            /** File Id */
+            file_id: string;
+            /**
+             * Object Id
+             * Format: uuid
+             */
+            object_id: string;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /** Volume Identity */
+            volume_identity: string;
+        };
+        /** AuditPage */
+        AuditPage: {
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["AuditRecordView"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+        };
+        /** AuditRecordView */
+        AuditRecordView: {
+            /**
+             * Audit Collector Id
+             * Format: uuid
+             */
+            audit_collector_id: string;
+            /** Digest */
+            digest: string;
+            evidence: components["schemas"]["AuditEvent"];
+            /**
+             * First Received At
+             * Format: date-time
+             */
+            first_received_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Numeric Fields */
+            numeric_fields: {
+                [key: string]: string;
+            };
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+        };
+        /** AuditSearch */
+        AuditSearch: {
+            /** Account */
+            account?: string | null;
+            /** Client Ip */
+            client_ip?: string | null;
+            /** End At */
+            end_at?: string | null;
+            /** Event Id */
+            event_id?: (4663 | 4660 | 4624) | null;
+            /** File Id */
+            file_id?: string | null;
+            /**
+             * Limit
+             * @default 50
+             */
+            limit: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
+            /** Sid */
+            sid?: string | null;
+            /** Source Id */
+            source_id?: string | null;
+            /** Start At */
+            start_at?: string | null;
+        };
+        /** AuditStream */
+        AuditStream: {
+            /** Accepted At */
+            accepted_at?: string | null;
+            /** Collector Id */
+            collector_id?: string | null;
+            diagnostics?: components["schemas"]["AuditHealth"] | null;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Reported At */
+            reported_at?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "NOT_CONFIGURED" | "UNKNOWN" | "HEALTHY" | "STALE" | "GAP" | "ERROR" | "OBSERVE" | "BACKPRESSURE";
+        };
         /** CapacitySummary */
         CapacitySummary: {
             /** Current Volume Count */
@@ -363,13 +735,36 @@ export interface components {
             /** Volume Count */
             volume_count: number;
         };
+        /** ChangeAudit */
+        ChangeAudit: {
+            actor: components["schemas"]["AuditActor"] | null;
+            /** Candidates */
+            candidates: components["schemas"]["AuditCandidateView"][];
+            /**
+             * Change Id
+             * Format: uuid
+             */
+            change_id: string;
+            /**
+             * Classification
+             * @enum {string}
+             */
+            classification: "CORRELATED_HIGH" | "ACCESS_OBSERVED" | "AMBIGUOUS" | "UNKNOWN" | "GAP" | "NOT_CONFIGURED";
+            /** Object Id */
+            object_id: string | null;
+            /** Reason */
+            reason: string;
+            /** Rule Version */
+            rule_version: string | null;
+            stream: components["schemas"]["AuditStream"];
+        };
         /** CollectorCredential */
         CollectorCredential: {
             /**
              * Collector Type
              * @enum {string}
              */
-            collector_type: "WINDOWS" | "PVE" | "PBS";
+            collector_type: "WINDOWS" | "AUDIT_WINDOWS" | "PVE" | "PBS";
             /**
              * Created At
              * Format: date-time
@@ -400,7 +795,7 @@ export interface components {
              * Collector Type
              * @enum {string}
              */
-            collector_type: "WINDOWS" | "PVE" | "PBS";
+            collector_type: "WINDOWS" | "AUDIT_WINDOWS" | "PVE" | "PBS";
             /**
              * Created At
              * Format: date-time
@@ -440,7 +835,7 @@ export interface components {
              * Collector Type
              * @enum {string}
              */
-            collector_type: "WINDOWS" | "PVE" | "PBS";
+            collector_type: "WINDOWS" | "AUDIT_WINDOWS" | "PVE" | "PBS";
         };
         /** CreateSource */
         CreateSource: {
@@ -827,6 +1222,312 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    evidence_api_v1_audit_changes__change_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                change_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeAudit"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    object_identity_api_v1_audit_objects__object_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditObject"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    search_api_v1_audit_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuditSearch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPage"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    status_api_v1_audit_sources__source_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditStream"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };

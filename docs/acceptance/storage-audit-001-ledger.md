@@ -2,8 +2,8 @@
 
 Задача: docs/tasks/storage-audit-001-windows-security-attribution.md
 
-**Статус:** A IN_PROGRESS → B PENDING → C BLOCKED (отдельное разрешение отсутствует).
-PASS ещё не объявлен; следующий этап не начинается до предыдущего PASS.
+**Статус:** A PASS → B IN_PROGRESS → C BLOCKED (отдельное разрешение отсутствует).
+Следующий этап не начинается до предыдущего PASS.
 
 ## Выполнение 2026-10-13 — этап A
 
@@ -75,9 +75,83 @@ PASS ещё не объявлен; следующий этап не начина
 - После native/SCM fixes local audit focus: 46 passed / 6 native skipped; Ruff/mypy PASS.
   Новый exact-head CI и exact-main CI ещё требуются; результаты старого SHA не переносятся.
 
-GATE A: IN_PROGRESS — новый native exact-head CI и exact merged-main CI pending.
-GATE B: PENDING — не начинался.
+### GATE A PASS — 2026-10-13
+
+- Final source head: 42ac2bf716cc5ee1a7e586544c7e8bf153bee63d;
+  PR https://github.com/BorisDruzak/storage-console/pull/24 merged.
+- Exact-head CI: https://github.com/BorisDruzak/storage-console/actions/runs/38387719478,
+  все 6 обязательных jobs SUCCESS, sonar SKIPPED. Native Audit: 52 passed;
+  existing native SCM/runtime 81 passed, USN 67 passed, real HTTPS/PG USN acceptance passed.
+- Merged main: dd65c4844e540f235b23f3c456ec09d8784f62e5.
+  Exact push-main CI https://github.com/BorisDruzak/storage-console/actions/runs/38389182880:
+  все 6 обязательных jobs SUCCESS, sonar SKIPPED.
+- Native installed wheel / LocalSystem / own SCM / two simultaneous registrations /
+  machine DPAPI / actual scoped Security capture / strict resume / fixture generation
+  replacement / reparse privacy / queue restart / crash rollback / byte-identical replay PASS.
+- Central API image revision read-only confirmed:
+  22667a67b6c5faceb914a114197e92b3a7bac2b7. Publication A не означает deployment.
+- Existing installed USN package version 0.1.0; пять критических modules
+  (runtime/outbox/service/scm/security) совпали по SHA256 с reported
+  eb6312bd431f40ff86e522c621c41e885defc454. Full installed source SHA остаётся
+  UNCONFIRMED по частичной сверке, не выводится из локального HEAD.
+- FILESERVER: только read-only проверки, новая Audit-служба NOT_INSTALLED;
+  никаких SACL/auditpol/GPO/USN/SMB/file CRUD mutations. Original 72h FAIL сохраняется.
+
+GATE A: PASS.
+GATE B: IN_PROGRESS — начинается с accepted merged-main SHA и повторной сверки Issue #22.
 GATE C: BLOCKED — нет отдельного разрешения на новую службу, pilot root, SACL/policy и CRUD.
+
+## Выполнение 2026-10-13 — этап B (code verified, publication pending)
+
+- Branch `codex/storage-audit-001-b`, base accepted A merged-main
+  dd65c4844e540f235b23f3c456ec09d8784f62e5. Fresh origin/main совпадает;
+  Issue #22 остаётся OPEN. Existing Activity backend изменён только добавлением
+  equivalent `read_sensitive_activity` guard; timeline/path history не переписаны.
+- Additive frozen migration 0007: immutable evidence, dated identity/health
+  witnesses, separate stream, versioned correlations и many-to-many candidates.
+  UPDATE/DELETE/TRUNCATE witnesses запрещены. Upgrade/check/0007→0006 roundtrip
+  сохраняет USN history; предшествующий destructive 0005 downgrade остаётся blocked.
+- Own AUDIT_WINDOWS registration/token и retained HTTPS queue. Exact replay 202,
+  altered receipt/event 409; host/source/volume binding и collector-domain 403.
+  Old pre-B heartbeat digest/replay сохраняется (optional audit omitted when NULL).
+- Freshness regression 0/1/2 WINDOWS и отдельный AUDIT_WINDOWS: audit heartbeat
+  не обновляет USN heartbeat/source-success; stopped/missing USN не становится healthy.
+  Stalled capture, unconfigured/policy/SACL unknown, gap/quarantine и stale delivery
+  видны отдельно. Browser health expires locally при потере сети.
+- Rule windows-security-usn-v1: HIGH только corroborated DELETE, не AccessMask сам
+  по себе. Независимый prior FileId/link_count=1, dated aliases, coverage до/после
+  всего lineage interval, 4663→4660 с host/boot/generation/SID/logon/process/handle,
+  unique 4624. Multiple contexts → AMBIGUOUS/actor NULL. Late metadata/second SID
+  отменяют прежний HIGH. CREATE/WRITE/RENAME пока access facts + явная причина UNKNOWN.
+- Read-only runtime readiness: effective Audit File System Success и SACL всех
+  approved SID на bounded selected scope (≤256 entries); root inheritance без
+  descendant proof не считается coverage. NP/IO/reparse/overlimit/read failure
+  fail closed; временная own-process privilege восстанавливается с проверкой.
+  Никакого SACL/policy write. Policy loss latch'ит AUDIT_CONFIGURATION_CHANGED.
+- RED→GREEN: absent ingest/routes/schema, 0/2-collector freshness, actor/context,
+  old heartbeat replay, capture stalled, lagging cursor, later-read identity,
+  metadata invalidation и SACL NP/IO/restore errors. Initial hardcoded migration-head
+  test adjusted 0006→0007, без ослабления protected path-history downgrade assertion.
+- Isolated genuine Python 3.13/PostgreSQL 16/strict HTTPS ingest and lost ACK PASS.
+  100k synthetic audit events: EXPLAIN indexed bounded candidate query, no Seq Scan,
+  ≤65 candidate rows. No production fixtures/raw XML.
+- Full regression: `python -m pytest -q --tb=short` 848 passed/84 platform skipped;
+  `python -m pytest tests/deployment -q --tb=short` 54 passed. Final focused after
+  bounded equal-time/late-lineage fixes: 31 passed. Ruff/mypy/OpenAPI PASS.
+  Web api:check/lint/typecheck/build PASS, Vitest 133 passed, Playwright 14 passed
+  (desktop/mobile/reload, private POST filters, nonadmin deep link), i18n PASS.
+  Gitleaks v8.24.3 redacted source scan PASS. Existing >500 kB build warning retained.
+- Independent focused reviews: reported Critical 0; Important backend/UI/readiness
+  findings reproduced and fixed. Final closure: no open Critical/Important findings.
+- Central baseline freshly verified: image revision
+  22667a67b6c5faceb914a114197e92b3a7bac2b7, schema 0006. Existing active checkout
+  inaccessible for complete clean-status proof; do not overwrite it. New deployment
+  must use an isolated clean release checkout with exact accepted SHA.
+- Pre-deploy custom PostgreSQL archive: `pg_restore --list` PASS, off-VM encrypted
+  DPAPI copy + decrypt/checksum verification PASS. Original API/Web images/config
+  retained privately for rollback. No FILESERVER modifications.
+- B source SHA/PR/exact head CI/merged SHA/exact main CI/deployed acceptance: PENDING.
+  GATE B: IN_PROGRESS; CI and actual central acceptance remain mandatory.
 
 ## Baseline (каждый раз перепроверять)
 
@@ -87,12 +161,12 @@ GATE C: BLOCKED — нет отдельного разрешения на нов
 - Existing central API во время исходного USN soak: 22667a67b6c5faceb914a114197e92b3a7bac2b7; перед deploy проверить фактическую версию заново.
 - Original USN-SOAK-001: 72h FAIL, 5 service crashes. Никаких выдуманных утверждений о long-term PASS.
 - New Security Audit Collector: NOT INSTALLED / NOT ACCEPTED.
-- Real audit policy/SACL preflight: NOT PERFORMED.
+- Real effective policy preflight выполнен read-only; pilot SACL/GPO owner UNKNOWN.
 - Two users / two PCs live test: NOT AUTHORIZED / NOT PERFORMED.
 
 ## A — read-only preflight и независимый Security Collector
 
-GATE A: PENDING
+GATE A: PASS — completed results and exact CI above; template below is historical.
 
 ~~~text
 Started at / exact source SHA:
@@ -116,7 +190,7 @@ Remaining blocker / next step authorized:
 
 ## B — central evidence и correlation engine
 
-GATE B: PENDING
+GATE B: IN_PROGRESS — completed code checks above; publication/deployment pending.
 
 ~~~text
 Source SHA / PR / merged SHA / exact CI:
@@ -143,7 +217,9 @@ Remaining blocker / next step authorized:
 
 ## C — operator-approved real pilot
 
-GATE C: PENDING / HUMAN APPROVAL REQUIRED
+GATE C: BLOCKED / HUMAN APPROVAL REQUIRED. Private bounded pilot plan prepared;
+exact folder, two domain accounts, two PCs and GPO owner await operator selection.
+No new FILESERVER service, synthetic directory, SACL/policy/GPO write or CRUD executed.
 
 ~~~text
 Explicit approval reference (not this technical task):

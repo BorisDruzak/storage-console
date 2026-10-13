@@ -25,6 +25,7 @@ from packages.shared.models.security import (
 _TOKEN = re.compile(r"[A-Za-z0-9_-]{43}")
 _PERMISSIONS = {
     "read": ROLES,
+    "read_sensitive_activity": frozenset({"storage_admin"}),
     "manage_sources": frozenset({"storage_admin"}),
     "manage_policy": frozenset({"storage_admin"}),
     "run_diagnostics": frozenset({"storage_admin", "storage_operator"}),

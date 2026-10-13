@@ -32,6 +32,8 @@ def main() -> int:
             if len(raw) > 65536:
                 raise ValueError("AUDIT_CONFIG_INVALID")
             config = AuditConfig.model_validate_json(raw)
+            if (Path(args.state) / "outbox.sqlite3").exists():
+                raise ValueError("AUDIT_USN_STATE_FORBIDDEN")
             with ProtectedState(Path(args.state), create=True) as state:
                 activate(state, config)
                 store = AuditStore(
@@ -67,7 +69,7 @@ def main() -> int:
                         None,
                     )
                 state.validate_file("audit.sqlite3")
-            print(json.dumps({"state": "INITIALIZED", "mode": "capture_only"}))
+            print(json.dumps({"state": "INITIALIZED", "mode": config.mode}))
             return 0
         manager = ServiceManager(cast(ServiceSpec, spec), AuditBackend())
         if args.action == "status":

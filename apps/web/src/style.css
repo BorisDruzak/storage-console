@@ -81,3 +81,12 @@ dt { font-weight: 600; }
 dd { margin: 0 0 12px; }
 @media (max-width: 950px) { .cards { grid-template-columns: 1fr; } .layout { grid-template-columns: 225px 1fr; } .content { padding: 24px; } }
 @media (max-width: 600px) { .layout { grid-template-columns: 1fr; } .sidebar { padding: 20px; } nav { display: flex; flex-wrap: wrap; margin-top: 16px; } .boundary { margin: 16px 0 0; } header { padding: 20px; } }
+
+.audit-filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; }
+.audit-filters label { display: grid; gap: .3rem; max-width: 100%; }
+.audit-filters input, .audit-filters select { max-width: 100%; min-width: 0; }
+.audit-detail, .audit-evidence { max-inline-size: 44rem; padding: 1rem; border: 1px solid var(--border, #dce2e8); margin-block: .75rem; overflow-wrap: anywhere; }
+.audit-evidence dl { display: grid; grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr); gap: .35rem .75rem; }
+.audit-evidence dl > div { display: contents; }
+.audit-evidence dd { margin: 0; min-width: 0; }
+@media(max-width: 600px) { .audit-evidence dl { grid-template-columns: minmax(0, 1fr); } .audit-detail { padding: .5rem; } }

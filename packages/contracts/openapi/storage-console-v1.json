@@ -380,6 +380,1218 @@
         "title": "ApiError",
         "type": "object"
       },
+      "AuditActor": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
+          "boot_id": {
+            "title": "Boot Id",
+            "type": "string"
+          },
+          "client_ip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Ip"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "host_id": {
+            "format": "uuid",
+            "title": "Host Id",
+            "type": "string"
+          },
+          "identity_evidence_id": {
+            "format": "uuid",
+            "title": "Identity Evidence Id",
+            "type": "string"
+          },
+          "logon_id": {
+            "title": "Logon Id",
+            "type": "string"
+          },
+          "sid": {
+            "title": "Sid",
+            "type": "string"
+          },
+          "workstation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workstation"
+          }
+        },
+        "required": [
+          "sid",
+          "account",
+          "domain",
+          "logon_id",
+          "host_id",
+          "boot_id",
+          "client_ip",
+          "workstation",
+          "identity_evidence_id"
+        ],
+        "title": "AuditActor",
+        "type": "object"
+      },
+      "AuditBatch": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collector_id": {
+            "format": "uuid",
+            "title": "Collector Id",
+            "type": "string"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/AuditInput"
+            },
+            "maxItems": 512,
+            "minItems": 1,
+            "title": "Records",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sent_at": {
+            "format": "date-time",
+            "title": "Sent At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collector_id",
+          "batch_id",
+          "schema_version",
+          "sent_at",
+          "records"
+        ],
+        "title": "AuditBatch",
+        "type": "object"
+      },
+      "AuditCandidateView": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "title": "Classification",
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/AuditRecordView"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "rule_version": {
+            "title": "Rule Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "classification",
+          "reason",
+          "rule_version",
+          "evidence"
+        ],
+        "title": "AuditCandidateView",
+        "type": "object"
+      },
+      "AuditEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "access_mask": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Mask"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
+          "boot_id": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "title": "Boot Id",
+            "type": "string"
+          },
+          "channel": {
+            "const": "Security",
+            "default": "Security",
+            "title": "Channel",
+            "type": "string"
+          },
+          "client_ip": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Ip"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "event_id": {
+            "enum": [
+              4663,
+              4660,
+              4624,
+              1102
+            ],
+            "title": "Event Id",
+            "type": "integer"
+          },
+          "generation": {
+            "format": "uuid",
+            "title": "Generation",
+            "type": "string"
+          },
+          "handle_id": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handle Id"
+          },
+          "host_id": {
+            "format": "uuid",
+            "title": "Host Id",
+            "type": "string"
+          },
+          "linked_record_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 8,
+            "title": "Linked Record Ids",
+            "type": "array"
+          },
+          "logon_id": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logon Id"
+          },
+          "logon_type": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logon Type"
+          },
+          "object_type": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Type"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "path_quality": {
+            "const": "UNKNOWN",
+            "default": "UNKNOWN",
+            "title": "Path Quality",
+            "type": "string"
+          },
+          "process_id": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Id"
+          },
+          "process_name": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Name"
+          },
+          "provider": {
+            "format": "uuid",
+            "title": "Provider",
+            "type": "string"
+          },
+          "quality": {
+            "default": "PARTIAL",
+            "enum": [
+              "COMPLETE",
+              "PARTIAL"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "record_id": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 9.223372036854776e+18,
+            "title": "Record Id",
+            "type": "integer"
+          },
+          "sid": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sid"
+          },
+          "version": {
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "volume_id": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume Id"
+          },
+          "workstation": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workstation"
+          }
+        },
+        "required": [
+          "host_id",
+          "boot_id",
+          "generation",
+          "record_id",
+          "provider",
+          "event_id",
+          "version",
+          "occurred_at"
+        ],
+        "title": "AuditEvent",
+        "type": "object"
+      },
+      "AuditHealth": {
+        "additionalProperties": false,
+        "properties": {
+          "backlog_bytes": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Backlog Bytes",
+            "type": "integer"
+          },
+          "backlog_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Backlog Count",
+            "type": "integer"
+          },
+          "bookmark_age_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bookmark Age Seconds"
+          },
+          "boot_id": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boot Id"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "filtered_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Filtered Count",
+            "type": "integer"
+          },
+          "gap": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap"
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generation"
+          },
+          "host_id": {
+            "format": "uuid",
+            "title": "Host Id",
+            "type": "string"
+          },
+          "last_accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Accepted At"
+          },
+          "last_collected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Collected At"
+          },
+          "policy_verified": {
+            "default": false,
+            "title": "Policy Verified",
+            "type": "boolean"
+          },
+          "quarantine": {
+            "default": false,
+            "title": "Quarantine",
+            "type": "boolean"
+          },
+          "read_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Read Count",
+            "type": "integer"
+          },
+          "remaining_record_margin": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Record Margin"
+          },
+          "sacl_verified": {
+            "default": false,
+            "title": "Sacl Verified",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "NOT_CONFIGURED",
+              "OBSERVE",
+              "HEALTHY",
+              "GAP",
+              "BACKPRESSURE",
+              "ERROR"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "configured",
+          "state",
+          "host_id"
+        ],
+        "title": "AuditHealth",
+        "type": "object"
+      },
+      "AuditInput": {
+        "additionalProperties": false,
+        "properties": {
+          "access_mask": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Mask"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
+          "boot_id": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "title": "Boot Id",
+            "type": "string"
+          },
+          "channel": {
+            "const": "Security",
+            "default": "Security",
+            "title": "Channel",
+            "type": "string"
+          },
+          "client_ip": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Ip"
+          },
+          "digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "event_id": {
+            "enum": [
+              4663,
+              4660,
+              4624,
+              1102
+            ],
+            "title": "Event Id",
+            "type": "integer"
+          },
+          "generation": {
+            "format": "uuid",
+            "title": "Generation",
+            "type": "string"
+          },
+          "handle_id": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handle Id"
+          },
+          "host_id": {
+            "format": "uuid",
+            "title": "Host Id",
+            "type": "string"
+          },
+          "linked_record_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 8,
+            "title": "Linked Record Ids",
+            "type": "array"
+          },
+          "logon_id": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logon Id"
+          },
+          "logon_type": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logon Type"
+          },
+          "object_type": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Type"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "path_quality": {
+            "const": "UNKNOWN",
+            "default": "UNKNOWN",
+            "title": "Path Quality",
+            "type": "string"
+          },
+          "process_id": {
+            "anyOf": [
+              {
+                "maximum": 1.8446744073709552e+19,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Id"
+          },
+          "process_name": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Name"
+          },
+          "provider": {
+            "format": "uuid",
+            "title": "Provider",
+            "type": "string"
+          },
+          "quality": {
+            "default": "PARTIAL",
+            "enum": [
+              "COMPLETE",
+              "PARTIAL"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "record_id": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 9.223372036854776e+18,
+            "title": "Record Id",
+            "type": "integer"
+          },
+          "sid": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sid"
+          },
+          "version": {
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "volume_id": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume Id"
+          },
+          "workstation": {
+            "anyOf": [
+              {
+                "maxLength": 32768,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workstation"
+          }
+        },
+        "required": [
+          "host_id",
+          "boot_id",
+          "generation",
+          "record_id",
+          "provider",
+          "event_id",
+          "version",
+          "occurred_at",
+          "digest"
+        ],
+        "title": "AuditInput",
+        "type": "object"
+      },
+      "AuditObject": {
+        "additionalProperties": false,
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "object_id": {
+            "format": "uuid",
+            "title": "Object Id",
+            "type": "string"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "volume_identity": {
+            "title": "Volume Identity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id",
+          "source_id",
+          "file_id",
+          "volume_identity"
+        ],
+        "title": "AuditObject",
+        "type": "object"
+      },
+      "AuditPage": {
+        "additionalProperties": false,
+        "properties": {
+          "evaluated_at": {
+            "format": "date-time",
+            "title": "Evaluated At",
+            "type": "string"
+          },
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditRecordView"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "limit",
+          "offset",
+          "has_more",
+          "evaluated_at"
+        ],
+        "title": "AuditPage",
+        "type": "object"
+      },
+      "AuditRecordView": {
+        "additionalProperties": false,
+        "properties": {
+          "audit_collector_id": {
+            "format": "uuid",
+            "title": "Audit Collector Id",
+            "type": "string"
+          },
+          "digest": {
+            "title": "Digest",
+            "type": "string"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/AuditEvent"
+          },
+          "first_received_at": {
+            "format": "date-time",
+            "title": "First Received At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "numeric_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Numeric Fields",
+            "type": "object"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "audit_collector_id",
+          "first_received_at",
+          "digest",
+          "evidence",
+          "numeric_fields"
+        ],
+        "title": "AuditRecordView",
+        "type": "object"
+      },
+      "AuditSearch": {
+        "additionalProperties": false,
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
+          "client_ip": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Ip"
+          },
+          "end_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End At"
+          },
+          "event_id": {
+            "anyOf": [
+              {
+                "enum": [
+                  4663,
+                  4660,
+                  4624
+                ],
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "file_id": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Id"
+          },
+          "limit": {
+            "default": 50,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "sid": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sid"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "start_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start At"
+          }
+        },
+        "title": "AuditSearch",
+        "type": "object"
+      },
+      "AuditStream": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted At"
+          },
+          "collector_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collector Id"
+          },
+          "diagnostics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditHealth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "evaluated_at": {
+            "format": "date-time",
+            "title": "Evaluated At",
+            "type": "string"
+          },
+          "reported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported At"
+          },
+          "state": {
+            "enum": [
+              "NOT_CONFIGURED",
+              "UNKNOWN",
+              "HEALTHY",
+              "STALE",
+              "GAP",
+              "ERROR",
+              "OBSERVE",
+              "BACKPRESSURE"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "evaluated_at"
+        ],
+        "title": "AuditStream",
+        "type": "object"
+      },
       "BackupRecord": {
         "additionalProperties": false,
         "properties": {
@@ -1272,6 +2484,87 @@
         "title": "CapacitySummary",
         "type": "object"
       },
+      "ChangeAudit": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditActor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/AuditCandidateView"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "change_id": {
+            "format": "uuid",
+            "title": "Change Id",
+            "type": "string"
+          },
+          "classification": {
+            "enum": [
+              "CORRELATED_HIGH",
+              "ACCESS_OBSERVED",
+              "AMBIGUOUS",
+              "UNKNOWN",
+              "GAP",
+              "NOT_CONFIGURED"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "object_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "rule_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Version"
+          },
+          "stream": {
+            "$ref": "#/components/schemas/AuditStream"
+          }
+        },
+        "required": [
+          "change_id",
+          "object_id",
+          "classification",
+          "reason",
+          "rule_version",
+          "actor",
+          "candidates",
+          "stream"
+        ],
+        "title": "ChangeAudit",
+        "type": "object"
+      },
       "ChangeRecord": {
         "additionalProperties": false,
         "properties": {
@@ -1394,6 +2687,7 @@
           "collector_type": {
             "enum": [
               "WINDOWS",
+              "AUDIT_WINDOWS",
               "PVE",
               "PBS"
             ],
@@ -1469,6 +2763,7 @@
           "collector_type": {
             "enum": [
               "WINDOWS",
+              "AUDIT_WINDOWS",
               "PVE",
               "PBS"
             ],
@@ -1573,6 +2868,7 @@
           "collector_type": {
             "enum": [
               "WINDOWS",
+              "AUDIT_WINDOWS",
               "PVE",
               "PBS"
             ],
@@ -2161,6 +3457,16 @@
       "HeartbeatRecord": {
         "additionalProperties": false,
         "properties": {
+          "audit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditHealth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "cursor": {
             "anyOf": [
               {
@@ -3497,6 +4803,396 @@
         ]
       }
     },
+    "/api/v1/audit/changes/{change_id}": {
+      "get": {
+        "operationId": "evidence_api_v1_audit_changes__change_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeAudit"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
+        "summary": "Evidence",
+        "tags": [
+          "security-audit"
+        ]
+      }
+    },
+    "/api/v1/audit/objects/{object_id}": {
+      "get": {
+        "operationId": "object_identity_api_v1_audit_objects__object_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Object Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditObject"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
+        "summary": "Object Identity",
+        "tags": [
+          "security-audit"
+        ]
+      }
+    },
+    "/api/v1/audit/search": {
+      "post": {
+        "operationId": "search_api_v1_audit_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditSearch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
+        "summary": "Search",
+        "tags": [
+          "security-audit"
+        ]
+      }
+    },
+    "/api/v1/audit/sources/{source_id}": {
+      "get": {
+        "operationId": "status_api_v1_audit_sources__source_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditStream"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
+        "summary": "Status",
+        "tags": [
+          "security-audit"
+        ]
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",
@@ -4124,6 +5820,102 @@
         "summary": "Acl Batch",
         "tags": [
           "collector-ingest"
+        ]
+      }
+    },
+    "/api/v1/ingest/audit-events": {
+      "post": {
+        "operationId": "ingest_api_v1_ingest_audit_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "CollectorToken": []
+          }
+        ],
+        "summary": "Ingest",
+        "tags": [
+          "collector-audit"
         ]
       }
     },

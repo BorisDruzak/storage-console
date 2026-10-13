@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Connection, RowMapping
 
+from packages.shared.audit.engine import process as audit_correlate
 from packages.shared.jobs import Handler
 from packages.shared.models.jobs import ingest_batches
 from packages.shared.models.security import audit_log
@@ -36,4 +37,7 @@ def ingest_postprocess(connection: Connection, job: RowMapping) -> None:
     )
 
 
-HANDLERS: dict[str, Handler] = {"ingest_postprocess": ingest_postprocess}
+HANDLERS: dict[str, Handler] = {
+    "ingest_postprocess": ingest_postprocess,
+    "audit_correlate": audit_correlate,
+}

@@ -112,10 +112,30 @@ class Capture:
 
 
 def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
+    if config.mode == "capture_only":
+        _capture(state, config, stop)
+        return
+    from .delivery import run_delivery
+
+    delivery = threading.Thread(target=run_delivery, args=(state, config, stop), name="audit-https")
+    delivery.start()
+    try:
+        _capture(state, config, stop)
+    finally:
+        stop.set()
+        delivery.join(timeout=25)
+        if delivery.is_alive():
+            from collectors.windows.errors import SecurityError
+
+            raise SecurityError("AUDIT_DELIVERY_STOP_TIMEOUT")
+
+
+def _capture(state: Any, config: Any, stop: threading.Event) -> None:
     from collectors.windows.errors import SecurityError
 
     from .configuration import MachineCipher
     from .native import SecurityReader, boot_epoch, no_reparse_ancestry
+    from .readiness import readiness
     from .store import AuditStoreError
 
     store = AuditStore(state.root / "audit.sqlite3", config.collector_id, MachineCipher())
@@ -131,10 +151,11 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
                     **diagnostics,
                     "pid": os.getpid(),
                     "health": health,
-                    "mode": "capture_only",
+                    "mode": config.mode,
                     "counters": cache.get("counters", {}),
                     "last_collected_at": cache.get("last_collected_at"),
-                    "last_accepted_at": None,
+                    "last_accepted_at": store.delivery_state().get("last_accepted_at"),
+                    "delivery": store.delivery_state(),
                 },
                 separators=(",", ":"),
             ).encode(),
@@ -144,6 +165,13 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
         status("NOT_CONFIGURED")
         stop.wait()
         return
+    if config.mode == "deliver":
+        policy, sacl = readiness(list(config.roots), config.audit_sids)
+        diagnostics.update(policy_verified=policy, sacl_verified=sacl)
+        if not (policy and sacl):
+            status("NOT_CONFIGURED")
+            stop.wait()
+            return
     bookmark, cache = store.checkpoint()
     boot, boot_started_at = boot_epoch()
     if cache.get("boot_id", boot) != boot:
@@ -178,6 +206,11 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
         refresh_at = 0.0
         while not stop.is_set():
             if time.monotonic() >= refresh_at:
+                if config.mode == "deliver":
+                    policy, sacl = readiness(list(config.roots), config.audit_sids)
+                    diagnostics.update(policy_verified=policy, sacl_verified=sacl)
+                    if not (policy and sacl):
+                        store.latch_gap("AUDIT_CONFIGURATION_CHANGED")
                 try:
                     bounds = reader.bounds()
                     diagnostics.update(bounds)
@@ -215,6 +248,9 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
                     health = "GAP"
                     break
                 if result == "idle":
+                    diagnostics["observed_through_at"] = datetime.now(UTC).isoformat()
+                    if config.mode == "deliver" and not diagnostics.get("bounds_error"):
+                        health = "HEALTHY"
                     break
             status(health)
             stop.wait(1 if health != "BACKPRESSURE" else 5)

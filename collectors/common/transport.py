@@ -24,6 +24,7 @@ _ROUTES = {
     "changes": "changes",
     "telemetry": "telemetry",
     "events": "events",
+    "audit": "audit-events",
     "acl": "acl",
     "recovery": "recovery",
     "hygiene": "hygiene",

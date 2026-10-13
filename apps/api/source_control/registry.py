@@ -73,7 +73,8 @@ def enroll_collector(
         )
         if source_type is None:
             raise RegistryError(404, "SOURCE_NOT_FOUND")
-        if _PAIRING.get(source_type) != data.collector_type:
+        if (_PAIRING.get(source_type) != data.collector_type
+                and not (source_type == "FILESERVER" and data.collector_type == "AUDIT_WINDOWS")):
             raise RegistryError(409, "COLLECTOR_TYPE_CONFLICT")
         row = (
             conn.execute(

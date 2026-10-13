@@ -77,7 +77,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [clear]);
   useEffect(() => {
     const expired = () => expire();
+    const permissions = () => { channel.current?.postMessage('changed'); void restore(); };
     window.addEventListener('storage-session-expired', expired);
+    window.addEventListener('storage-permission-changed', permissions);
     if (typeof BroadcastChannel !== 'undefined') {
       const connection = new BroadcastChannel('storage-console-session');
       channel.current = connection;
@@ -89,6 +91,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void restore();
     return () => {
       window.removeEventListener('storage-session-expired', expired);
+      window.removeEventListener('storage-permission-changed', permissions);
       channel.current?.close();
       channel.current = null;
       clear();

@@ -20,6 +20,17 @@ async function show(client = new QueryClient()) {
 
 afterEach(() => { vi.unstubAllGlobals(); document.cookie = '__Host-storage_csrf=; Max-Age=0; path=/; Secure'; });
 
+test('permission denial clears sensitive caches before restoring reduced roles', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(actor)))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ ...actor, username: 'reduced-role-viewer' }))));
+  const cache = await show();
+  await screen.findByText('synthetic');
+  cache.setQueryData(['audit-search'], { account: 'SyntheticPrivateAccount' });
+  act(() => window.dispatchEvent(new Event('storage-permission-changed')));
+  expect(cache.getQueryData(['audit-search'])).toBeUndefined();
+  await screen.findByText('reduced-role-viewer');
+});
+
 test('restore anonymous session does not expose protected content', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })));
   await show();

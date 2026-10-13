@@ -5,10 +5,11 @@ from datetime import datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine, RowMapping
 
+from apps.api.user_auth.dependencies import require_permission
 from packages.contracts.changes import EventType
 from packages.contracts.read import Activity, ActivityItem
 from packages.shared.models.activity import change_events
@@ -43,7 +44,7 @@ def _item(row: RowMapping) -> ActivityItem:
 
 
 def register(result: APIRouter, engine: Engine) -> None:
-    @result.get("/activity")
+    @result.get("/activity", dependencies=[Depends(require_permission("read_sensitive_activity"))])
     def activity(
         response: Response,
         limit: Annotated[int, Query(ge=1, le=100)] = 50,

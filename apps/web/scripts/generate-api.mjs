@@ -11,7 +11,7 @@ const root = new URL('../../../', import.meta.url);
 const api = JSON.parse(await fs.readFile(new URL('packages/contracts/openapi/storage-console-v1.json', root), 'utf8'));
 const paths = Object.fromEntries(Object.entries(api.paths).filter(([, path]) =>
   path.get?.tags?.includes('read') || Object.values(path).some(operation =>
-    operation.tags?.some(tag => ['authentication', 'source-management'].includes(tag)))));
+    operation.tags?.some(tag => ['authentication', 'source-management', 'security-audit'].includes(tag)))));
 const names = new Set();
 function references(value) {
   if (!value || typeof value !== 'object') return;
@@ -33,7 +33,7 @@ const ajv = new Ajv2020({ code: { source: true, formats: _`require("ajv-formats/
 addFormats(ajv);
 ajv.addSchema({ ...JSON.parse(validation), $id: 'storage-console-read' });
 const responses = ['Activity', 'Overview', 'Domains', 'Source', 'Freshness', 'Page_Source_', 'Page_Volume_', 'Page_Share_', 'UserResponse',
-  'SourceRegistration', 'CollectorView', 'CollectorCredential', 'Page_CollectorView_'];
+  'SourceRegistration', 'CollectorView', 'CollectorCredential', 'Page_CollectorView_', 'AuditStream', 'AuditPage', 'ChangeAudit', 'AuditObject'];
 const compiled = standalone(ajv, Object.fromEntries(responses.map(name => [name, `storage-console-read#/$defs/${name}`])));
 const bundled = await build({ stdin: { contents: compiled, resolveDir: fileURLToPath(new URL('../', import.meta.url)) }, bundle: true, platform: 'browser', format: 'esm', minify: true, write: false });
 const declarations = `declare const validators: Record<${responses.map(name => JSON.stringify(name)).join(' | ')}, (value: unknown) => boolean>;\nexport default validators;\n`;

@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, Field, SecretStr, field_serializer, field_va
 from .common import Contract
 
 SourceType = Literal["FILESERVER", "PVE", "PBS"]
-CollectorType = Literal["WINDOWS", "PVE", "PBS"]
+CollectorType = Literal["WINDOWS", "AUDIT_WINDOWS", "PVE", "PBS"]
 SourceText = Annotated[str, Field(min_length=1, max_length=255, strict=True)]
 Cadence = Annotated[int, Field(ge=1, le=86400, strict=True)]
 

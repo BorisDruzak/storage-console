@@ -42,6 +42,7 @@ async function get<N extends ResponseName>(path: string, name: N, signal?: Abort
     // A completed response may race cache cancellation or a new login.
     cancelled();
     if (response.status === 401) window.dispatchEvent(new Event('storage-session-expired'));
+    if (response.status === 403) window.dispatchEvent(new Event('storage-permission-changed'));
     if (!response.ok) throw new ApiError(response.status === 404 ? 'NOT_FOUND' :
       response.status === 401 || response.status === 403 ? 'AUTH_REQUIRED' : 'API_UNAVAILABLE');
     const lifetime=response.headers.get('X-Evidence-Valid-For-Ms');

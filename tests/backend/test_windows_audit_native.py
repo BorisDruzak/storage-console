@@ -235,11 +235,67 @@ $acl.AddAuditRule($rule);Set-Acl -LiteralPath $args[0] -AclObject $acl;"""
         assert result.returncode == 0, "DISPOSABLE_POLICY_RESTORE_FAILED"
 
 
+@pytest.mark.parametrize("mode", ["capture_only", "deliver"])
 def test_installed_wheel_own_scm_system_dpapi_and_restart(
     installed_python,
     tmp_path,
     authorities,
     owned_security_scope,
+    authenticated_setup,
+    mode,
+):
+    if mode == "capture_only":
+        _installed_wheel_scm(installed_python, tmp_path, authorities, owned_security_scope)
+        return
+    from sqlalchemy import func, insert, select, update
+
+    from packages.shared.models.audit import audit_evidence
+    from packages.shared.models.core import collectors, volumes
+    from tests.deployment.collector_delivery import serving_ingest
+
+    client, engine, collector, token, source = authenticated_setup
+    with engine.begin() as conn:
+        conn.execute(
+            update(collectors)
+            .where(collectors.c.id == collector)
+            .values(collector_type="AUDIT_WINDOWS")
+        )
+        conn.execute(
+            insert(volumes).values(
+                source_node_id=source, unique_identity="synthetic-volume", filesystem="NTFS"
+            )
+        )
+
+    def received():
+        with engine.connect() as conn:
+            return conn.scalar(select(func.count()).select_from(audit_evidence)) >= 2
+
+    with serving_ingest(client.app, tmp_path / "tls") as (origin, ca):
+        _installed_wheel_scm(
+            installed_python,
+            tmp_path,
+            authorities,
+            owned_security_scope,
+            {
+                "mode": "deliver",
+                "audit_sids": [principal(os.getpid())],
+                "collector_id": str(collector),
+                "source_id": str(source),
+                "origin": origin,
+                "ca_file": str(ca),
+                "token": token,
+            },
+            received,
+        )
+
+
+def _installed_wheel_scm(
+    installed_python,
+    tmp_path,
+    authorities,
+    owned_security_scope,
+    config_override=None,
+    received=None,
 ):
     import subprocess
 
@@ -262,6 +318,8 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
         "initial_baseline": True,
     }
     config["ca_file"] = str(authorities[0] / "ca.pem")
+    if config_override:
+        config.update(config_override)
     probe = subprocess.run(
         [
             str(installed_python),
@@ -302,7 +360,7 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
 
         def accepted():
             value = json.loads((Path(spec.state_path) / "audit-status.json").read_bytes())
-            return value.get("backlog", 0) >= 2
+            return received() if received else value.get("backlog", 0) >= 2
 
         eventually(accepted, seconds=45)
         manager.stop()
@@ -315,7 +373,9 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
             )
             before = queue.peek()
             bookmark, cache = queue.checkpoint()
-            assert before is not None and cache["counters"]["accepted"] > 0
+            assert (received is not None or before is not None) and cache["counters"][
+                "accepted"
+            ] > 0
             assert queue.peek() == before, "LOST_ACK_CHANGED_BODY"
         manager.start()
         restarted_pid = manager.status().pid
@@ -348,3 +408,9 @@ def uuid4_from(value):
     from uuid import UUID
 
     return UUID(value)
+
+
+def test_native_read_only_policy_and_sacl_cover_owned_runner_sid(owned_security_scope):
+    from collectors.windows_audit.readiness import readiness
+
+    assert readiness([str(owned_security_scope)], [principal(os.getpid())]) == (True, True)
