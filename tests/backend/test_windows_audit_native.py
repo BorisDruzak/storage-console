@@ -49,9 +49,11 @@ def test_native_security_strict_bookmark_resume_and_anchor_reject():
         assert later is None or later[1] != bookmark, "BOOKMARK_REPLAYED_LAST_EVENT"
     with pytest.raises(EventLogError, match="AUDIT_BOOKMARK_STALE"):
         SecurityReader(bookmark, anchor_digest="0" * 64)
-    import re
+    from xml.etree import ElementTree as ET
 
-    absent = re.sub(r'RecordId="\d+"', 'RecordId="9223372036854775800"', bookmark)
+    altered = ET.fromstring(bookmark)
+    altered[0].set("RecordId", "9223372036854775800")
+    absent = ET.tostring(altered, encoding="unicode")
     assert absent != bookmark, "NATIVE_BOOKMARK_SCHEMA_CHANGED"
     with pytest.raises(EventLogError, match="AUDIT_BOOKMARK_STALE"):
         SecurityReader(absent)
@@ -86,8 +88,6 @@ def test_owned_security_evtx_fixture_replacement_is_strict_miss(tmp_path):
     fixture = tmp_path / "owned-security.evtx"
     try:
         assert dll.EvtNext(query, 2, handles, 0, 0, ctypes.byref(count)) and count.value == 2
-        bookmark = dll.EvtCreateBookmark(None)
-        assert dll.EvtUpdateBookmark(bookmark, handles[0])
         from xml.etree import ElementTree as ET
 
         from collectors.windows_audit.events import NS
@@ -103,9 +103,16 @@ def test_owned_security_evtx_fixture_replacement_is_strict_miss(tmp_path):
         ), "OWNED_SECURITY_EXPORT_FAILED"
         owned = dll.EvtQuery(None, str(fixture), "*", 2)
         assert owned, "OWNED_FIXTURE_QUERY_FAILED"
+        fixture_handles, returned = (P * 1)(), D()
         try:
+            assert dll.EvtNext(owned, 1, fixture_handles, 0, 0, ctypes.byref(returned))
+            bookmark = dll.EvtCreateBookmark(None)
+            assert dll.EvtUpdateBookmark(bookmark, fixture_handles[0])
+            anchor = sha256(render(dll, fixture_handles[0]).encode()).hexdigest()
             assert dll.EvtSeek(owned, 0, bookmark, 0, 0x10004), "OWNED_FIXTURE_ANCHOR_FAILED"
         finally:
+            if fixture_handles[0]:
+                dll.EvtClose(fixture_handles[0])
             dll.EvtClose(owned)
         fixture.unlink()
         assert dll.EvtExportLog(
@@ -113,9 +120,16 @@ def test_owned_security_evtx_fixture_replacement_is_strict_miss(tmp_path):
         ), "OWNED_SECURITY_REPLACEMENT_FAILED"
         owned = dll.EvtQuery(None, str(fixture), "*", 2)
         assert owned
+        fixture_handles, returned = (P * 1)(), D()
         try:
-            assert not dll.EvtSeek(owned, 0, bookmark, 0, 0x10004), "STRICT_MISS_WAS_TOLERATED"
+            seek = dll.EvtSeek(owned, 0, bookmark, 0, 0x10004)
+            if seek:
+                assert dll.EvtNext(owned, 1, fixture_handles, 0, 0, ctypes.byref(returned))
+                changed = sha256(render(dll, fixture_handles[0]).encode()).hexdigest() != anchor
+                assert changed, "REPLACED_GENERATION_WAS_TOLERATED"
         finally:
+            if fixture_handles[0]:
+                dll.EvtClose(fixture_handles[0])
             dll.EvtClose(owned)
     finally:
         for handle in (*handles, bookmark, query):
@@ -202,7 +216,7 @@ $rule=[System.Security.AccessControl.FileSystemAuditRule]::new($sid,
 $acl.AddAuditRule($rule);Set-Acl -LiteralPath $args[0] -AclObject $acl;"""
         result = subprocess.run(
             [
-                "powershell.exe",
+                "pwsh.exe",
                 "-NoProfile",
                 "-NonInteractive",
                 "-Command",
@@ -229,7 +243,7 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
 ):
     import subprocess
 
-    from collectors.windows_audit.scm import AuditServiceSpec
+    from collectors.windows_audit.scm import AuditBackend, AuditServiceSpec
 
     spec = AuditServiceSpec(
         str(installed_python), str(tmp_path / "audit"), "SosnadminStorageAuditTest" + uuid4().hex
@@ -263,7 +277,16 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
         timeout=30,
     )
     assert probe.returncode == 0 and not probe.stderr, "AUDIT_WHEEL_INITIALIZATION_FAILED"
-    native = NativeBackend()
+    legacy_spec = ServiceSpec(
+        str(installed_python),
+        str(tmp_path / "legacy-unused"),
+        "SosnadminStorageCollectorTest" + uuid4().hex,
+    )
+    legacy = NativeBackend()
+    legacy_manager = ServiceManager(legacy_spec, legacy, timeout=40)
+    legacy_manager.install()
+    original_legacy = legacy_manager.status()
+    native = AuditBackend()
     manager = ServiceManager(cast(ServiceSpec, spec), native, timeout=40)
     manager.install()
     try:
@@ -315,6 +338,10 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
             if handle is not None:
                 native.api.ControlService(handle, 1, ctypes.byref(Status()))
                 check(native.api.DeleteService(handle))
+        try:
+            assert legacy_manager.status() == original_legacy, "AUDIT_CHANGED_USN_REGISTRATION"
+        finally:
+            legacy_manager.uninstall()
 
 
 def uuid4_from(value):

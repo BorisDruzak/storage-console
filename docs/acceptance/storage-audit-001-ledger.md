@@ -52,7 +52,30 @@ PASS ещё не объявлен; следующий этап не начина
 - Installation/upgrade/rollback: `collectors/windows_audit/README.md`.
   Это runbook для отдельного разрешения, не authorization на FILESERVER.
 
-GATE A: IN_PROGRESS — full regression, native exact-head CI и exact merged-main CI pending.
+### Exact CI первого source SHA и исправления native
+
+- PR A: https://github.com/BorisDruzak/storage-console/pull/24 (draft),
+  source 47704d6fe44de69718eddf704da8190891d70181,
+  workflow https://github.com/BorisDruzak/storage-console/actions/runs/38385578983.
+- backend/frontend/compose-smoke/production-smoke/secrets SUCCESS; sonar SKIPPED.
+  windows-pilot FAIL: existing SCM/USN/HTTPS steps SUCCESS, новый audit step
+  46 passed, 3 failed, 1 fixture error. Этот source SHA не даёт GATE A PASS.
+- Native RCA: scalar EVT_VARIANT.Count не определён и Windows возвращает
+  0xFFFFFFFF; проверять scalar UInt64 Type, не Count. Native read-only probe
+  воспроизвёл это; portable RED→GREEN добавлен. Microsoft EVT_VARIANT contract проверен.
+- Fixture fixes: XML bookmark использует single quotes — менять RecordId через
+  XML parser, не regex; exported EVTX требует своего native bookmark, а replacement
+  проверяется по strict miss либо несовпадающему anchor digest. Никакой очистки
+  реального Security channel. Fixture SACL создаётся через runner pwsh с соответствующим
+  module path, вместо несовместимого powershell.exe environment.
+- Дополнительный SCM RED→GREEN: Audit требует отдельного display name; общий USN
+  backend использовал одинаковый display name. Собственный AuditBackend сохраняет
+  recovery/registration validation; native тест держит две регистрации одновременно
+  и проверяет неизменность existing USN registration. Старый backend не меняется.
+- После native/SCM fixes local audit focus: 46 passed / 6 native skipped; Ruff/mypy PASS.
+  Новый exact-head CI и exact-main CI ещё требуются; результаты старого SHA не переносятся.
+
+GATE A: IN_PROGRESS — новый native exact-head CI и exact merged-main CI pending.
 GATE B: PENDING — не начинался.
 GATE C: BLOCKED — нет отдельного разрешения на новую службу, pilot root, SACL/policy и CRUD.
 

@@ -190,3 +190,39 @@ def test_explicit_initial_baseline_has_native_anchor_and_current_boot_session_bo
     native = module("native")
     assert callable(native.latest_baseline)
     assert callable(native.recent_session_xml)
+
+
+def test_audit_registration_has_distinct_display_name_from_existing_usn():
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+
+    scm = module("scm")
+    assert hasattr(scm, "AuditBackend"), "Audit must not reuse the USN display-name registration"
+    calls = []
+
+    @contextmanager
+    def manager(access):
+        yield 1
+
+    def create(*args):
+        calls.append(args)
+        return 10
+
+    backend = scm.AuditBackend.__new__(scm.AuditBackend)
+    backend._manager = manager
+    backend.api = SimpleNamespace(
+        CreateServiceW=create,
+        ChangeServiceConfig2W=lambda *args: True,
+        CloseServiceHandle=lambda *args: True,
+    )
+    spec = scm.AuditServiceSpec(r"C:\Protected\python.exe", r"C:\AuditState")
+    backend.create(spec)
+    assert calls[0][2] != "Storage Console Collector"
+    assert "Audit" in calls[0][2]
+
+
+def test_scalar_evt_variant_count_is_undefined_and_not_an_array_flag():
+    native = module("native")
+    assert native.decode_uint64(123, 10, 0xFFFFFFFF) == 123
+    with pytest.raises(native.EventLogError):
+        native.decode_uint64(123, 0x80 | 10, 1)

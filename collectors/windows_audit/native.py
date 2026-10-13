@@ -183,9 +183,7 @@ class SecurityReader:
                         log, prop, ctypes.sizeof(value), ctypes.byref(value), ctypes.byref(used)
                     )
                 )
-                if value.kind != 10 or value.count:
-                    raise EventLogError(13)
-                result[name] = value.value
+                result[name] = decode_uint64(value.value, value.kind, value.count)
             channel = self.api.EvtOpenChannelConfig(None, "Security", 0)
             check(channel)
             value, used = Variant(), D()
@@ -194,9 +192,7 @@ class SecurityReader:
                     channel, 8, 0, ctypes.sizeof(value), ctypes.byref(value), ctypes.byref(used)
                 )
             )
-            if value.kind != 10 or value.count:
-                raise EventLogError(13)
-            result["maximum_bytes"] = value.value
+            result["maximum_bytes"] = decode_uint64(value.value, value.kind, value.count)
             query = self.api.EvtQuery(None, "Security", "*", 0x201)
             check(query)
             returned = D()
@@ -252,6 +248,13 @@ def safe_leaf_attributes(attributes: int, error: int) -> bool:
     if attributes == 0xFFFFFFFF:
         return error == 2  # ERROR_FILE_NOT_FOUND only; an unreadable leaf is unknown.
     return not attributes & 0x400
+
+
+def decode_uint64(value: int, kind: int, count: int) -> int:
+    # Microsoft defines Count only for array variants; scalar Count may be 0xFFFFFFFF.
+    if kind != 10:
+        raise EventLogError(13)
+    return value
 
 
 def latest_baseline() -> tuple[str, str]:

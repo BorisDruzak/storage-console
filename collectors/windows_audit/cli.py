@@ -7,7 +7,6 @@ from hashlib import sha256
 from pathlib import Path
 from typing import cast
 
-from collectors.windows._scm_native import NativeBackend
 from collectors.windows.cli import ArgumentsError, Parser
 from collectors.windows.errors import SecurityError
 from collectors.windows.scm import ServiceManager, ServiceSpec
@@ -15,7 +14,7 @@ from collectors.windows.security import ProtectedState
 from collectors.windows.service_installation import validate_installation
 
 from .configuration import AuditConfig, MachineCipher, activate, load
-from .scm import AuditServiceSpec
+from .scm import AuditBackend, AuditServiceSpec
 from .store import AuditStore, AuditStoreError
 
 
@@ -70,7 +69,7 @@ def main() -> int:
                 state.validate_file("audit.sqlite3")
             print(json.dumps({"state": "INITIALIZED", "mode": "capture_only"}))
             return 0
-        manager = ServiceManager(cast(ServiceSpec, spec), NativeBackend())
+        manager = ServiceManager(cast(ServiceSpec, spec), AuditBackend())
         if args.action == "status":
             status = manager.status()
             print(
