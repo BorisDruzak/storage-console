@@ -13,7 +13,7 @@ from packages.contracts.audit import AuditEvent as AuditEvent
 NS = "{http://schemas.microsoft.com/win/2004/08/events/event}"
 AUDITING = UUID("54849625-5478-4994-a5ba-3e3b0328c30d")
 EVENTLOG = UUID("fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148")
-VERSIONS = {4663: {0, 1}, 4660: {0}, 4624: {0, 1, 2}, 1102: {0}}
+VERSIONS = {4663: {0, 1}, 4660: {0}, 4624: {0, 1, 2, 3}, 1102: {0}}
 
 
 def parse_event(

@@ -22,7 +22,7 @@ class AuditEvent(BaseModel):
     record_id: Annotated[int, Field(gt=0, le=2**63 - 1)]
     provider: UUID
     event_id: Literal[4663, 4660, 4624, 1102]
-    version: Annotated[int, Field(ge=0, le=2)]
+    version: Annotated[int, Field(ge=0, le=3)]
     occurred_at: AwareDatetime
     sid: Text | None = None
     domain: Text | None = None
@@ -41,6 +41,12 @@ class AuditEvent(BaseModel):
     volume_id: Text | None = None
     path_quality: Literal["UNKNOWN"] = "UNKNOWN"
     linked_record_ids: list[int] = Field(default_factory=list, max_length=8)
+
+    @model_validator(mode="after")
+    def supported_extended_version(self) -> Self:
+        if self.version == 3 and self.event_id != 4624:
+            raise ValueError("AUDIT_EVENT_VERSION_UNSUPPORTED")
+        return self
 
     def digest(self) -> str:
         return sha256(
