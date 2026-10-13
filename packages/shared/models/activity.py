@@ -23,6 +23,10 @@ change_events = Table(
         name="ck_change_event_type",
     ),
     Index("ix_changes_source_time", "source_node_id", "occurred_at"),
+    Index(
+        "ix_changes_source_volume_time_id",
+        "source_node_id", "volume_identity", "occurred_at", "id",
+    ),
     Index("ix_changes_time_id", "occurred_at", "id"),
     Index("ix_changes_source_type_time_id", "source_node_id", "event_type", "occurred_at", "id"),
     Index(
