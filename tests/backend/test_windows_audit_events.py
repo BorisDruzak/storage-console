@@ -77,11 +77,40 @@ def test_4660_has_no_fabricated_path_zero_handle_is_null():
     assert event.path is None and event.handle_id is None
 
 
-@pytest.mark.parametrize("version", [0, 1, 2])
+@pytest.mark.parametrize("version", [0, 1, 2, 3])
 def test_network_session_versions_missing_client_stays_null(version):
     event = parse(xml(4624, version=version))
     assert event.logon_type == 3 and event.logon_id == 257
     assert event.client_ip is None and event.workstation is None
+
+
+def test_network_session_version_3_preserves_named_identity_and_minimal_contract():
+    from packages.contracts.audit import AuditInput
+
+    event = parse(xml(
+        4624, record=1, version=3, IpAddress="192.0.2.10",
+        RemoteCredentialGuard="-", TargetLinkedLogonId="0x0",
+    ))
+    assert event is not None
+    assert event.version == 3 and event.logon_type == 3 and event.logon_id == 257
+    assert event.client_ip == "192.0.2.10" and event.workstation is None
+    payload = event.model_dump(mode="json")
+    assert "RemoteCredentialGuard" not in payload and "TargetLinkedLogonId" not in payload
+    assert AuditInput.model_validate({**payload, "digest": event.digest()}).event() == event
+    selector = module("scope").Selector(module("scope").AuditScope({r"C:\Pilot": "volume-a"}))
+    assert selector.process(event) == []
+    linked = selector.process(parse(xml(record=2)))
+    assert [e.event_id for e in linked] == [4624, 4663]
+
+
+def test_unknown_logon_version_4_and_other_version_3_events_stay_rejected():
+    from packages.contracts.audit import AuditEvent
+
+    assert parse(xml(4624, version=4)) is None
+    for kind in (4663, 4660, 1102):
+        assert parse(xml(kind, version=3)) is None
+    with pytest.raises(ValueError, match="AUDIT_EVENT_VERSION_UNSUPPORTED"):
+        AuditEvent.model_validate({**parse(xml()).model_dump(), "version": 3})
 
 
 @pytest.mark.parametrize(
