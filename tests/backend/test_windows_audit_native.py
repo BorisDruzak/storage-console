@@ -395,6 +395,19 @@ def _installed_wheel_scm(
             }
             if extra_diagnostics:
                 result.update(extra_diagnostics())
+            scm = manager.status()
+            result.update(
+                scm_state=scm.state, scm_exit_code=scm.exit_code, same_pid=scm.pid == status.pid
+            )
+            import sqlite3
+
+            from collectors.windows_audit.configuration import MachineCipher
+
+            database = (Path(spec.state_path) / "audit.sqlite3").as_uri() + "?mode=ro"
+            with sqlite3.connect(database, uri=True, timeout=2) as connection:
+                row = connection.execute("SELECT payload FROM delivery WHERE id=1").fetchone()
+            if row:
+                result["retained_delivery"] = json.loads(MachineCipher().unprotect(row[0]))
             return result
 
         eventually(accepted, seconds=45, diagnostics=safe_diagnostics)

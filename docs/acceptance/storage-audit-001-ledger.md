@@ -168,6 +168,12 @@ GATE C: BLOCKED — нет отдельного разрешения на нов
   common ProtectedState checks unchanged. Portable RED→GREEN and Linux targeted
   runtime/delivery/actual HTTPS 24 PASS; independent focused review reports no open
   Critical/Important findings. Native exact CI must still close the original timeout.
+- Source 6068582d0e87d4a98382e99f443221266a561088 / run 38419375267:
+  protected status-reader removed, but installed deliver timeout remains (69 PASS,
+  1 FAIL in Audit suite). The sharing reproduction alone did not establish the
+  complete timeout RCA. Gate B remains IN_PROGRESS, no merge/deploy. Retain redacted
+  delivery exception metadata and SCM state in the owned native fixture to identify
+  the remaining failure; do not expose messages, locals or private paths.
 
 ## Baseline (каждый раз перепроверять)
 

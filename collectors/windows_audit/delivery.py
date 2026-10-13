@@ -134,8 +134,18 @@ def run_delivery(
                     )
                     store.save_delivery(saved)
                 heartbeat_at = time.monotonic() + 30
-        except Exception:
-            # Fixed-code failure; SCM and central freshness expose lost diagnostics.
+        except Exception as error:
+            from collectors.windows.diagnostics import detail
+
+            try:
+                saved = store.delivery_state()
+                saved.update(
+                    error_code="AUDIT_DELIVERY_FAILED", diagnostic=detail(error, "delivery")
+                )
+                store.save_delivery(saved)
+            except Exception:
+                pass  # Diagnostic persistence must not expose an exception or keep capture alive.
+            # Preserve fixed-code exception metadata; never exception text or locals.
             stop.set()
             return
         stop.wait(1)

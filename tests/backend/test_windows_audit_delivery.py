@@ -109,3 +109,34 @@ def test_heartbeat_uses_published_state_without_opening_mutable_capture_file(tmp
     )
     heartbeat = json.loads(claims[0].body)["records"][0]["audit"]
     assert heartbeat["configured"] is True and heartbeat["state"] == "OBSERVE"
+
+
+def test_delivery_failure_retains_redacted_metadata_not_exception_text(tmp_path, monkeypatch):
+    import threading
+    from types import SimpleNamespace
+
+    from pydantic import SecretStr
+
+    from collectors.windows.diagnostics import valid_detail
+    from collectors.windows_audit import configuration, delivery
+
+    class BrokenSender:
+        def send(self, _):
+            raise RuntimeError("SYNTHETIC_SECRET_MUST_NOT_APPEAR")
+
+    monkeypatch.setattr(configuration, "MachineCipher", Cipher)
+    monkeypatch.setattr(delivery, "Transport", lambda *_a, **_kw: BrokenSender())
+    config = SimpleNamespace(
+        collector_id=UUID(int=4),
+        host_id=UUID(int=5),
+        generation=UUID(int=6),
+        token=SecretStr("a" * 43),
+        ca_file="unused",
+        origin="https://example.test",
+        configured=True,
+    )
+    stop = threading.Event()
+    delivery.run_delivery(SimpleNamespace(root=tmp_path), config, stop, status_reader=lambda: {})
+    outcome = AuditStore(tmp_path / "audit.sqlite3", config.collector_id, Cipher()).delivery_state()
+    assert stop.is_set() and outcome["error_code"] == "AUDIT_DELIVERY_FAILED"
+    assert valid_detail(outcome["diagnostic"]) and "SYNTHETIC_SECRET" not in json.dumps(outcome)
