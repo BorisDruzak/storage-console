@@ -1,0 +1,323 @@
+"""Native acceptance on disposable GitHub Windows runner, never a user workstation."""
+
+import ctypes
+import json
+import os
+from hashlib import sha256
+from pathlib import Path
+from typing import cast
+from uuid import uuid4
+
+import pytest
+from test_collector_transport import authorities as authorities
+from test_windows_runtime_native import installed_python as installed_python
+from test_windows_service_native import eventually, principal
+
+from collectors.windows._scm_native import NativeBackend, Status, check
+from collectors.windows.scm import ServiceManager, ServiceSpec
+from collectors.windows.security import ProtectedState
+
+pytestmark = pytest.mark.skipif(
+    os.name != "nt" or os.environ.get("GITHUB_ACTIONS") != "true",
+    reason="Owned disposable Windows runner required; no SCM mutations on user workstation",
+)
+
+
+def test_native_dpapi_large_cache_and_protected_state(tmp_path):
+    from collectors.windows_audit.configuration import MachineCipher
+
+    with ProtectedState(tmp_path / "audit", create=True) as state:
+        cipher = MachineCipher()
+        payload = b"synthetic-sensitive-evidence" * 10000
+        encrypted = cipher.protect(payload)
+        assert payload[:100] not in encrypted, "DPAPI_PLAINTEXT_LEAK"
+        assert cipher.unprotect(encrypted) == payload, "DPAPI_ROUNDTRIP_FAILED"
+        state.write("evidence.dpapi", encrypted[:48000])
+        state.validate_file("evidence.dpapi")
+
+
+def test_native_security_strict_bookmark_resume_and_anchor_reject():
+    from collectors.windows_audit.native import EventLogError, SecurityReader
+
+    with SecurityReader(None, initial_baseline=True) as reader:
+        row = reader.next()
+        assert row is not None, "DISPOSABLE_SECURITY_FIXTURE_REQUIRED"
+        xml, bookmark = row
+        digest = sha256(xml.encode()).hexdigest()
+    with SecurityReader(bookmark, anchor_digest=digest) as resumed:
+        later = resumed.next()
+        assert later is None or later[1] != bookmark, "BOOKMARK_REPLAYED_LAST_EVENT"
+    with pytest.raises(EventLogError, match="AUDIT_BOOKMARK_STALE"):
+        SecurityReader(bookmark, anchor_digest="0" * 64)
+    import re
+
+    absent = re.sub(r'RecordId="\d+"', 'RecordId="9223372036854775800"', bookmark)
+    assert absent != bookmark, "NATIVE_BOOKMARK_SCHEMA_CHANGED"
+    with pytest.raises(EventLogError, match="AUDIT_BOOKMARK_STALE"):
+        SecurityReader(absent)
+
+
+def test_native_bounds_and_reparse_privacy(tmp_path):
+    from collectors.windows_audit.native import SecurityReader, no_reparse_ancestry
+
+    with SecurityReader(None, initial_baseline=True) as reader:
+        bounds = reader.bounds()
+        assert bounds["record_count"] > 0 and bounds["maximum_bytes"] > 0
+        assert bounds["newest_record_id"] >= bounds["oldest_record_id"]
+    owned = tmp_path / "owned"
+    outside = tmp_path / "outside"
+    owned.mkdir()
+    outside.mkdir()
+    (owned / "escape").symlink_to(outside, target_is_directory=True)
+    assert not no_reparse_ancestry(str(owned / "escape" / "absent.txt"))
+
+
+def test_owned_security_evtx_fixture_replacement_is_strict_miss(tmp_path):
+    """Replace ONLY a private exported fixture, never clear the real Security channel."""
+    from collectors.windows_audit.native import D, P, api, render
+
+    dll = api()
+    dll.EvtExportLog.argtypes = [P, ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_wchar_p, D]
+    dll.EvtExportLog.restype = D
+    query = dll.EvtQuery(None, "Security", "*", 0x201)
+    assert query, "OWNED_SECURITY_QUERY_FAILED"
+    handles, count = (P * 2)(), D()
+    bookmark = None
+    fixture = tmp_path / "owned-security.evtx"
+    try:
+        assert dll.EvtNext(query, 2, handles, 0, 0, ctypes.byref(count)) and count.value == 2
+        bookmark = dll.EvtCreateBookmark(None)
+        assert dll.EvtUpdateBookmark(bookmark, handles[0])
+        from xml.etree import ElementTree as ET
+
+        from collectors.windows_audit.events import NS
+
+        first_id = int(
+            ET.fromstring(render(dll, handles[0])).findtext(NS + "System/" + NS + "EventRecordID")
+        )
+        second_id = int(
+            ET.fromstring(render(dll, handles[1])).findtext(NS + "System/" + NS + "EventRecordID")
+        )
+        assert dll.EvtExportLog(
+            None, "Security", f"*[System[EventRecordID={first_id}]]", str(fixture), 1
+        ), "OWNED_SECURITY_EXPORT_FAILED"
+        owned = dll.EvtQuery(None, str(fixture), "*", 2)
+        assert owned, "OWNED_FIXTURE_QUERY_FAILED"
+        try:
+            assert dll.EvtSeek(owned, 0, bookmark, 0, 0x10004), "OWNED_FIXTURE_ANCHOR_FAILED"
+        finally:
+            dll.EvtClose(owned)
+        fixture.unlink()
+        assert dll.EvtExportLog(
+            None, "Security", f"*[System[EventRecordID={second_id}]]", str(fixture), 1
+        ), "OWNED_SECURITY_REPLACEMENT_FAILED"
+        owned = dll.EvtQuery(None, str(fixture), "*", 2)
+        assert owned
+        try:
+            assert not dll.EvtSeek(owned, 0, bookmark, 0, 0x10004), "STRICT_MISS_WAS_TOLERATED"
+        finally:
+            dll.EvtClose(owned)
+    finally:
+        for handle in (*handles, bookmark, query):
+            if handle:
+                dll.EvtClose(handle)
+        if fixture.exists():
+            fixture.unlink()
+
+
+def test_installed_dpapi_queue_crash_rolls_back_bookmark_and_body(installed_python, tmp_path):
+    import subprocess
+    from uuid import UUID
+
+    from collectors.windows_audit.configuration import MachineCipher
+    from collectors.windows_audit.store import AuditStore
+
+    identity = uuid4()
+    with ProtectedState(tmp_path / "atomic", create=True) as state:
+        state.create_file("audit.sqlite3")
+        store = AuditStore(state.root / "audit.sqlite3", identity, MachineCipher())
+        store.commit("before", {}, b"synthetic retained body")
+        before = store.peek()
+        code = """import os,sys
+from pathlib import Path
+from uuid import UUID
+from collectors.windows_audit.store import AuditStore
+from collectors.windows_audit.configuration import MachineCipher
+store=AuditStore(Path(sys.argv[1]),UUID(sys.argv[2]),MachineCipher())
+with store._transaction() as db:
+ db.execute("UPDATE state SET checkpoint=? WHERE id=1", (store.cipher.protect(b'{}'),))
+ db.execute("DELETE FROM queue")
+ os._exit(23)
+"""
+        result = subprocess.run(
+            [
+                str(installed_python),
+                "-I",
+                "-c",
+                code,
+                str(state.root / "audit.sqlite3"),
+                str(identity),
+            ],
+            capture_output=True,
+            timeout=20,
+        )
+        assert result.returncode == 23 and not result.stderr, "OWNED_CRASH_PROBE_FAILED"
+        recovered = AuditStore(state.root / "audit.sqlite3", UUID(str(identity)), MachineCipher())
+        assert recovered.checkpoint()[0] == "before", "CRASH_ADVANCED_BOOKMARK"
+        assert recovered.peek() == before, "CRASH_CHANGED_REPLAY_BODY"
+
+
+@pytest.fixture
+def owned_security_scope(tmp_path):
+    """Temporary narrow SACL on a disposable runner only; restore its audit policy."""
+    import subprocess
+
+    root = tmp_path / "owned-security-fixture"
+    root.mkdir()
+    backup = tmp_path / "owned-policy-backup.csv"
+    result = subprocess.run(
+        ["auditpol.exe", "/backup", "/file:" + str(backup)], capture_output=True, timeout=15
+    )
+    assert result.returncode == 0, "DISPOSABLE_POLICY_BACKUP_FAILED"
+    try:
+        result = subprocess.run(
+            [
+                "auditpol.exe",
+                "/set",
+                "/subcategory:{0CCE921D-69AE-11D9-BED3-505054503030}",
+                "/success:enable",
+            ],
+            capture_output=True,
+            timeout=15,
+        )
+        assert result.returncode == 0, "DISPOSABLE_AUDIT_POLICY_FAILED"
+        script = """$ErrorActionPreference='Stop';
+$acl=Get-Acl -LiteralPath $args[0] -Audit;
+$sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User;
+$rule=[System.Security.AccessControl.FileSystemAuditRule]::new($sid,
+ [System.Security.AccessControl.FileSystemRights]'Write,Delete',
+ [System.Security.AccessControl.InheritanceFlags]'ContainerInherit,ObjectInherit',
+ [System.Security.AccessControl.PropagationFlags]::None,
+ [System.Security.AccessControl.AuditFlags]::Success);
+$acl.AddAuditRule($rule);Set-Acl -LiteralPath $args[0] -AclObject $acl;"""
+        result = subprocess.run(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "& {" + script + "}",
+                str(root),
+            ],
+            capture_output=True,
+            timeout=15,
+        )
+        assert result.returncode == 0, "OWNED_SYNTHETIC_SACL_FAILED"
+        yield root
+    finally:
+        result = subprocess.run(
+            ["auditpol.exe", "/restore", "/file:" + str(backup)], capture_output=True, timeout=15
+        )
+        assert result.returncode == 0, "DISPOSABLE_POLICY_RESTORE_FAILED"
+
+
+def test_installed_wheel_own_scm_system_dpapi_and_restart(
+    installed_python,
+    tmp_path,
+    authorities,
+    owned_security_scope,
+):
+    import subprocess
+
+    from collectors.windows_audit.scm import AuditServiceSpec
+
+    spec = AuditServiceSpec(
+        str(installed_python), str(tmp_path / "audit"), "SosnadminStorageAuditTest" + uuid4().hex
+    )
+    # Installed wheel probe, native machine DPAPI config; no credentials in argv/output.
+    config = {
+        "collector_id": str(uuid4()),
+        "host_id": str(uuid4()),
+        "source_id": str(uuid4()),
+        "generation": str(uuid4()),
+        "roots": {str(owned_security_scope): "synthetic-volume"},
+        "origin": "https://storage.example.test",
+        "ca_file": str(tmp_path / "ca.pem"),
+        "token": "a" * 43,
+        "configured": True,
+        "initial_baseline": True,
+    }
+    config["ca_file"] = str(authorities[0] / "ca.pem")
+    probe = subprocess.run(
+        [
+            str(installed_python),
+            "-I",
+            "-m",
+            "collectors.windows_audit.cli",
+            "initialize",
+            "--state",
+            spec.state_path,
+        ],
+        input=json.dumps(config).encode(),
+        capture_output=True,
+        timeout=30,
+    )
+    assert probe.returncode == 0 and not probe.stderr, "AUDIT_WHEEL_INITIALIZATION_FAILED"
+    native = NativeBackend()
+    manager = ServiceManager(cast(ServiceSpec, spec), native, timeout=40)
+    manager.install()
+    try:
+        manager.start()
+        status = manager.status()
+        assert status.pid != os.getpid(), "AUDIT_MUST_OWN_PROCESS"
+        assert principal(status.pid) == "S-1-5-18", "AUDIT_MUST_BE_LOCAL_SYSTEM"
+        eventually(lambda: (Path(spec.state_path) / "audit-status.json").exists())
+        target = owned_security_scope / "synthetic.txt"
+        target.write_text("synthetic", encoding="utf-8")
+        target.write_text("synthetic rewrite", encoding="utf-8")
+        target.unlink()
+
+        def accepted():
+            value = json.loads((Path(spec.state_path) / "audit-status.json").read_bytes())
+            return value.get("backlog", 0) >= 2
+
+        eventually(accepted, seconds=45)
+        manager.stop()
+        from collectors.windows_audit.configuration import MachineCipher
+        from collectors.windows_audit.store import AuditStore
+
+        with ProtectedState(Path(spec.state_path)) as state:
+            queue = AuditStore(
+                state.root / "audit.sqlite3", uuid4_from(config["collector_id"]), MachineCipher()
+            )
+            before = queue.peek()
+            bookmark, cache = queue.checkpoint()
+            assert before is not None and cache["counters"]["accepted"] > 0
+            assert queue.peek() == before, "LOST_ACK_CHANGED_BODY"
+        manager.start()
+        restarted_pid = manager.status().pid
+        eventually(
+            lambda: (
+                json.loads((Path(spec.state_path) / "audit-status.json").read_bytes()).get("pid")
+                == restarted_pid
+            )
+        )
+        manager.stop()
+        with ProtectedState(Path(spec.state_path)) as state:
+            state.validate_file("audit.sqlite3")
+            queue = AuditStore(
+                state.root / "audit.sqlite3", uuid4_from(config["collector_id"]), MachineCipher()
+            )
+            assert queue.peek() == before, "RESTART_CHANGED_QUEUED_BODY"
+            assert queue.checkpoint()[0] == bookmark, "IDLE_RESTART_CHANGED_BOOKMARK"
+    finally:
+        with native._service(cast(ServiceSpec, spec), 0x10000 | 0x20 | 4) as handle:
+            if handle is not None:
+                native.api.ControlService(handle, 1, ctypes.byref(Status()))
+                check(native.api.DeleteService(handle))
+
+
+def uuid4_from(value):
+    from uuid import UUID
+
+    return UUID(value)

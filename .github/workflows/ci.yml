@@ -87,6 +87,11 @@ jobs:
           tests/backend/test_windows_usn_runtime.py tests/backend/test_windows_usn_worker_native.py -q
       - name: Native USN to real HTTPS, PostgreSQL and Activity with lost ACK
         run: python -m pytest tests/backend/test_windows_usn_integration.py -q
+      - name: Independent Security audit, strict native bookmark and installed SCM
+        run: >-
+          python -m pytest tests/backend/test_windows_audit_events.py
+          tests/backend/test_windows_audit_store.py tests/backend/test_windows_audit_runtime.py
+          tests/backend/test_windows_audit_native.py -q
       - name: Stop disposable PostgreSQL
         if: always()
         run: python tests/deployment/prepare_windows_postgres.py --stop

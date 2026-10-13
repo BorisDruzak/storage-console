@@ -2,7 +2,59 @@
 
 Задача: docs/tasks/storage-audit-001-windows-security-attribution.md
 
-**Статус:** A PENDING → B PENDING → C PENDING. Это шаблон evidence, а не уже выполненная работа.
+**Статус:** A IN_PROGRESS → B PENDING → C BLOCKED (отдельное разрешение отсутствует).
+PASS ещё не объявлен; следующий этап не начинается до предыдущего PASS.
+
+## Выполнение 2026-10-13 — этап A
+
+- Baseline: e12e59753571beb7b1730e3803d1649c687368ba, отдельный managed worktree,
+  branch `codex/storage-audit-001-a`. Исходная рабочая копия main не изменена.
+- Issue #22 OPEN; на момент проверки open PR отсутствовали. History/RBAC,
+  change_events и существующий Windows USN Collector не изменены.
+- GitNexus list_repos: Storage Console не индексируется. Архитектура проверена
+  по текущим исходникам/контрактам/тестам; reindex/group_sync не выполнялись.
+- Read-only FILESERVER preflight 2026-10-13: Security readable/enabled, circular
+  retention, 20 MiB. Audit File System: No Auditing. Audit Logon: Success and
+  Failure. В bounded пятиминутном окне 4663/4660 отсутствовали, 4624 присутствовали.
+  Отсутствие 4663 не трактуется как отсутствие изменений.
+- Pilot root ещё не утверждён; SACL не исследовалась, GPO owner требует подтверждения
+  оператора. USN service Running; Audit NOT_INSTALLED. Production mutations NONE.
+- Новая служба/lock/SQLite/UUID/token независимы. Этап A — capture_only,
+  last_accepted_at NULL, NOT_CONFIGURED/OBSERVE/GAP; central ingest — этап B.
+- RED: 22 parser/store cases и 7 runtime cases на отсутствующем независимом
+  implementation. GREEN: первоначальные 36 cases; native local tests намеренно
+  SKIPPED, так как эта рабочая станция не disposable runner.
+- Независимое focused review: Critical 0, Important 6. Воспроизведены и исправлены
+  RED→GREEN outside-scope handle reuse, Windows ordinal Unicode comparison,
+  fail-closed leaf attributes и byte-bounded long/Cyrillic caches. Добавлены
+  native bounds/capacity/rollover margin/bookmark age и усилен installed-wheel
+  SCM test настоящим Security capture на owned disposable fixture. Native
+  результаты до exact Windows CI остаются PENDING.
+- Дополнительный RED→GREEN: queue ID должен совпадать с batch_id в immutable
+  envelope; naive timestamp отвергается; session digest не меняется при повторном
+  scoped access; host/generation/boot relabeling блокируется.
+- Local focused после review fixes: 44 passed / 6 native skipped; legacy focused
+  regression: 149 passed / 8 skipped до добавления ещё двух native fixture checks.
+  Native local skip означает отсутствие disposable runner, а не приёмку Windows.
+- Полная isolated Python 3.13/PostgreSQL 16 regression после `alembic upgrade head`
+  и `alembic check`: `pytest -q` — 776 passed / 82 platform skips;
+  `pytest tests/deployment -q` — 54 passed. Ruff, mypy (112 source files),
+  `python -m packages.contracts.export_openapi --check` PASS.
+- Первая попытка полного прогона: 773 passed / 80 skips / 2 failures
+  (`test_worker_heartbeat_upsert_and_freshness`,
+  `test_canonical_identity_constraints_and_deleted_last_known_path`). Причина —
+  отсутствовавший `alembic upgrade head` в disposable harness, не дефект продукта;
+  исправленный harness дал полный GREEN без изменения этих тестов/исходников.
+- Web regression: `npm run api:check`, `npm run lint`, `npm run typecheck`,
+  `npm test` (125 passed), `npm run build`, `npm run test:e2e` (12 passed) PASS.
+  `npm ci` сообщает 0 vulnerabilities. Известное build предупреждение о chunk >500 kB
+  не изменялось в данном scope. Exact PR/main CI ещё PENDING.
+- Installation/upgrade/rollback: `collectors/windows_audit/README.md`.
+  Это runbook для отдельного разрешения, не authorization на FILESERVER.
+
+GATE A: IN_PROGRESS — full regression, native exact-head CI и exact merged-main CI pending.
+GATE B: PENDING — не начинался.
+GATE C: BLOCKED — нет отдельного разрешения на новую службу, pilot root, SACL/policy и CRUD.
 
 ## Baseline (каждый раз перепроверять)
 
