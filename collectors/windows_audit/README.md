@@ -127,6 +127,17 @@ inventory/heartbeat witnesses должны поступить обычным р�
 не менять и не перезапускать существующий USN Collector. Если witnesses отсутствуют,
 пилот остаётся PARTIAL/BLOCKED. Исходный USN-SOAK-001 FAIL этим не отменяется.
 
+Датированный mount alias требует независимого свидетеля после изменения.
+Очередной WINDOWS volume inventory закрывает фактически продвинутый интервал:
+worker пересматривает только изменения того же source/volume в этом интервале,
+страницами по 32, с устойчивым cursor time/id и отдельным ключом идемпотентности.
+Поздний часовой inventory не ограничивается обычным 120-секундным receipt window.
+Правила FileId/link_count, 60 секунд для prior identity, DELETE chain и coverage
+остаются прежними. FileObject-only, heartbeat и не продвинувшийся volume witness
+не запускают такой пересмотр. До поступления всех свидетелей результат UNKNOWN.
+Позднее подтверждение можно прочитать после завершения разрешённого окна файловых
+операций; ради него не форсировать inventory и не менять cadence старого USN.
+
 Миграция 0007 добавляет audit-only tables/indexes и immutable triggers на evidence,
 identity/health observations (UPDATE/DELETE/TRUNCATE запрещены). Retention является
 будущим операторским решением. До central deploy: custom pg_dump, pg_restore --list,
@@ -134,6 +145,13 @@ SHA256 и копия вне VM; сохранить старые API/Web images/e
 предыдущему release допустим с additive schema; удаление новых audit tables или
 восстановление БД — только явная maintenance операция с backup. Нельзя выполнять
 широкий downgrade через 0005: он намеренно блокирует потерю path-only history.
+
+Миграция 0008 добавляет только индекс change_events по source/volume/time/id для
+ограниченного чтения этих страниц, без изменения истории, свидетельств или RBAC.
+До deployment проверить EXPLAIN и размер таблицы: построение индекса требует DDL
+lock. Предыдущий API/Web совместим с добавочным индексом; downgrade 0008→0007
+удаляет только индекс, сохраняет данные и immutable triggers. Перед deployment
+по-прежнему обязательны свежий backup, проверенная копия вне VM и rollback.
 
 Deliver mode требует список operator-approved `audit_sids` (до 16 SID) в sealed
 config. AuditQuerySystemPolicy и GetNamedSecurityInfoW каждые 30 секунд read-only

@@ -62,9 +62,11 @@ def post(client, domain, collector, token, records):
     )
 
 
-def seed(setup, *, audit_first=False):
+def seed(
+    setup, *, audit_first=False, late_alias=False, prior_identity=True, complete_coverage=True
+):
     client, _, usn, usn_token, _, audit, audit_token = setup
-    now = datetime.now(UTC) - timedelta(seconds=30)
+    now = datetime.now(UTC) - (timedelta(hours=2) if late_alias else timedelta(seconds=30))
     before, after = now - timedelta(seconds=10), now + timedelta(seconds=10)
     records = [
         {
@@ -85,13 +87,14 @@ def seed(setup, *, audit_first=False):
             "link_count": 1,
         },
     ]
-    response = post(client, "inventory", usn, usn_token, records)
+    response = post(client, "inventory", usn, usn_token, records if prior_identity else records[:1])
     assert response.status_code == 202
-    response = post(
-        client, "inventory", usn, usn_token, [{**records[0], "occurred_at": after.isoformat()}]
-    )
-    assert response.status_code == 202
-    for when in (before, after):
+    if not late_alias:
+        response = post(
+            client, "inventory", usn, usn_token, [{**records[0], "occurred_at": after.isoformat()}]
+        )
+        assert response.status_code == 202
+    for when in (before, after) if complete_coverage else (before,):
         hb = heartbeat(usn, when)["records"]
         response = post(client, "heartbeat", usn, usn_token, hb)
         assert response.status_code == 202
@@ -159,6 +162,223 @@ def drain(engine):
         if not process_one(engine, HANDLERS):
             return
     pytest.fail("bounded fixture jobs did not drain")
+
+
+@pytest.mark.parametrize("audit_first", [True, False])
+def test_hourly_alias_witness_revisits_old_delete_and_duplicate_is_inert(setup, audit_first):
+    from packages.shared.models.jobs import jobs
+
+    access = seed(setup, audit_first=audit_first, late_alias=True)
+    client, engine, usn, token, _, _, _ = setup
+    drain(engine)
+    with engine.connect() as conn:
+        assert conn.execute(select(audit_correlations.c["class"])).scalar_one() == "UNKNOWN"
+    response = post(
+        client,
+        "inventory",
+        usn,
+        token,
+        [
+            {
+                "kind": "volume",
+                "occurred_at": (access.occurred_at + timedelta(hours=1)).isoformat(),
+                "unique_identity": "volume-a",
+                "filesystem": "NTFS",
+                "mount_aliases": ["C:\\"],
+            }
+        ],
+    )
+    assert response.status_code == 202
+    drain(engine)
+    with engine.connect() as conn:
+        verdict = conn.execute(select(audit_correlations)).mappings().one()
+        count = conn.scalar(select(func.count()).select_from(jobs))
+    assert verdict["class"] == "CORRELATED_HIGH"
+    assert verdict["actor"]["sid"] == access.sid
+    replay = client.post(
+        "/api/v1/ingest/inventory",
+        json=json.loads(response.request.content),
+        headers={"Authorization": "Bearer " + token},
+    )
+    assert replay.status_code == 202 and replay.json()["duplicate"] is True
+    drain(engine)
+    with engine.connect() as conn:
+        assert conn.scalar(select(func.count()).select_from(jobs)) == count
+        assert conn.scalar(select(func.count()).select_from(audit_correlations)) == 1
+
+
+@pytest.mark.parametrize("missing", ["identity", "coverage"])
+def test_late_alias_does_not_substitute_for_identity_or_coverage(setup, missing):
+    access = seed(
+        setup,
+        late_alias=True,
+        prior_identity=missing != "identity",
+        complete_coverage=missing != "coverage",
+    )
+    client, engine, usn, token, _, _, _ = setup
+    drain(engine)
+    response = post(
+        client,
+        "inventory",
+        usn,
+        token,
+        [
+            {
+                "kind": "volume",
+                "unique_identity": "volume-a",
+                "filesystem": "NTFS",
+                "mount_aliases": ["C:\\"],
+                "occurred_at": (access.occurred_at + timedelta(hours=1)).isoformat(),
+            }
+        ],
+    )
+    assert response.status_code == 202
+    drain(engine)
+    with engine.connect() as conn:
+        verdict = conn.execute(select(audit_correlations)).mappings().one()
+    assert verdict["class"] == "ACCESS_OBSERVED" and verdict["actor"] is None
+    assert verdict["reason"] == (
+        "PATH_TIME_ONLY" if missing == "identity" else "INTERVAL_COVERAGE_UNKNOWN"
+    )
+
+
+def test_alias_reconciliation_pages_retry_without_touching_other_source_or_volume(setup):
+    from packages.shared.audit.engine import process
+    from packages.shared.models.activity import change_events
+    from packages.shared.models.core import source_nodes
+    from packages.shared.models.jobs import jobs
+
+    access = seed(setup, late_alias=True)
+    client, engine, usn, token, source, _, _ = setup
+    drain(engine)
+    other = uuid4()
+    with engine.begin() as conn:
+        conn.execute(
+            insert(source_nodes).values(
+                id=other,
+                source_type="FILESERVER",
+                hostname="other.example.test",
+                instance_id="other",
+            )
+        )
+        conn.execute(
+            insert(change_events),
+            [
+                dict(
+                    source_node_id=source if i < 66 else other,
+                    volume_identity="volume-a" if i != 65 else "volume-b",
+                    file_id="noise-" + str(i),
+                    event_type="WRITE",
+                    new_relative_path="Noise/" + str(i),
+                    occurred_at=access.occurred_at + timedelta(seconds=45),
+                )
+                for i in range(67)
+            ],
+        )
+    response = post(
+        client,
+        "inventory",
+        usn,
+        token,
+        [
+            {
+                "kind": "volume",
+                "unique_identity": "volume-a",
+                "filesystem": "NTFS",
+                "mount_aliases": ["C:\\"],
+                "occurred_at": (access.occurred_at + timedelta(hours=1)).isoformat(),
+            }
+        ],
+    )
+    assert response.status_code == 202
+    drain(engine)
+    with engine.begin() as conn:
+        pages = (
+            conn.execute(
+                select(jobs)
+                .where(
+                    jobs.c.payload["alias_window"].astext.is_not(None),
+                )
+                .order_by(jobs.c.created_at)
+            )
+            .mappings()
+            .all()
+        )
+        assert len(pages) == 3
+        assert all(p["status"] == "COMPLETE" for p in pages)
+        process(conn, pages[0])
+        assert conn.scalar(select(func.count()).select_from(audit_correlations)) == 66
+        scoped = conn.execute(
+            select(change_events.c.source_node_id, change_events.c.volume_identity).join(
+                audit_correlations, audit_correlations.c.change_event_id == change_events.c.id
+            )
+        ).all()
+        assert all(s == source and v == "volume-a" for s, v in scoped)
+        assert (
+            conn.scalar(
+                select(func.count())
+                .select_from(jobs)
+                .where(
+                    jobs.c.payload["alias_window"].astext.is_not(None),
+                )
+            )
+            == 3
+        )
+
+
+@pytest.mark.parametrize("kind", ["equal", "older", "object", "heartbeat", "rejected"])
+def test_only_applied_forward_volume_witness_enqueues_alias_window(setup, kind):
+    from packages.shared.models.core import volumes
+    from packages.shared.models.jobs import ingest_batches, jobs
+
+    access = seed(setup, late_alias=True)
+    client, engine, usn, token, _, _, _ = setup
+    before = access.occurred_at - timedelta(seconds=10)
+    with engine.connect() as conn:
+        previous = conn.scalar(select(volumes.c.last_seen_at))
+        receipts = conn.scalar(select(func.count()).select_from(ingest_batches))
+    volume = {
+        "kind": "volume",
+        "unique_identity": "volume-a",
+        "filesystem": "NTFS",
+        "mount_aliases": ["C:\\"],
+        "occurred_at": before.isoformat(),
+    }
+    if kind in ("equal", "older"):
+        volume["occurred_at"] = (
+            before - timedelta(seconds=1 if kind == "older" else 0)
+        ).isoformat()
+        response = post(client, "inventory", usn, token, [volume])
+    elif kind == "heartbeat":
+        response = post(client, "heartbeat", usn, token, heartbeat(usn, before)["records"])
+    else:
+        obj = {
+            "kind": "object",
+            "volume_identity": "volume-a",
+            "file_id": "file-a",
+            "object_type": "FILE",
+            "name": "Отчёт.txt",
+            "relative_path": "Pilot/Отчёт.txt",
+            "occurred_at": before.isoformat(),
+        }
+        if kind == "rejected":
+            volume["occurred_at"] = (access.occurred_at + timedelta(hours=1)).isoformat()
+            obj["volume_identity"] = "unregistered-volume"
+            response = post(client, "inventory", usn, token, [volume, obj])
+        else:
+            response = post(client, "inventory", usn, token, [obj])
+    assert response.status_code == (409 if kind == "rejected" else 202)
+    with engine.connect() as conn:
+        assert not conn.scalar(
+            select(func.count())
+            .select_from(jobs)
+            .where(
+                jobs.c.payload["alias_window"].astext.is_not(None),
+            )
+        )
+        assert conn.scalar(select(volumes.c.last_seen_at)) == previous
+        if kind == "rejected":
+            assert conn.scalar(select(func.count()).select_from(ingest_batches)) == receipts
 
 
 @pytest.mark.parametrize("audit_first", [True, False])
@@ -303,6 +523,79 @@ def test_100k_indexed_bounded_candidate_plan(ingest_setup):
         "ix_audit_source_volume_path_time" in encoded or "ix_audit_source_time" in encoded
     ) and "Seq Scan" not in encoded
     assert plan[0]["Plan"]["Actual Rows"] <= 65
+
+
+def test_100k_alias_pages_bound_reads_with_other_sources_volumes_and_old_rows(ingest_setup):
+    from packages.shared.audit.engine import PAGE, alias_window_query
+    from packages.shared.models.activity import change_events
+    from packages.shared.models.core import source_nodes
+
+    _, engine, _, _, source = ingest_setup
+    other, now = uuid4(), datetime.now(UTC)
+    with engine.begin() as conn:
+        conn.execute(
+            insert(source_nodes).values(
+                id=other,
+                source_type="FILESERVER",
+                hostname="other.example.test",
+                instance_id="other",
+            )
+        )
+        conn.execute(
+            text("""INSERT INTO change_events
+          (id,source_node_id,volume_identity,event_type,occurred_at,file_id)
+          SELECT gen_random_uuid(),
+            CASE WHEN i BETWEEN 20066 AND 40000 THEN :other ELSE :source END,
+            CASE WHEN i BETWEEN 66 AND 20065 THEN 'volume-b' ELSE 'volume-a' END,
+            'WRITE', CASE WHEN i>40000 THEN :now - interval '2 hours' ELSE :now END,
+            'synthetic-' || i::text FROM generate_series(1,100000) i"""),
+            {"source": source, "other": other, "now": now},
+        )
+        conn.execute(text("ANALYZE change_events"))
+        ids = (
+            conn.execute(
+                select(change_events.c.id)
+                .where(
+                    change_events.c.source_node_id == source,
+                    change_events.c.volume_identity == "volume-a",
+                    change_events.c.occurred_at == now,
+                )
+                .order_by(change_events.c.id)
+            )
+            .scalars()
+            .all()
+        )
+        assert len(ids) == 65
+        seen = []
+        for offset in (0, PAGE, PAGE * 2):
+            query = alias_window_query(
+                source,
+                "volume-a",
+                now - timedelta(hours=1),
+                now + timedelta(seconds=1),
+                after_at=now if offset else None,
+                after=ids[offset - 1] if offset else None,
+            )
+            compiled = query.compile(dialect=engine.dialect, compile_kwargs={"literal_binds": True})
+            plan = conn.execute(
+                text(
+                    "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + str(compiled),
+                )
+            ).scalar_one()[0]["Plan"]
+
+            def nodes(p):
+                return [p] + [n for child in p.get("Plans", []) for n in nodes(child)]
+
+            assert all(n["Node Type"] != "Seq Scan" for n in nodes(plan))
+            assert max(n.get("Rows Removed by Filter", 0) for n in nodes(plan)) <= 65, json.dumps(
+                plan
+            )
+            assert plan["Shared Hit Blocks"] + plan.get("Shared Read Blocks", 0) <= 128, json.dumps(
+                plan
+            )
+            assert plan["Actual Rows"] <= PAGE + 1
+            seen.extend(row["id"] for row in conn.execute(query).mappings().all()[:PAGE])
+        assert seen == ids
 
 
 def test_recent_heartbeat_with_lagging_usn_cursor_cannot_close_historical_window(setup):

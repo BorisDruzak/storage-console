@@ -37,7 +37,7 @@ from packages.shared.models.audit import (
     audit_identity_observations,
     audit_streams,
 )
-from packages.shared.models.core import collector_heartbeats, collectors, source_nodes
+from packages.shared.models.core import collector_heartbeats, collectors, source_nodes, volumes
 from packages.shared.models.jobs import ingest_batches
 from packages.shared.models.security import audit_log
 
@@ -134,6 +134,7 @@ def accept[T: Record](engine: Engine, kind: str, batch: BatchEnvelope[T], token:
                 )
                 .returning(ingest_batches.c.id)
             )
+            alias_windows: list[dict[str, str]] = []
             for record in batch.records:
                 if isinstance(record, HeartbeatRecord):
                     if audit_present:
@@ -181,7 +182,31 @@ def accept[T: Record](engine: Engine, kind: str, batch: BatchEnvelope[T], token:
                         )
                     )
                 elif isinstance(record, VolumeRecord | ShareRecord | FileObjectRecord):
+                    alias_before = None
+                    if (
+                        isinstance(record, VolumeRecord)
+                        and collector["collector_type"] == "WINDOWS"
+                        and audit_present
+                    ):
+                        alias_before = connection.scalar(
+                            select(volumes.c.last_seen_at).where(
+                                volumes.c.source_node_id == source,
+                                volumes.c.unique_identity == record.unique_identity,
+                            )
+                        )
                     inventory(connection, source, record)
+                    if (
+                        isinstance(record, VolumeRecord)
+                        and alias_before is not None
+                        and record.occurred_at > alias_before
+                    ):
+                        alias_windows.append(
+                            {
+                                "volume_identity": record.unique_identity,
+                                "start_at": alias_before.isoformat(),
+                                "end_at": record.occurred_at.isoformat(),
+                            }
+                        )
                     if (
                         isinstance(record, FileObjectRecord)
                         and collector["collector_type"] == "WINDOWS"
@@ -256,6 +281,17 @@ def accept[T: Record](engine: Engine, kind: str, batch: BatchEnvelope[T], token:
                     {"receipt_id": str(receipt_id)},
                     "audit:" + str(receipt_id),
                 )
+                for index, window in enumerate(alias_windows):
+                    enqueue(
+                        connection,
+                        "audit_correlate",
+                        {
+                            "receipt_id": str(receipt_id),
+                            "alias_index": index,
+                            "alias_window": window,
+                        },
+                        "audit:" + str(receipt_id) + ":alias:" + str(index),
+                    )
     except IngestConflict as error:
         raise HTTPException(409, detail=str(error)) from None
     except SQLAlchemyError:
