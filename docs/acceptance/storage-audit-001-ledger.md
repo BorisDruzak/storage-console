@@ -2,7 +2,7 @@
 
 Задача: docs/tasks/storage-audit-001-windows-security-attribution.md
 
-**Статус:** A PASS → B IN_PROGRESS → C BLOCKED (отдельное разрешение отсутствует).
+**Статус:** A PASS → B PASS → C BLOCKED (отдельное разрешение отсутствует).
 Следующий этап не начинается до предыдущего PASS.
 
 ## Выполнение 2026-10-13 — этап A
@@ -98,10 +98,14 @@
   никаких SACL/auditpol/GPO/USN/SMB/file CRUD mutations. Original 72h FAIL сохраняется.
 
 GATE A: PASS.
-GATE B: IN_PROGRESS — начинается с accepted merged-main SHA и повторной сверки Issue #22.
+Исторический статус при закрытии A: GATE B IN_PROGRESS — начинается с accepted
+merged-main SHA и повторной сверки Issue #22.
 GATE C: BLOCKED — нет отдельного разрешения на новую службу, pilot root, SACL/policy и CRUD.
 
-## Выполнение 2026-10-13 — этап B (code verified, publication pending)
+## Исторический ход 2026-10-13 — этап B
+
+Промежуточные pending/failure ниже относятся к указанным ревизиям;
+актуальный итог — в разделе «GATE B PASS».
 
 - Branch `codex/storage-audit-001-b`, base accepted A merged-main
   dd65c4844e540f235b23f3c456ec09d8784f62e5. Fresh origin/main совпадает;
@@ -203,6 +207,63 @@ GATE C: BLOCKED — нет отдельного разрешения на нов
   persistent draining state and a separate pending outcome. GREEN runtime/delivery
   33 PASS; no checkpoint/coverage advance on timeout. Exact native CI still required.
 
+### GATE B PASS — 2026-10-13
+
+- PR B https://github.com/BorisDruzak/storage-console/pull/25 merged.
+  Final source head 9bc560319c29d0da955d143b627d167e3d735270.
+  Exact-head CI https://github.com/BorisDruzak/storage-console/actions/runs/38427397293:
+  backend/frontend/windows-pilot/compose-smoke/production-smoke/secrets SUCCESS,
+  sonar SKIPPED (unconfigured).
+- Final native Windows: Audit 80 PASS, original CLI 14 PASS, SCM/runtime 81 PASS,
+  USN 67 PASS, actual USN HTTPS/PostgreSQL/Activity 1 PASS. Installed Audit owns
+  its LocalSystem process/state/DPAPI, captures scoped real runner Security events,
+  preserves a committed-but-unacknowledged receipt and retained bytes across restart.
+  Strict stale handling remains; concurrent signal and native timeout regressions PASS.
+- Final Python 3.13/PostgreSQL CI: 860 PASS / 84 platform skips. Deployment tests,
+  migration upgrade/check/downgrade/upgrade, Ruff, mypy (122 source files plus
+  deployment scripts), shellcheck, generated OpenAPI and secret scan PASS.
+  Frontend 133 PASS and Playwright 14 PASS; final isolated runtime/delivery/real HTTPS
+  focus 34 PASS. Independent focused reviews: no open Critical/Important findings.
+- Merged main 3d018245a91bec2092e10f38fb06e0c51c967970.
+  Exact push-main CI https://github.com/BorisDruzak/storage-console/actions/runs/38428786928:
+  all six mandatory jobs SUCCESS, sonar SKIPPED. Deployment waited for this result.
+- Fresh verified custom PostgreSQL backup and checksum/decryption-verified encrypted
+  off-VM copy prepared before deployment; original API/Web/config retained for rollback.
+  No destructive schema downgrade or DB restore performed. Migration 0007 is additive.
+- Deployment uses a fresh clean checkout of the exact merged SHA, preserving the
+  original active checkout. Initial scoped build failures occurred before writer stop;
+  read-only confirmation still showed original API SHA and schema 0006. The operations
+  container required a checksum-verified official Buildx binary and writable temporary
+  Buildx state. Host-global plugin installation and public lifecycle edits NONE.
+  Original canonical preflight/deploy/healthcheck gates then PASS with actual host NTP proof.
+- Actual central API/worker/Web image revisions all
+  3d018245a91bec2092e10f38fb06e0c51c967970; PostgreSQL schema 0007;
+  API/worker/Web/PostgreSQL all HEALTHY. Strict TLS, HTTP redirect, health/readiness,
+  root 200 and unauthenticated API 401 PASS.
+- Genuine admin Chromium, ru-RU/Asia-Yekaterinburg, strict TLS: login/Sources/Activity
+  200; Windows Security Audit NOT_CONFIGURED, empty authorized POST search without
+  query filters, old USN change has NULL actor and explicit uncertainty. Desktop,
+  mobile 390px and reload PASS, horizontal overflow/page errors 0. Sensitive screenshots
+  and snapshots remain in the approved private evidence location. No production fixture.
+- Existing source ID and WINDOWS collector ID/count preserved, heartbeat and cursor
+  advanced after deployment, USN HEALTHY and CONTINUOUS_SINCE_BASELINE before/after.
+  Existing token acceptance and historical data retained; no USN reinstall/restart.
+  Isolated 0/1/2-collector and all nonadmin 403 regressions PASS. Real central evidence
+  remains absent until an authorized pilot; no real nonadmin accounts created for tests.
+- Issue #22 remains OPEN; latest main synchronized before merge, no competing open PR.
+  Existing timeline/path algorithms retained; only equivalent sensitive-read guard added.
+- FILESERVER installation, SACL/audit policy/GPO changes and synthetic file CRUD NONE.
+  GATE C BLOCKED. Private Russian operator plan prepared: two accounts/two PCs,
+  30-minute window, <=20 total sanctioned operations, <=2 MiB, precise approval fields,
+  stop conditions, rollback and cleanup/service disposition. Ordinary inventory schedule
+  must admit the <=60-second identity witness; cadence/USN changes are not a workaround.
+  Actor/client proof for real domain users remains NOT ACCEPTED, not implied by CI.
+- Prepared pilot wheel source 3d018245a91bec2092e10f38fb06e0c51c967970;
+  SHA-256 b05d99390fd211cc778d0d850a8390132cb441d460e40441847a5f59b21421ab.
+  Transfer checksum verified; all 124 packaged Python sources match committed source
+  with CRLF/LF normalization. Stored privately, NOT_INSTALLED on FILESERVER.
+  This is package preparation, not exact-artifact installed/live acceptance.
+
 ## Baseline (каждый раз перепроверять)
 
 - Baseline documentation main перед созданием задачи: 34d49cc5c1aa42953ce3d400ff9e9ddc448bcac9.
@@ -240,7 +301,7 @@ Remaining blocker / next step authorized:
 
 ## B — central evidence и correlation engine
 
-GATE B: IN_PROGRESS — completed code checks above; publication/deployment pending.
+GATE B: PASS — completed exact CI and central live checks above; template below is historical.
 
 ~~~text
 Source SHA / PR / merged SHA / exact CI:
