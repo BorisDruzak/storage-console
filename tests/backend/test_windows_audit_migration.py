@@ -58,7 +58,7 @@ def test_revision_preserves_usn_and_blocks_evidence_mutation(monkeypatch):
                     occurred_at=now,
                 )
             )
-        command.upgrade(config, "0007")
+        command.upgrade(config, "head")
         command.check(config)
         with engine.begin() as conn:
             conn.execute(
@@ -75,6 +75,17 @@ def test_revision_preserves_usn_and_blocks_evidence_mutation(monkeypatch):
                     digest="b" * 64,
                 )
             )
+        command.downgrade(config, "0007")
+        with engine.connect() as conn:
+            assert conn.execute(select(change_events.c.id)).scalar_one() == change
+            assert len(conn.execute(select(audit_evidence)).all()) == 1
+            assert not conn.scalar(
+                text("""SELECT count(*) FROM pg_indexes
+                WHERE schemaname=current_schema()
+                AND indexname='ix_changes_source_volume_time_id'""")
+            )
+        command.upgrade(config, "head")
+        command.check(config)
         for statement in (
             "UPDATE windows_audit_evidence SET digest=repeat('c',64)",
             "DELETE FROM windows_audit_evidence",

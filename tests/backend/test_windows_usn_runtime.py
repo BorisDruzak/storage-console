@@ -2,6 +2,7 @@ import json
 import threading
 import time
 from dataclasses import replace
+from datetime import datetime
 
 from test_windows_runtime import prepared
 
@@ -183,8 +184,6 @@ def test_default_thirty_second_config_publishes_usn_proof_before_it_expires(tmp_
     config = loaded.config.model_copy(update={"settings": loaded.config.settings.model_copy(
         update={"heartbeat_seconds":30})})
     loaded = replace(loaded, config=config, usn_enabled=True)
-    started = time.monotonic()
-
     class Capture:
         def poll(self):
             return CaptureReport(0, 0, True, ())
@@ -192,17 +191,37 @@ def test_default_thirty_second_config_publishes_usn_proof_before_it_expires(tmp_
         def stop(self, grace):
             return CaptureReport(0, 0, False, ("STOPPED",))
 
+    clock = [0.0]
     runtime = Runtime(loaded, capture_factory=Capture, usn_factory=Capture,
-                      monotonic=lambda:(time.monotonic()-started)*20)
+                      monotonic=lambda: clock[0])
     stop = threading.Event()
     thread = threading.Thread(target=runtime.run, args=(stop,))
     thread.start()
     try:
-        deadline = time.monotonic()+1.2
-        while len(loaded.transport.records)<3 and time.monotonic()<deadline:
-            time.sleep(0.01)
-        assert len(loaded.transport.records)>=3
-        assert loaded.transport.records[-1]["cursor"].startswith("ntfs-usn:continuous:")
+        def received(count):
+            deadline = time.monotonic() + 5
+            while len(loaded.transport.records) < count and time.monotonic() < deadline:
+                time.sleep(0.01)
+            assert len(loaded.transport.records) >= count
+
+        def completed_usn(count):
+            deadline = time.monotonic() + 5
+            while sum(e.kind == "usn" and e.code is None for e in runtime.events) < count:
+                assert time.monotonic() < deadline
+                time.sleep(0.01)
+
+        received(1)
+        completed_usn(1)
+        for value, count in ((5.0, 2), (10.0, 3)):
+            clock[0] = value
+            received(count)
+            assert loaded.transport.records[-1]["cursor"].startswith("ntfs-usn:continuous:")
+            row = loaded.transport.records[-1]
+            proof = int(row["cursor"].split(":")[2]) / 1000
+            observed = datetime.fromisoformat(row["occurred_at"].replace("Z", "+00:00")).timestamp()
+            assert 0 <= observed - proof < 15
+            # Delivery precedes scheduling; wait for the following capture to finish.
+            completed_usn(count)
         assert loaded.config.settings.heartbeat_seconds == 30
     finally:
         stop.set()

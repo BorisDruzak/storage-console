@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, literal, or_, select, tuple_
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Connection, RowMapping
 from sqlalchemy.sql import Select
@@ -27,6 +27,40 @@ from .keys import ordinal_key, path_key
 
 PAGE = 32
 CANDIDATES = 64
+
+
+def alias_window_query(
+    source: UUID,
+    volume: str,
+    start: datetime,
+    end: datetime,
+    *,
+    after_at: datetime | None = None,
+    after: UUID | None = None,
+) -> Select[Any]:
+    key = tuple_(
+        change_events.c.volume_identity,
+        change_events.c.occurred_at,
+        change_events.c.id,
+    )
+    if (after_at is None) != (after is None):
+        raise ValueError("INVALID_ALIAS_CURSOR")
+    if after_at is not None:
+        if after_at.tzinfo is None or not start - WINDOW <= after_at <= end + WINDOW:
+            raise ValueError("INVALID_ALIAS_CURSOR")
+        lower = key > tuple_(literal(volume), literal(after_at), literal(after))
+    else:
+        lower = key >= tuple_(literal(volume), literal(start - WINDOW), literal(UUID(int=0)))
+    query = select(change_events).where(
+        change_events.c.source_node_id == source,
+        lower,
+        key <= tuple_(literal(volume), literal(end + WINDOW), literal(UUID(int=(1 << 128) - 1))),
+    )
+    return query.order_by(
+        change_events.c.volume_identity,
+        change_events.c.occurred_at,
+        change_events.c.id,
+    ).limit(PAGE + 1)
 
 
 def candidate_query(source: UUID, volume: str, paths: list[str], at: datetime) -> Select[Any]:
@@ -387,6 +421,7 @@ def process(connection: Connection, job: RowMapping) -> None:
     source = connection.scalar(
         select(collectors.c.source_node_id).where(collectors.c.id == receipt["collector_id"])
     )
+    assert source is not None
     connection.execute(select(func.set_config("lock_timeout", "2s", True)))
     connection.execute(select(func.pg_advisory_xact_lock(lock_key("audit-source:" + str(source)))))
     # Health and inventory close prior windows; bounded historical matching runs
@@ -401,16 +436,43 @@ def process(connection: Connection, job: RowMapping) -> None:
         change_events.c.occurred_at >= receipt["first_event_at"] - margin,
         change_events.c.occurred_at <= receipt["last_event_at"] + margin,
     )
-    if "after" in payload:
-        query = query.where(change_events.c.id > UUID(payload["after"]))
-    rows = connection.execute(query.order_by(change_events.c.id).limit(PAGE + 1)).mappings().all()
+    if "alias_window" in payload:
+        window = payload["alias_window"]
+        start = datetime.fromisoformat(window["start_at"])
+        end = datetime.fromisoformat(window["end_at"])
+        if (
+            receipt["kind"] != "inventory"
+            or start.tzinfo is None
+            or end.tzinfo is None
+            or start >= end
+            or not receipt["first_event_at"] <= end <= receipt["last_event_at"]
+        ):
+            raise ValueError("INVALID_ALIAS_WINDOW")
+        # A later mount witness can close an hour-old interval. Revisit that
+        # actual advanced interval only, never sweep unrelated source history.
+        query = alias_window_query(
+            source,
+            window["volume_identity"],
+            start,
+            end,
+            after_at=datetime.fromisoformat(payload["after_at"]) if "after" in payload else None,
+            after=UUID(payload["after"]) if "after" in payload else None,
+        )
+    else:
+        if "after" in payload:
+            query = query.where(change_events.c.id > UUID(payload["after"]))
+        query = query.order_by(change_events.c.id).limit(PAGE + 1)
+    rows = connection.execute(query).mappings().all()
     for row in rows[:PAGE]:
         correlate(connection, row)
     if len(rows) > PAGE:
-        next_payload = {"receipt_id": payload["receipt_id"], "after": str(rows[PAGE - 1]["id"])}
+        next_payload = {**payload, "after": str(rows[PAGE - 1]["id"])}
+        if "alias_window" in payload:
+            next_payload["after_at"] = rows[PAGE - 1]["occurred_at"].isoformat()
+        suffix = ":alias:" + str(payload["alias_index"]) if "alias_window" in payload else ""
         enqueue(
             connection,
             "audit_correlate",
             next_payload,
-            "audit:" + payload["receipt_id"] + ":" + next_payload["after"],
+            "audit:" + payload["receipt_id"] + suffix + ":" + next_payload["after"],
         )
