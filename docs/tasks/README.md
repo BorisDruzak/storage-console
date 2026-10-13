@@ -84,3 +84,13 @@ CLI/wheel и disposable Windows → HTTPS → PostgreSQL → русская Web 
 После каждого этапа — RED→GREEN, отдельный PR, exact-main CI, реальная Web Console, приёмка
 в [журнале](../acceptance/mvp-005-execution-ledger.md). Нет повторного 72h soak, reboot,
 изменений Collector/USN/ACL/SMB, автоматического расширения scope. После C — STOP.
+
+## STORAGE-AUDIT-001 — независимое подтверждение исполнителя файловой операции
+
+Issue #23: https://github.com/BorisDruzak/storage-console/issues/23
+
+- [Полное ТЗ](storage-audit-001-windows-security-attribution.md): Windows Security 4663/4660/4624 и сопоставление с существующим NTFS USN.
+- [Журнал приёмки](../acceptance/storage-audit-001-ledger.md): A collector, B central correlation, C operator-gated real pilot с двумя доменными пользователями и двумя ПК.
+- Независимые service, bookmark, state/outbox. Сопоставление audit/USN не должно портить source freshness.
+- Пересечение с Issue #22 (MVP-005): совместить admin-only History/RBAC, не перетирать параллельную разработку.
+- **Разработка разрешена**; установка Audit службы, смена auditpol/GPO/SACL, тестовое файловое CRUD на FILESERVER — **только после отдельного согласия оператора**. Никаких 5145/WEF/версий файлов/72h soak в этой задаче.
