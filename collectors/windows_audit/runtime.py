@@ -10,7 +10,7 @@ from typing import Any, Protocol, cast
 from uuid import UUID, uuid4
 
 from .events import parse_event
-from .native import STALE, EventLogError
+from .native import STALE, EventLogError, EventLogPending
 from .scope import AuditScope, Selector
 from .store import AuditStore
 
@@ -65,6 +65,8 @@ class Capture:
             return "gap"
         try:
             self.pending = self.pending or self.reader.next()
+        except EventLogPending:
+            return "pending"
         except EventLogError as error:
             if error.code in STALE:
                 self.store.latch_gap("AUDIT_BOOKMARK_STALE")
@@ -276,6 +278,8 @@ def _capture(
                 if result == "gap":
                     health = "GAP"
                     break
+                if result == "pending":
+                    break  # OBSERVE, without advancing the historical coverage timestamp.
                 if result == "idle":
                     diagnostics["observed_through_at"] = datetime.now(UTC).isoformat()
                     if config.mode == "deliver" and not diagnostics.get("bounds_error"):

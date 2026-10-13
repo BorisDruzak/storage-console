@@ -35,6 +35,10 @@ class AuditReadFailure(RuntimeFailure):
         )
 
 
+class EventLogPending(Exception):
+    """A timed-out native read does not prove the subscription was drained."""
+
+
 def api() -> Any:
     if os.name != "nt":
         raise EventLogError(50)
@@ -118,6 +122,7 @@ class SecurityReader:
         anchor_digest: str | None = None,
     ) -> None:
         self.api, self.bookmark, self.subscription, self.signal = api(), None, None, None
+        self._draining = False
         self.kernel = vars(ctypes)["WinDLL"]("kernel32", use_last_error=True)
         self.kernel.CreateEventW.argtypes = [P, D, D, W]
         self.kernel.CreateEventW.restype = P
@@ -166,21 +171,26 @@ class SecurityReader:
             self.api.EvtClose(query)
 
     def next(self) -> tuple[str, str] | None:
-        ready = self.kernel.WaitForSingleObject(self.signal, 0)
-        if ready == 258:  # WAIT_TIMEOUT: no subscription signal; never block SCM stop.
-            return None
-        if ready != 0:  # WAIT_OBJECT_0 is the only valid event-object result.
-            raise EventLogError(vars(ctypes)["get_last_error"]())
+        if not self._draining:
+            ready = self.kernel.WaitForSingleObject(self.signal, 0)
+            if ready == 258:  # WAIT_TIMEOUT: no subscription signal; never block SCM stop.
+                return None
+            if ready != 0:  # WAIT_OBJECT_0 is the only valid event-object result.
+                raise EventLogError(vars(ctypes)["get_last_error"]())
+            # Reset before draining, retaining this state across bounded next()
+            # calls. An arrival after the empty snapshot retains its wakeup.
+            check(self.kernel.ResetEvent(self.signal))
+            self._draining = True
         handles, returned = (P * 1)(), D()
         if not self.api.EvtNext(self.subscription, 1, handles, 0, 0, ctypes.byref(returned)):
             code = vars(ctypes)["get_last_error"]()
             # Pull subscriptions also report ERROR_INVALID_OPERATION with zero
             # results when drained (same native edge handled by upstream pywin32).
             if code == 259 or (code == 4317 and returned.value == 0):
-                check(self.kernel.ResetEvent(self.signal))
+                self._draining = False
                 return None
             if code == 1460:
-                return None
+                raise EventLogPending()
             raise EventLogError(code)
         handle = handles[0]
         try:

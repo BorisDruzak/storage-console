@@ -244,29 +244,29 @@ def test_native_read_failure_preserves_numeric_code_without_exception_message():
 
 
 @pytest.mark.parametrize("error", [259, 4317])
-def test_empty_pull_subscription_resets_signal_without_crashing(monkeypatch, error):
+def test_empty_pull_subscription_resets_before_drain_without_crashing(monkeypatch, error):
     import ctypes
     from types import SimpleNamespace
 
     native = module("native")
     calls = []
     reader = native.SecurityReader.__new__(native.SecurityReader)
-    reader.subscription, reader.signal = 100, 101
+    reader.subscription, reader.signal, reader._draining = 100, 101, False
     reader.kernel = SimpleNamespace(
         WaitForSingleObject=lambda handle, timeout: 0,
         ResetEvent=lambda handle: calls.append(("reset", handle)) or True,
     )
-    reader.api = SimpleNamespace(EvtNext=lambda *args: False)
+    reader.api = SimpleNamespace(EvtNext=lambda *args: calls.append(("next", 100)) or False)
     monkeypatch.setattr(ctypes, "get_last_error", lambda: error, raising=False)
     assert reader.next() is None
-    assert calls == [("reset", 101)]
+    assert calls == [("reset", 101), ("next", 100)]
 
 
 def test_unsignalled_pull_subscription_does_not_call_evt_next():
     from types import SimpleNamespace
 
     reader = module("native").SecurityReader.__new__(module("native").SecurityReader)
-    reader.subscription, reader.signal = 100, 101
+    reader.subscription, reader.signal, reader._draining = 100, 101, False
     reader.kernel = SimpleNamespace(WaitForSingleObject=lambda handle, timeout: 258)
     reader.api = SimpleNamespace()
     assert reader.next() is None
@@ -279,8 +279,10 @@ def test_invalid_or_stale_pull_subscription_is_not_an_empty_result(monkeypatch, 
 
     native = module("native")
     reader = native.SecurityReader.__new__(native.SecurityReader)
-    reader.subscription, reader.signal = 100, 101
-    reader.kernel = SimpleNamespace(WaitForSingleObject=lambda handle, timeout: 0)
+    reader.subscription, reader.signal, reader._draining = 100, 101, False
+    reader.kernel = SimpleNamespace(
+        WaitForSingleObject=lambda handle, timeout: 0, ResetEvent=lambda handle: True
+    )
 
     def failed(*args):
         ctypes.cast(args[-1], ctypes.POINTER(native.D)).contents.value = returned
@@ -291,3 +293,50 @@ def test_invalid_or_stale_pull_subscription_is_not_an_empty_result(monkeypatch, 
     with pytest.raises(native.EventLogError) as caught:
         reader.next()
     assert caught.value.code == error
+
+
+def test_subscription_arrival_during_empty_probe_keeps_wakeup(monkeypatch):
+    import ctypes
+    from types import SimpleNamespace
+
+    native = module("native")
+    reader = native.SecurityReader.__new__(native.SecurityReader)
+    reader.subscription, reader.signal, reader._draining = 100, 101, False
+    signal, probes = [True], []
+
+    def reset(handle):
+        signal[0] = False
+        return True
+
+    def next_event(*args):
+        probes.append(1)
+        # Publisher arrives immediately after the zero-result snapshot.
+        signal[0] = True
+        return False
+
+    reader.kernel = SimpleNamespace(
+        WaitForSingleObject=lambda *args: 0 if signal[0] else 258, ResetEvent=reset
+    )
+    reader.api = SimpleNamespace(EvtNext=next_event)
+    monkeypatch.setattr(ctypes, "get_last_error", lambda: 259, raising=False)
+    assert reader.next() is None and reader.next() is None
+    assert len(probes) == 2, "PUBLISHED_EVENT_WAKEUP_WAS_LOST"
+
+
+def test_evt_timeout_is_pending_and_does_not_advance_coverage(monkeypatch, tmp_path):
+    import ctypes
+    from types import SimpleNamespace
+
+    native = module("native")
+    reader = native.SecurityReader.__new__(native.SecurityReader)
+    reader.subscription, reader.signal, reader._draining = 100, 101, False
+    reader.kernel = SimpleNamespace(
+        WaitForSingleObject=lambda *args: 0, ResetEvent=lambda handle: True
+    )
+    reader.api = SimpleNamespace(EvtNext=lambda *args: False)
+    monkeypatch.setattr(ctypes, "get_last_error", lambda: 1460, raising=False)
+    capture = runtime(tmp_path, [])
+    capture.reader = reader
+    before = capture.store.checkpoint()
+    assert capture.step() == "pending"
+    assert capture.store.checkpoint() == before

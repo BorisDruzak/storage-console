@@ -272,11 +272,23 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
             return conn.scalar(select(func.count()).select_from(audit_evidence)) >= 2
 
     codes = []
+    lost_acks = []
 
     async def observed_app(scope, receive, send):
         async def observed_send(message):
             if message["type"] == "http.response.start" and len(codes) < 16:
                 codes.append(message["status"])
+            if (
+                scope["path"] == "/api/v1/ingest/audit-events"
+                and message["type"] == "http.response.start"
+                and message["status"] == 202
+                and received()
+            ):
+                # Persist the actual receipt, but withhold the successful ACK.
+                # Restart must retain the queued body; successful ACKs may remove it.
+                if len(lost_acks) < 16:
+                    lost_acks.append(True)
+                message = {**message, "status": 503}
             await send(message)
 
         await client.app(scope, receive, observed_send)
@@ -299,6 +311,7 @@ def test_installed_wheel_own_scm_system_dpapi_and_restart(
             received,
             lambda: {"http_status_codes": codes},
         )
+        assert lost_acks, "NATIVE_LOST_ACK_NOT_EXERCISED"
 
 
 def _installed_wheel_scm(

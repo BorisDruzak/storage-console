@@ -191,6 +191,17 @@ GATE C: BLOCKED — нет отдельного разрешения на нов
   GREEN runtime/delivery 31 PASS, Ruff/mypy PASS. Exact native CI remains required.
   References: https://learn.microsoft.com/en-us/windows/win32/wes/subscribing-to-events
   and https://github.com/mhammond/pywin32/blob/main/win32/src/win32evtlog.i.
+- Source 254b328593179623fb6f06df91c1fbc8704a6ea0 / run 38426238295:
+  actual read/delivery progressed; Audit 77 PASS, 1 FAIL at restart retention.
+  Fixture had asserted an unchanging queue after successful ACK, although successful
+  delivery legitimately removes the head. Native fixture now withholds the ACK only
+  after actual PostgreSQL acceptance of at least two evidence records, and proves
+  that withheld-ACK branch was exercised; original record-count criterion retained.
+  Independent review found two signal/coverage edge cases: reset-after-empty could
+  lose a concurrent arrival, and EvtNext timeout did not prove drained coverage.
+  Both reproduced RED (4 failures, 4 negative passes), fixed reset-before-drain with
+  persistent draining state and a separate pending outcome. GREEN runtime/delivery
+  33 PASS; no checkpoint/coverage advance on timeout. Exact native CI still required.
 
 ## Baseline (каждый раз перепроверять)
 
