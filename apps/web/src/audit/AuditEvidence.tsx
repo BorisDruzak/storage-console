@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ReadState, timestamp } from '../components/ReadState';
 import { RawValue } from '../components/RawValue';
+import { DirectoryNames } from './DirectoryNames';
+import { DirectoryStatus } from './DirectoryStatus';
 import { link } from '../navigation';
 import { auditStream, auditObject, changeAudit, searchAudit, type AuditSearch, type AuditRecord } from './client';
 
@@ -21,7 +23,7 @@ function Evidence({ record }: { record: AuditRecord }) {
       <dt>{t('securityAudit.fields.received')}</dt><dd>{timestamp(record.first_received_at, i18n.language)}</dd>
       <dt>{t('securityAudit.fields.digest')}</dt><dd><code>{record.digest}</code></dd>
       <dt>{t('securityAudit.fields.evidence')}</dt><dd><code>{record.id}</code></dd>
-    </dl></article>;
+    </dl><DirectoryNames account={record.account_observation} client={record.client_observation} /></article>;
 }
 
 export function AuditSourceStatus({ source }: { source: string }) {
@@ -35,7 +37,7 @@ export function AuditSourceStatus({ source }: { source: string }) {
       <dt>{t('securityAudit.fields.accepted')}</dt><dd>{timestamp(data.accepted_at ?? null, i18n.language) ?? t('common.unavailable')}</dd>
       {data.diagnostics ? <>{DIAGNOSTICS.map(key =>
         <div key={key}><dt>{t(`securityAudit.diagnostics.${key}`)}</dt><dd><RawValue value={data.diagnostics?.[key] == null ? null : String(data.diagnostics[key])} /></dd></div>)}</> : null}
-    </dl></> : null}</ReadState></section>;
+    </dl></> : null}</ReadState><DirectoryStatus source={source} /></section>;
 }
 
 export function AuditChangeDetails({ id }: { id: string }) {
@@ -52,7 +54,7 @@ export function AuditChangeDetails({ id }: { id: string }) {
       <dt>{t('securityAudit.fields.client_ip')}</dt><dd><RawValue value={data.actor?.client_ip ?? null} /></dd>
       <dt>{t('securityAudit.fields.workstation')}</dt><dd><RawValue value={data.actor?.workstation ?? null} /></dd>
       <dt>{t('securityAudit.fields.identityEvidence')}</dt><dd><RawValue value={data.actor?.identity_evidence_id ?? null} /></dd>
-    </dl><p>{t('securityAudit.legalBoundary')}</p>
+    </dl><DirectoryNames account={data.actor?.account_observation} client={data.actor?.client_observation} /><p>{t('securityAudit.legalBoundary')}</p>
     {data.object_id ? <a href={link('activity', { audit_object_id: data.object_id })}>{t('securityAudit.object')}</a> : null}
     <p>{t(`securityAudit.states.${data.stream.state}`)}</p>
     {data.candidates.map(candidate => <div key={candidate.evidence.id}><p>{t('securityAudit.method')} <code>{candidate.method}</code></p><p>{t(`securityAudit.reasons.${candidate.reason}`, {defaultValue: t('securityAudit.reasonUnknown')})}</p><Evidence record={candidate.evidence} /></div>)}

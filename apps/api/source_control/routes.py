@@ -59,9 +59,17 @@ def router(engine: Engine) -> APIRouter:
 
     @result.get("/sources/{source_id}/collectors")
     def list_collectors(
-        source_id: UUID, _actor: Reader, limit: Limit = 50, offset: Offset = 0
+        source_id: UUID, actor: Reader, limit: Limit = 50, offset: Offset = 0
     ) -> Page[CollectorView]:
-        return _control(lambda: registry.list_collectors(engine, source_id, limit, offset))
+        return _control(
+            lambda: registry.list_collectors(
+                engine,
+                source_id,
+                limit,
+                offset,
+                include_directory=actor.can("read_sensitive_activity"),
+            )
+        )
 
     @result.post("/collectors/{collector_id}/rotate-token", dependencies=write)
     def rotate(collector_id: UUID, _data: RotateCollector, actor: Admin) -> CollectorCredential:

@@ -1,18 +1,20 @@
 """Admin-only projections; sensitive filters are CSRF-protected POST bodies."""
 
 from datetime import timedelta
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.engine import Connection, Engine, RowMapping
 
+from apps.api.directory_read import directory_stream, names
 from apps.api.ingest import ApiError
 from apps.api.read.sources import database_time, require_source, snapshot
 from apps.api.read.validity import stamp
 from apps.api.user_auth.dependencies import require_csrf, require_permission
 from packages.contracts.audit import (
+    AuditActor,
     AuditCandidateView,
     AuditHealth,
     AuditObject,
@@ -22,6 +24,7 @@ from packages.contracts.audit import (
     AuditStream,
     ChangeAudit,
 )
+from packages.contracts.directory import DirectoryStream
 from packages.shared.models.activity import change_events
 from packages.shared.models.audit import (
     audit_candidates,
@@ -32,7 +35,7 @@ from packages.shared.models.audit import (
 from packages.shared.models.core import collectors, filesystem_objects, source_nodes, volumes
 
 
-def record(row: RowMapping) -> AuditRecordView:
+def record(row: RowMapping, observations: dict[str, Any] | None = None) -> AuditRecordView:
     return AuditRecordView(
         id=row["id"],
         source_id=row["source_node_id"],
@@ -45,6 +48,7 @@ def record(row: RowMapping) -> AuditRecordView:
             for key in ("record_id", "logon_id", "handle_id", "process_id", "access_mask")
             if row["payload"].get(key) is not None
         },
+        **(observations or {}),
     )
 
 
@@ -186,8 +190,16 @@ def router(engine: Engine) -> APIRouter:
                 .mappings()
                 .all()
             )
+            keys = [
+                (row["source_node_id"], row["payload"].get("sid"), row["payload"].get("client_ip"))
+                for row in rows[: filters.limit]
+            ]
+            observations = names(connection, keys, now)
             return AuditPage(
-                items=[record(row) for row in rows[: filters.limit]],
+                items=[
+                    record(row, observations.get(key))
+                    for row, key in zip(rows[: filters.limit], keys, strict=True)
+                ],
                 limit=filters.limit,
                 offset=filters.offset,
                 has_more=len(rows) > filters.limit,
@@ -241,22 +253,35 @@ def router(engine: Engine) -> APIRouter:
                 if verdict
                 else (health.state if health.state in ("GAP", "NOT_CONFIGURED") else "UNKNOWN")
             )
+            actor = dict(verdict["actor"]) if verdict and verdict["actor"] else None
+            keys = [
+                (row["source_node_id"], row["payload"].get("sid"), row["payload"].get("client_ip"))
+                for row in rows
+            ]
+            actor_key = (
+                (change["source_node_id"], actor["sid"], actor["client_ip"]) if actor else None
+            )
+            observations = names(
+                connection, keys + ([actor_key] if actor_key else []), health.evaluated_at
+            )
+            if actor is not None and actor_key is not None:
+                actor.update(observations.get(actor_key, {}))
             return ChangeAudit(
                 change_id=change_id,
                 object_id=change["object_id"],
                 classification=classification,
                 reason=verdict["reason"] if verdict else "NOT_EVALUATED",
                 rule_version=verdict["rule_version"] if verdict else None,
-                actor=verdict["actor"] if verdict else None,
+                actor=AuditActor.model_validate(actor) if actor is not None else None,
                 candidates=[
                     AuditCandidateView(
                         method=row["method"],
                         classification=row["class"],
                         reason=row["reason"],
                         rule_version=row["rule_version"],
-                        evidence=record(row),
+                        evidence=record(row, observations.get(key)),
                     )
-                    for row in rows
+                    for row, key in zip(rows, keys, strict=True)
                 ],
                 stream=health,
             )
@@ -286,5 +311,12 @@ def router(engine: Engine) -> APIRouter:
                 file_id=row["file_id"],
                 volume_identity=row["unique_identity"],
             )
+
+    @result.get("/sources/{source_id}/directory")
+    def directory_status(source_id: UUID, response: Response) -> DirectoryStream:
+        response.headers["Cache-Control"] = "no-store"
+        with snapshot(engine) as connection:
+            require_source(connection, source_id)
+            return directory_stream(connection, source_id, database_time(connection))
 
     return result

@@ -1,6 +1,6 @@
 # Bounded department audit Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add one operator-approved root and read-only directory enrichment while preserving history and bounded memory.
 
@@ -34,11 +34,11 @@
 
 **Interfaces:** Consumes existing Native.sacl_entry and policy. Produces scope_covered(root,sids,check,*,limit=256,max_depth=128,max_seconds=30,stopped=...,clock=...) -> bool and background ReadinessWorker snapshot with checked_at/duration/count; AuditConfig.readiness_max_objects <=100000, proof freshness <=60 seconds. Native calls use long-path aware metadata access.
 
-- [ ] Write and run RED for >256 approved objects, 52k wide synthetic entries without a width-sized pending list, depth/timeout/cancel/reparse/ACL failure and iterator cleanup.
-- [ ] Implement lazy DFS resource bounds and explicit validated configuration, preserving old defaults.
-- [ ] Write and run RED for background scan not blocking capture, stale/incomplete proof not HEALTHY, scan failure and worker stop cleanup.
-- [ ] Implement the readiness worker and typed proof diagnostics, preserving genuine policy/SACL mismatch GAP behavior.
-- [ ] Verify `pytest tests/backend/test_windows_audit_readiness.py tests/backend/test_windows_audit_large_readiness.py tests/backend/test_windows_audit_runtime.py tests/backend/test_windows_audit_delivery.py -q`, Ruff/mypy/OpenAPI. Record tests and commit.
+- [x] Write and run RED for >256 approved objects, 52k wide synthetic entries without a width-sized pending list, depth/timeout/cancel/reparse/ACL failure and iterator cleanup.
+- [x] Implement lazy DFS resource bounds and explicit validated configuration, preserving old defaults.
+- [x] Write and run RED for background scan not blocking capture, stale/incomplete proof not HEALTHY, scan failure and worker stop cleanup.
+- [x] Implement the readiness worker and typed proof diagnostics, preserving genuine policy/SACL mismatch GAP behavior.
+- [x] Verify `pytest tests/backend/test_windows_audit_readiness.py tests/backend/test_windows_audit_large_readiness.py tests/backend/test_windows_audit_runtime.py tests/backend/test_windows_audit_delivery.py -q`, Ruff/mypy/OpenAPI. Record tests and commit.
 
 ### Task 2: explicit USN scope extension
 
@@ -46,10 +46,10 @@
 
 **Interfaces:** Consumes Task1 stable resource bounds only. Produces extend_scope(state,new_roots,*,stopped=...) and restart-safe transition receipt. Normal activate remains strict. Outbox atomic transitions preserve batch bodies/digests and existing checkpoint cursor value.
 
-- [ ] RED: strict-superset validation, shrink/overlap/reparse rejection, queued byte identity, credentials/old roots/cursors/GAP preserved, new root unknown before fence, all crash boundaries fail closed or resume idempotently.
-- [ ] Implement staged bounded ancestry/fence admission, atomic checkpoint/config transition and operator CLI; no blind config/SQLite edits or shared rebaseline.
-- [ ] GREEN plus owned native new-root old-scope continuity and file-id/hard-link ambiguity tests.
-- [ ] Verify `pytest tests/backend/test_windows_scope_extension.py tests/backend/test_windows_usn_state.py tests/backend/test_windows_usn_capture.py tests/backend/test_windows_configuration.py -q`, full regression/native Windows/strict HTTPS. Commit; independently review A, fix RED→GREEN, PR A exact-head/main CI.
+- [x] RED: strict-superset validation, shrink/overlap/reparse rejection, queued byte identity, credentials/old roots/cursors/GAP preserved, new root unknown before fence, all crash boundaries fail closed or resume idempotently.
+- [x] Implement staged bounded ancestry/fence admission, atomic checkpoint/config transition and operator CLI; no blind config/SQLite edits or shared rebaseline.
+- [x] GREEN plus owned native new-root old-scope continuity and file-id/hard-link ambiguity tests.
+- [x] Verify `pytest tests/backend/test_windows_scope_extension.py tests/backend/test_windows_usn_state.py tests/backend/test_windows_usn_capture.py tests/backend/test_windows_configuration.py -q`, full regression/native Windows/strict HTTPS. Commit; independently review A, fix RED→GREEN, PR A exact-head/main CI.
 
 ### Task 3: bounded central resource admission
 
@@ -57,9 +57,9 @@
 
 **Interfaces:** Produces ASGI admission middleware for two heavyweight ingest slots and two heartbeat slots; excess returns 503/Retry-After without consuming request body. Production memory/swap budgets from spec; SQL connection pool within PostgreSQL40 connection budget.
 
-- [ ] RED: third heavy request refused immediately, heartbeat reserve works, exception/disconnect/oversize release, no partial ingest/receipt on refusal.
-- [ ] Implement admission and documented enforced container/PostgreSQL limits; retain retryable transport contract.
-- [ ] GREEN targeted integration plus actual Compose cgroup inspection/load fixture and full regression. Independent review, PR B and exact-head/main CI. Preserve all history and capture cursor semantics.
+- [x] RED: third heavy request refused immediately, heartbeat reserve works, exception/disconnect/oversize release, no partial ingest/receipt on refusal.
+- [x] Implement admission and documented enforced container/PostgreSQL limits; retain retryable transport contract.
+- [x] GREEN targeted integration plus actual Compose cgroup inspection/load fixture and full regression. Independent review, PR B and exact-head/main CI. Preserve all history and capture cursor semantics.
 
 ### Task 4: streamed directory observations and sensitive read enrichment
 

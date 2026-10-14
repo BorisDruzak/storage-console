@@ -14,6 +14,7 @@ from starlette.requests import Request
 from apps.api.audit_ingest import router as audit_ingest_router
 from apps.api.audit_read import router as audit_read_router
 from apps.api.body_limit import IngestBodyLimit
+from apps.api.directory_ingest import router as directory_ingest_router
 from apps.api.ingest import router as ingest_router
 from apps.api.ingest_admission import IngestAdmission
 from apps.api.read.routes import router as read_router
@@ -64,6 +65,7 @@ def create_app(
     application.include_router(auth_router())
     application.include_router(ingest_router(database))
     application.include_router(audit_ingest_router(database))
+    application.include_router(directory_ingest_router(database))
     application.include_router(audit_read_router(database))
     application.include_router(read_router(database, config.inventory_stale_seconds))
     application.include_router(source_router(database))

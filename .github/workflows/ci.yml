@@ -70,6 +70,12 @@ jobs:
         run: python -m pytest tests/backend/test_windows_cli.py tests/backend/test_windows_cli_native.py -q
       - name: Disposable PostgreSQL for native service tests
         run: python tests/deployment/prepare_windows_postgres.py
+      - name: Bounded directory protocol, installed script and owned native deadlines
+        run: >-
+          python -m pytest tests/backend/test_directory_contract.py
+          tests/backend/test_directory_resolver.py tests/backend/test_directory_native.py
+          tests/backend/test_directory_store.py tests/backend/test_directory_worker.py
+          tests/backend/test_directory_targets.py -q
       - name: Independent Security audit, strict native bookmark and installed SCM
         run: >-
           python -m pytest tests/backend/test_windows_audit_events.py

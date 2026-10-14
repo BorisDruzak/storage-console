@@ -1,6 +1,90 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "AccountObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "latest_attempt_state": {
+          "anyOf": [
+            {
+              "enum": [
+                "COLLECTING",
+                "COMPLETE",
+                "ERROR"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Latest Attempt State"
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Observed At"
+        },
+        "provenance": {
+          "const": "LDAP_KERBEROS_SIGNED_SEALED",
+          "default": "LDAP_KERBEROS_SIGNED_SEALED",
+          "title": "Provenance",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Snapshot Id"
+        },
+        "state": {
+          "enum": [
+            "CURRENT",
+            "STALE",
+            "UNKNOWN",
+            "PARTIAL",
+            "ERROR"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DirectoryUser"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "valid_for_ms": {
+          "default": 0,
+          "maximum": 900000,
+          "minimum": 0,
+          "title": "Valid For Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "AccountObservation",
+      "type": "object"
+    },
     "Activity": {
       "additionalProperties": false,
       "properties": {
@@ -263,6 +347,16 @@
           ],
           "title": "Account"
         },
+        "account_observation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AccountObservation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "boot_id": {
           "title": "Boot Id",
           "type": "string"
@@ -277,6 +371,16 @@
             }
           ],
           "title": "Client Ip"
+        },
+        "client_observation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientObservation"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "domain": {
           "anyOf": [
@@ -966,10 +1070,30 @@
     "AuditRecordView": {
       "additionalProperties": false,
       "properties": {
+        "account_observation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AccountObservation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "audit_collector_id": {
           "format": "uuid",
           "title": "Audit Collector Id",
           "type": "string"
+        },
+        "client_observation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClientObservation"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "digest": {
           "title": "Digest",
@@ -1411,6 +1535,137 @@
       "title": "ChangeAudit",
       "type": "object"
     },
+    "ClientObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "computer_guid": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Computer Guid"
+        },
+        "computer_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Computer Name"
+        },
+        "computer_sid": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Computer Sid"
+        },
+        "event_time_confirmed": {
+          "const": false,
+          "default": false,
+          "title": "Event Time Confirmed",
+          "type": "boolean"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Expires At"
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Observed At"
+        },
+        "provenance": {
+          "const": "DNS_PTR_FORWARD_AD_CURRENT",
+          "default": "DNS_PTR_FORWARD_AD_CURRENT",
+          "title": "Provenance",
+          "type": "string"
+        },
+        "ptr_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Ptr Name"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "DNS_UNAVAILABLE",
+                "PTR_MISSING",
+                "FORWARD_MISMATCH",
+                "DOMAIN_MISMATCH",
+                "COMPUTER_MISSING",
+                "COMPUTER_DISABLED",
+                "MULTIPLE_MATCHES",
+                "LDAP_UNAVAILABLE",
+                "LOCAL_ADDRESS",
+                "LOOKUP_LIMIT"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        },
+        "state": {
+          "enum": [
+            "CONFIRMED_CURRENT",
+            "STALE",
+            "UNKNOWN",
+            "AMBIGUOUS"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "valid_for_ms": {
+          "default": 0,
+          "maximum": 900000,
+          "minimum": 0,
+          "title": "Valid For Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "title": "ClientObservation",
+      "type": "object"
+    },
     "CollectorCredential": {
       "additionalProperties": false,
       "properties": {
@@ -1428,6 +1683,16 @@
           "format": "date-time",
           "title": "Created At",
           "type": "string"
+        },
+        "directory_scope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DirectoryScope"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "enabled": {
           "title": "Enabled",
@@ -1504,6 +1769,16 @@
           "format": "date-time",
           "title": "Created At",
           "type": "string"
+        },
+        "directory_scope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DirectoryScope"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "enabled": {
           "title": "Enabled",
@@ -1604,6 +1879,16 @@
           ],
           "title": "Collector Type",
           "type": "string"
+        },
+        "directory_scope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DirectoryScope"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -1663,6 +1948,192 @@
         "instance_id"
       ],
       "title": "CreateSource",
+      "type": "object"
+    },
+    "DirectoryScope": {
+      "additionalProperties": false,
+      "properties": {
+        "dns_domain": {
+          "maxLength": 253,
+          "minLength": 3,
+          "title": "Dns Domain",
+          "type": "string"
+        },
+        "domain_sid": {
+          "pattern": "^S-1-5-21-[0-9]{1,10}-[0-9]{1,10}-[0-9]{1,10}$",
+          "title": "Domain Sid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dns_domain",
+        "domain_sid"
+      ],
+      "title": "DirectoryScope",
+      "type": "object"
+    },
+    "DirectoryStream": {
+      "additionalProperties": false,
+      "properties": {
+        "error_code": {
+          "anyOf": [
+            {
+              "enum": [
+                "LDAP_UNAVAILABLE",
+                "DIRECTORY_LIMIT",
+                "DIRECTORY_STOPPED"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Error Code"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "latest_attempt_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Latest Attempt At"
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Observed At"
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DirectoryScope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "NOT_CONFIGURED",
+            "CURRENT",
+            "STALE",
+            "UNKNOWN",
+            "PARTIAL",
+            "ERROR"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "user_count": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "User Count"
+        },
+        "valid_for_ms": {
+          "default": 0,
+          "maximum": 900000,
+          "minimum": 0,
+          "title": "Valid For Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "state",
+        "evaluated_at"
+      ],
+      "title": "DirectoryStream",
+      "type": "object"
+    },
+    "DirectoryUser": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Account",
+          "type": "string"
+        },
+        "display_name": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Display Name"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "object_guid": {
+          "format": "uuid",
+          "title": "Object Guid",
+          "type": "string"
+        },
+        "primary_group_id": {
+          "maximum": 4294967295,
+          "minimum": 1,
+          "title": "Primary Group Id",
+          "type": "integer"
+        },
+        "sid": {
+          "pattern": "^S-1-5-21-[0-9]{1,10}-[0-9]{1,10}-[0-9]{1,10}-[0-9]{1,10}$",
+          "title": "Sid",
+          "type": "string"
+        },
+        "upn": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Upn"
+        }
+      },
+      "required": [
+        "sid",
+        "object_guid",
+        "account",
+        "enabled",
+        "primary_group_id"
+      ],
+      "title": "DirectoryUser",
       "type": "object"
     },
     "DomainHealth": {

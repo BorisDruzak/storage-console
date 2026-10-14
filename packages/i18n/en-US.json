@@ -490,5 +490,31 @@
     },
     "unknownActor": "Unknown",
     "noMatches": "No records match the selected filters"
+  },
+  "directoryNames": {
+    "account": "Account observation from AD",
+    "client": "Client name observation",
+    "accountName": "Current AD account name",
+    "displayName": "Display name",
+    "upn": "UPN",
+    "computer": "Computer from DNS and AD checks",
+    "dnsName": "Verified DNS name",
+    "observedAt": "Observed at",
+    "expiresAt": "Check expires at",
+    "disabled": "Account is disabled",
+    "accountBoundary": "AD observations are separate; native event account and access rights are unchanged.",
+    "clientBoundary": "A current DNS and AD check does not confirm the computer name at event time.",
+    "stream": "AD directory",
+    "states": {
+      "CURRENT": "AD observations are current",
+      "CONFIRMED_CURRENT": "Client name confirmed at observation time",
+      "STALE": "Observations are stale",
+      "UNKNOWN": "Observations are unknown",
+      "PARTIAL": "Latest enumeration is incomplete",
+      "ERROR": "Latest enumeration failed",
+      "NOT_CONFIGURED": "Directory is not configured",
+      "AMBIGUOUS": "Multiple matches found"
+    },
+    "userCount": "Accounts in latest completed enumeration"
   }
 }

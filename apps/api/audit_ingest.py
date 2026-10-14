@@ -13,9 +13,11 @@ from starlette.concurrency import run_in_threadpool
 from apps.api.auth import collector_token, token_hash
 from apps.api.ingest import ApiError, Receipt
 from packages.contracts.audit import AuditBatch
+from packages.contracts.directory import normalized_ip
 from packages.shared.jobs import enqueue
 from packages.shared.models.audit import audit_evidence, audit_streams
 from packages.shared.models.core import collectors, source_nodes, volumes
+from packages.shared.models.directory import audit_client_ips
 from packages.shared.models.jobs import ingest_batches
 
 
@@ -138,17 +140,37 @@ def accept_audit(engine: Engine, batch: AuditBatch, token: str, digest: str) -> 
                 .returning(audit_evidence.c.id)
             )
             if inserted is None:
-                old = conn.execute(
-                    select(audit_evidence.c.digest).where(
-                        audit_evidence.c.source_node_id == source,
-                        audit_evidence.c.host_id == record.host_id,
-                        audit_evidence.c.channel == record.channel,
-                        audit_evidence.c.generation == record.generation,
-                        audit_evidence.c.record_id == record.record_id,
+                old = (
+                    conn.execute(
+                        select(audit_evidence.c.id, audit_evidence.c.digest).where(
+                            audit_evidence.c.source_node_id == source,
+                            audit_evidence.c.host_id == record.host_id,
+                            audit_evidence.c.channel == record.channel,
+                            audit_evidence.c.generation == record.generation,
+                            audit_evidence.c.record_id == record.record_id,
+                        )
                     )
-                ).scalar_one()
-                if old != record.digest():
+                    .mappings()
+                    .one()
+                )
+                if old["digest"] != record.digest():
                     raise HTTPException(409, detail="AUDIT_EVENT_CONFLICT")
+                inserted = old["id"]
+            if record.event_id == 4624 and record.client_ip is not None:
+                try:
+                    client_key = normalized_ip(record.client_ip)
+                except ValueError:
+                    pass  # Keep even malformed native text; it is not a lookup target.
+                else:
+                    conn.execute(
+                        pg_insert(audit_client_ips)
+                        .values(
+                            audit_evidence_id=inserted,
+                            source_node_id=source,
+                            client_ip_key=client_key,
+                        )
+                        .on_conflict_do_nothing(constraint="uq_audit_client_ip_evidence")
+                    )
         times = [r.occurred_at for r in batch.records]
         receipt_id = conn.scalar(
             insert(ingest_batches)

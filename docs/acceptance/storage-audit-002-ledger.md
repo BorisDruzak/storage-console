@@ -180,3 +180,47 @@ Production scope and identities remain in the approved private operator design.
   failure; production and all acceptance operands remain unchanged. Focus23 PASS,
   independent focus7 PASS; no Critical/Important findings. New exact CI pending;
   no formatting, migration, SACL/policy or service changes inferred from tests.
+
+## B source closure / C directory contracts
+
+- PR34 exact head47f5e6ab70cfda9dca8adc6b5aef7d05f6eb436b / run38590951155
+  and merged main6422cc139263033af1d66f2212033748ef0c4d19 / run38592281935:
+  six required checks PASS, Sonar SKIPPED. Native groups14 + 104 + 81 + 97 + 1
+  PASS on both. Historical failed runs and UNKNOWN quality RCA remain recorded;
+  this exact successor establishes B source acceptance, not a causal claim.
+- Additional owned local Windows/Python3.13.15 installed-wheel NTFS→HTTPS→real
+  disposable PostgreSQL→Activity test1 PASS (83.21s); production mutations NONE.
+  Temporary tunnel closed. Linux-target mypy126 + deploy7 and Ruff PASS; default
+  Windows-target mypy sees pre-existing POSIX-only platform attributes, so it is
+  not represented as a passing supported deployment-target check.
+- Task3 closure focus23 PASS. Task4 started on exact B successor. Initial RED
+  absent directory contracts → GREEN17 typed cases: finite pages/counts/TTL,
+  explicit incomplete state, source/domain/SID boundaries, disabled users and
+  complete PTR/forward/unique-computer witnesses. Directory objects grant no role.
+  C persistence, collection, UI, independent review and exact CI remain pending.
+
+## C candidate verification
+
+- Additive revision0009 keeps native audit rows/digests immutable and indexes
+  separate IP/directory observations. Paged collector delivery uses signed/sealed
+  machine Kerberos, bounded child jobs, cache and encrypted independent queue.
+  Current directory names do not alter historical actor/confidence or Web roles.
+- Independent review found five Important defects: regex domain split, missing
+  numeric enabled proof, missing terminal snapshot-byte reserve, collector-rotation
+  index scan and directory capability exposed through ordinary collector listing.
+  All received focused RED→GREEN regressions. Packaged PowerShell AST/installed
+  wheel and owned deadline/stop tests8 PASS; PostgreSQL EXPLAIN verifies collector
+  equality in latest indexes with zero obsolete-history rows filtered.
+- Backend frozen candidate1003 PASS/88 platform SKIP; full successor verification
+  after the last RBAC/native cases is pending. Source/read/migration22 PASS;
+  Web135 PASS, focused desktop/mobile enriched audit browser1 PASS. Ruff and
+  Linux-target mypy135 PASS; TypeScript/i18n/API generation/build PASS.
+- Actual isolated production Compose acceptance PASS: strict TLS/auth/browser,
+  ingest refusal, cgroup memory/swap/SQL budgets and backup/restore. Fresh current
+  schema0008 backup and off-VM encrypted hash/decrypt verified; independent bounded
+  PostgreSQL restore PASS with matching counts and no production writes.
+- Exact disk baseline matches approved250GiB target; read-only migration guard
+  PASS. Disk formatting, DB cutover and permanent department rollout not executed.
+  Final independent C source verdict APPROVE: fresh34 PostgreSQL/source cases,
+  prior41 native/backend and7 Web cases independently PASS. Exact head/main CI
+  remains required before disk apply and production rollout.

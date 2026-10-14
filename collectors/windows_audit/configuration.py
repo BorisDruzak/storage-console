@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from collectors.common.transport import Transport
 from collectors.windows.security import ProtectedState, seal, unseal
 
+from .directory_native import DirectorySettings
 from .scope import AuditScope
 
 QUEUE_NAME = "audit.sqlite3"
@@ -58,6 +59,9 @@ class AuditConfig(BaseModel):
     configured: bool = False  # Operator-verified effective policy AND narrow SACL.
     initial_baseline: bool = False
     mode: Literal["capture_only", "deliver"] = "capture_only"
+    directory: DirectorySettings | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
     @model_validator(mode="after")
     def validate_settings(self) -> AuditConfig:
