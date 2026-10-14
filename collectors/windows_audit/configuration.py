@@ -44,13 +44,14 @@ class MachineCipher:
 
 
 class AuditConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
     collector_id: UUID
     host_id: UUID
     source_id: UUID
     generation: UUID
     roots: dict[str, str] = Field(min_length=1, max_length=16)
     audit_sids: list[str] = Field(default_factory=list, max_length=16)
+    readiness_max_objects: int = Field(default=256, ge=1, le=100000, strict=True)
     origin: str = Field(max_length=2048)
     ca_file: str = Field(max_length=32768)
     token: SecretStr = Field(repr=False)

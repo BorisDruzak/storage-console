@@ -7,7 +7,7 @@ import sqlite3
 import stat
 import threading
 import time
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -352,15 +352,19 @@ class Outbox:
                     ) from None
 
     def checkpoint(self, stream: str) -> Checkpoint:
-        _stream(stream)
         with self._transaction() as db:
-            row = db.execute(
-                "SELECT revision, value FROM checkpoints WHERE stream=?", (stream,)
-            ).fetchone()
-            try:
-                return Checkpoint(row[0], json.loads(row[1])) if row else Checkpoint(0, None)
-            except (ValueError, TypeError):
-                raise OutboxError("STATE_UNAVAILABLE") from None
+            return self._checkpoint_in(db, stream)
+
+    @staticmethod
+    def _checkpoint_in(db: sqlite3.Connection, stream: str) -> Checkpoint:
+        _stream(stream)
+        row = db.execute(
+            "SELECT revision, value FROM checkpoints WHERE stream=?", (stream,)
+        ).fetchone()
+        try:
+            return Checkpoint(row[0], json.loads(row[1])) if row else Checkpoint(0, None)
+        except (ValueError, TypeError):
+            raise OutboxError("STATE_UNAVAILABLE") from None
 
     def _checkpoint_value(self, stream: str, revision: int, checkpoint: object) -> str:
         _stream(stream)
@@ -434,6 +438,56 @@ class Outbox:
         ).fetchone()
         if count > self.limits.max_cache_entries or size > self.limits.max_cache_bytes:
             raise OutboxError("CAPACITY")
+
+    def advance_stream(
+        self,
+        stream: str,
+        expected_revision: int,
+        checkpoint: object,
+        updates: Iterable[tuple[str, int, object]] | Callable[
+            [Callable[[str], Checkpoint]], Iterable[tuple[str, int, object]]
+        ],
+        *,
+        max_updates: int = 102000,
+    ) -> None:
+        """Atomic operator transition; stream rows instead of retaining a large group.
+
+        The duplicate-key index resides in a temporary on-disk SQLite table. No
+        queue/receipt/credential row is touched, including when iteration fails.
+        """
+        if type(max_updates) is not int or not 1 <= max_updates <= 102000:
+            raise OutboxError("INVALID_LIMITS")
+        value = self._checkpoint_value(stream, expected_revision, checkpoint)
+        with self._transaction() as db:
+            db.execute("PRAGMA cache_size=-4096")
+            db.execute("PRAGMA temp_store=FILE")
+            db.execute("CREATE TEMP TABLE transition_keys(stream TEXT PRIMARY KEY)")
+            db.execute("INSERT INTO transition_keys(stream) VALUES (?)", (stream,))
+            self._write_checkpoints(db, ((stream, expected_revision, value),))
+            changes = (
+                updates(lambda name: self._checkpoint_in(db, name))
+                if callable(updates) else updates
+            )
+            iterator = iter(changes)
+            try:
+                for count, change in enumerate(iterator, 1):
+                    if count > max_updates:
+                        raise OutboxError("CAPACITY")
+                    if not isinstance(change, tuple) or len(change) != 3:
+                        raise OutboxError("INVALID_CHECKPOINT")
+                    name, revision, data = change
+                    encoded = self._checkpoint_value(name, revision, data)
+                    if db.execute(
+                        "SELECT 1 FROM transition_keys WHERE stream=?", (name,)
+                    ).fetchone():
+                        raise OutboxError("INVALID_CHECKPOINT")
+                    db.execute("INSERT INTO transition_keys(stream) VALUES (?)", (name,))
+                    self._write_checkpoints(db, ((name, revision, encoded),))
+                self._cache_capacity(db)
+            finally:
+                close = getattr(iterator, "close", None)
+                if close:
+                    close()
 
     def reset_usn_checkpoints(self) -> None:
         """Operator-only local rebaseline; caller holds the exclusive runtime lock.

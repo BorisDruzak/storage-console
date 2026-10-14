@@ -106,6 +106,23 @@ class AuditHealth(Contract):
     error_code: str | None = Field(default=None, max_length=64)
     policy_verified: bool = False
     sacl_verified: bool = False
+    readiness_complete: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    readiness_stale: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    readiness_checked_at: AwareDatetime | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    readiness_objects: Annotated[int, Field(ge=0, le=100000)] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    readiness_age_seconds: Annotated[float, Field(ge=0, allow_inf_nan=False)] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    readiness_duration_seconds: (
+        Annotated[float, Field(ge=0, le=30, allow_inf_nan=False)] | None
+    ) = Field(default=None, exclude_if=lambda value: value is None)
+    readiness_error: str | None = Field(
+        default=None, max_length=64, exclude_if=lambda value: value is None
+    )
 
 
 class AuditStream(Contract):
