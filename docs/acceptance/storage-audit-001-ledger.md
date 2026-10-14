@@ -666,6 +666,77 @@ pending replay are not accepted. The extended <=36-operation allowance is exhaus
   dispatch25 + reaping10 s; повторное ревью Critical/Important0.
   Успех capture по-прежнему требует последующего реального HIGH и UI-приёмки.
 
+### Восьмой проход: отказ допуска до DELETE, сохранены исходные свидетельства
+
+- Окно 2026-10-14 02:00–02:25 UTC: обе согласованные учётки выполнили
+  CREATE/WRITE/RENAME через SMB, native receipts PASS. Суммарно 58 файловых
+  операций / 1015 bytes. DELETE не выполнены и не зарезервированы: bounded
+  ожидание свежего clean heartbeat завершилось отказом допуска до dispatch.
+  Два собственных переименованных файла сохранены для следующего inventory.
+- Stop подтверждён 02:07:50 UTC, rollback 02:07:54 UTC: SACL/policy/Failure bit
+  и root ACL восстановлены, исходный USN PID сохранён. Queue0, GAP null, strict
+  bookmark resume и same boot проверены read-only. C остаётся PARTIAL.
+- Read-only PostgreSQL timing: heartbeat interval около 30 s, captured age
+  при report 0.111–1.042 s, receipt timestamp delta 0.239–0.278 s (не ACK completion latency); backlog0/GAP false.
+  Точная причина отказа локального admission gate **UNKNOWN**; не объявлена
+  неисправность Windows collector и не ослаблены критерии Correlation Engine.
+- В том же согласованном окне проведена heartbeat-only диагностика140 s,
+  без CRUD/503/нового baseline. Затем Audit STOPPED, temporary rollback PASS.
+  Actual clean_cache5 PASS; 120 API samples, 12 fresh5 samples,
+  minimum capture age0.974 s, maximum response age0.237 s. Для последующего
+  прохода добавлена private трасса времени и условий admission; production
+  identities, IP, paths и event bodies в Git не попали.
+- Продолжение 03:00–03:25 UTC: только два DELETE существующих собственных
+  файлов после обычного inventory; CREATE/WRITE/RENAME повторно не выполняются.
+  Та же папка/учётки/ПК/поколение, без 503 и нового Security baseline.
+  Все guards45/57/60 s и clean5/8 s сохраняются; failure удерживает собственные
+  файлы и исходы, success удаляет только собственную папку/helper и оставляет
+  Audit остановленным. Existing USN и MVP-005 не изменяются.
+
+### Девятый проход: причина operational admission отказа подтверждена
+
+- 03:00–03:25 UTC: DELETE не выполнены, reservations0; total58 операций /
+  1015 bytes. Audit STOPPED, temporary SACL/policy/Failure bit/root ACL rollback
+  PASS; два собственных файла сохранены. Queue0/GAP null/strict resume/same boot
+  и unchanged old state проверены read-only. исходный USN PID без изменений.
+- Exact same-snapshot trace: первый доступный controller clean heartbeat
+  имеет age5.199094 s (API evaluation age5.0213 s) при operational limit5 s.
+  Все остальные admission conditions true: current cache, configured/policy/SACL,
+  context, backlog0/no GAP/error, healthy continuous USN. Refusal происходит
+  исключительно на age gate до reservation/dispatch. Причина дополнительной
+  latency UNKNOWN; неисправность Windows collector не объявлена.
+- Следующий same-scope проход 04:00–04:25 UTC — только два DELETE прежних
+  собственных файлов. Operational timing6 s перед witness /10 s перед dispatch
+  учитывает измеренный доступный снимок; engine identity60/time window2/full
+  historical coverage, prior FileId45/native57 и cache age0–5 s неизменны.
+  Никаких новых CREATE/WRITE/RENAME/503/поколения. Failure retain / final STOPPED
+  и original rollback сохранены. Independent focused review Critical/Important0.
+  RED operational timing check → GREEN; actual age boundaries7, admission/chain/
+  rollback32, post-coverage11, scope/complete-chain24 и PS parse/Python compile PASS.
+
+### Десятый проход: оба DELETE и чистое историческое покрытие подтверждены
+
+- 04:00–04:25 UTC: native DELETE A в 04:07:44.540 UTC и B в 04:07:46.242 UTC
+  PASS, разные согласованные компьютеры/доменные SID, SMB, оба локальных
+  дочерних процесса завершены. Total60 операций /1015 bytes. Queue0/GAP null.
+- Audit STOPPED подтверждён 04:08:21 UTC, rollback 04:08:25 UTC: исходные
+  SACL/policy/Failure bit/root ACL восстановлены, собственная папка удалена.
+  Helper второго ПК удалён с exact owned hash guard, без recursive deletion.
+  Strict bookmark resume/same boot и untouched old protected GAP state PASS.
+  исходный USN PID/конфигурация/cadence и MVP-005 без изменений.
+- Read-only реальные engine preconditions для каждого DELETE: complete chain1,
+  PROVEN_PRIOR_IDENTITY; identity age36.352 /37.855 s; Access↔USN delta
+  0.000011 /0.000743 s. Историческое coverage TRUE: шесть Audit и 55 WINDOWS
+  witnesses, bad0, prior/after brackets есть. Два разных Windows client IP.
+- Central92 normalized events: 4624=16, 4660=13, 4663=63; SID2, client IP2,
+  один FILESERVER source. Actual strict-TLS admin desktop/mobile/reload PASS,
+  audit ingest без auth401, legacy USN HEALTHY, остановленный Audit STALE.
+  Пока eligible dated aliases0 и текущие изменения UNKNOWN; это не C PASS.
+  Следующий штатный volume observation ожидается около 05:07 UTC. До него
+  только read-only ожидание, без новой службы/policy/SACL/CRUD или forced USN.
+  Обязательны последующие actual HIGH2, точный UI для цепочек4663/4660/4624,
+  независимое acceptance review и final exact PR/main CI.
+
 ~~~text
 Explicit approval reference (not this technical task):
 Exact narrow synthetic folder (private evidence only):
