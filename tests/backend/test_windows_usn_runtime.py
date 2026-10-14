@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import datetime
 
 from test_windows_runtime import prepared
+from windows_capture_diagnostics import runtime_snapshot, safe_failure
 
 from collectors.windows.inventory import CaptureError
 from collectors.windows.producer import CaptureReport
@@ -66,7 +67,15 @@ def test_completed_inventory_does_not_clear_usn_gap(tmp_path):
                       usn_factory=lambda: Capture(CaptureReport(0, 0, False,
                                                                 ("CONTINUITY_GAP",))))
     stop = threading.Event()
-    thread = threading.Thread(target=runtime.run, args=(stop,))
+    failures = []
+
+    def run():
+        try:
+            runtime.run(stop)
+        except Exception as error:
+            failures.append(safe_failure(error))
+
+    thread = threading.Thread(target=run)
     thread.start()
     try:
         deadline = time.monotonic() + 4
@@ -75,12 +84,14 @@ def test_completed_inventory_does_not_clear_usn_gap(tmp_path):
             if rows and rows[-1].get("error_code") == "CONTINUITY_GAP":
                 break
             time.sleep(0.05)
-        assert rows[-1]["error_code"] == "CONTINUITY_GAP"
+        assert rows[-1]["error_code"] == "CONTINUITY_GAP", runtime_snapshot(
+            runtime, loaded.outbox.path, failures,
+        )
         assert rows[-1]["cursor"].startswith("ntfs-usn:gap:")
     finally:
         stop.set()
         thread.join(2)
-    assert not thread.is_alive()
+    assert not thread.is_alive() and not failures
 
 
 def test_inventory_stop_failure_still_closes_usn_and_releases_runtime(tmp_path):
@@ -160,7 +171,7 @@ def test_success_then_blocked_usn_never_keeps_fresh_heartbeat_continuous(tmp_pat
         try:
             runtime.run(stop)
         except Exception as error:
-            failures.append(type(error).__name__)
+            failures.append(safe_failure(error))
 
     thread = threading.Thread(target=run)
     thread.start()
@@ -171,7 +182,9 @@ def test_success_then_blocked_usn_never_keeps_fresh_heartbeat_continuous(tmp_pat
             if len(attempts)>1 and any(row.get("error_code") == "USN_STALE" for row in rows):
                 break
             time.sleep(0.01)
-        assert any(row.get("error_code") == "USN_STALE" for row in rows)
+        assert any(row.get("error_code") == "USN_STALE" for row in rows), runtime_snapshot(
+            runtime, loaded.outbox.path, failures,
+        )
         assert rows[-1]["cursor"].startswith("ntfs-usn:unknown:")
     finally:
         stop.set()
