@@ -342,3 +342,28 @@ Production scope and identities remain in the approved private operator design.
   cursor are detected. Frozen full regression1016 PASS / 91 platform SKIP /
   74 upstream warnings (394.57s); global Ruff, supported Linux-target mypy137
   and public-source secret scan PASS. New exact head/main CI required.
+
+## Finite native delivery witness
+
+- PR37 final head649be2d5792043a5ea0a5c25e09f7184a1274cb1 / run38633163428:
+  six required checks PASS, Sonar SKIPPED. Native groups14 + 41 + 109 + 81 + 97
+  + 1 PASS. Merged main1798af144854a5acf7a2c0880c8a584b461d285e /
+  run38634602404: five required checks PASS, Windows FAIL in the unchanged native
+  USN-to-HTTPS integration at queue_drained. Groups14 + 41 + 109 + 81 + 97 PASS.
+  Audit installation remains BLOCKED on exact main CI; no gate bypass.
+- Exact delay cause UNKNOWN: successful native changes/lost-ACK replay preceded
+  the failure, but pytest shortened the runtime/queue diagnostic. New failure
+  output prints the full bounded sanitized runtime witness, never payloads.
+- Controlled RED: globally-empty polling rejects acknowledged closed work when
+  the active producer adds another heartbeat. GREEN closes one sequence watermark
+  after accepted_changes and requires every earlier batch to disappear by ACK;
+  all domains/states count, including leased/quarantined work. Retryable reads
+  never mean success. Future batches do not change that finite requirement.
+- This is a finite delivery witness, not global empty-queue or latency acceptance.
+  The original40s deadline, strict four Activity freshness/continuity reads,
+  lost-ACK/duplicate and scope/privacy checks remain unchanged. Production code
+  and collector configuration are unchanged. Targeted65 PASS / 4 native SKIP;
+  portable witness3 PASS, global Ruff and Linux-target mypy137 PASS. Independent
+  review APPROVE:43 PASS / 4 SKIP, leased-batch witness and negative mutations
+  reject pending-only/global-empty predicates. Public source secret scan zero
+  findings. New exact head/main CI required before installing Audit.
