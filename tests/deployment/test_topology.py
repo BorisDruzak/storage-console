@@ -10,6 +10,9 @@ def test_production_gateway_requires_tls_and_keeps_collector_auth_independent():
     assert "auth_basic" not in nginx
     assert "location /api/v1/ingest/" in nginx
     assert "proxy_pass http://api:8000" in nginx
+    ingest = nginx.split("location /api/v1/ingest/ {", 1)[1].split("\n    }", 1)[0]
+    assert "proxy_request_buffering off;" in ingest
+    assert "proxy_http_version 1.1;" in ingest
 
 
 def test_production_compose_artifact_has_no_development_mode():

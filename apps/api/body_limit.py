@@ -1,6 +1,8 @@
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+BODY_READY = "storage_ingest_body_ready"
+
 
 class IngestBodyLimit:
     """Bound chunked bodies before JSON parsing, including absent/false Content-Length."""
@@ -47,4 +49,7 @@ class IngestBodyLimit:
                 return {"type": "http.request", "body": bytes(body), "more_body": False}
             return await receive()
 
+        # Admission may cancel an incomplete upload, but downstream sync workers
+        # must retain their slot until completion even if the request task cancels.
+        scope[BODY_READY] = True
         await self.app(scope, replay, send)

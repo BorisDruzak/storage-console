@@ -1,6 +1,6 @@
 # STORAGE-AUDIT-002 — bounded single-root rollout ledger
 
-Status: authorized execution; A IN_PROGRESS, B/C/D PENDING.
+Status: A source PASS, B IN_PROGRESS, C/D PENDING. Live rollout not yet accepted.
 Specification and plan: docs/superpowers/{specs,plans}/2026-10-14-storage-audit-002.md.
 Production scope and identities remain in the approved private operator design.
 
@@ -91,3 +91,54 @@ Production scope and identities remain in the approved private operator design.
   assertion to filesystem identity; owned local Windows/Python3.14 check PASS,
   Python3.13 readiness focus 64 PASS. Native CI rerun still required. Source
   long-path support remains intact; this is a fixture correction, not a SACL bypass.
+
+## A source acceptance / B resource admission
+
+- PR31 merged. Exact head 5910e666f0e422dbb8a33475ee5cc4aec6678a96 run38563646555
+  and main 14c9d42546acaf0cca34f488cab15953f6ca47aa run38565123890: six required
+  checks PASS; Sonar SKIPPED by external configuration, not Quality Gate PASS.
+  Native Windows groups 14 + 104 + 81 + 97 + 1 PASS. Task2 closure regression
+  46 PASS / 5 platform SKIP. No FILESERVER deployment acceptance inferred.
+- Existing-schema backup restored in an isolated PostgreSQL16 container limited
+  to 512 MiB, matching recorded counts/schema. First disposable attempt failed
+  because public schema already existed; corrected owned-fixture cleaning only.
+  Production was not restored or stopped; off-VM encrypted archive remains.
+- B RED→GREEN: seven admission/pool cases; excess heavy request cannot write a
+  receipt, heartbeat reserve remains available, replay accepts exactly once.
+  Exception/cancel/disconnect/oversize release the admission slots. Ten pooled
+  connections are the maximum per process, with finite three-second pool wait.
+- Resource verification RED eight cases; GREEN backend/deployment focus69 PASS,
+  Ruff and strict application/deployment mypy PASS. Actual cgroup/SQL proof is
+  added to disposable production smoke. Enforced production rollout still pending.
+- Additional bounded read-only SACL timing helper timed out; cause UNKNOWN and no
+  throughput/readiness claim. Fresh short service read found Audit stopped and
+  old USN running unchanged; exact helper process selection found no remaining
+  child. Do not blindly repeat the same diagnostic or treat it as positive proof.
+
+## B independent review and isolated runtime proof
+
+- Full pre-review frozen backend regression 943 PASS / 86 platform SKIP. Fresh
+  independent review reproduced two Important issues: Nginx buffered before
+  admission, and cancellation released a permit while a sync handler still held
+  its batch. The actual pinned-runtime reproduction left three blocked handlers
+  under a two-slot bound; the original async cancellation stub did not cover it.
+- RED→GREEN: no-buffer ingest plus HTTP/1.1 forwarding, and cancelled sync workers
+  retain a strongly referenced bounded child/permit until completion. Incomplete
+  uploads can still cancel. Body-limit errors/disconnects do not leak permits.
+  Canonical deployment healthcheck now verifies resources, including a negative
+  case. Repeat independent review found no remaining Critical/Important; focused
+  independent rerun 61 PASS. Full post-review backend 944 PASS / 86 platform SKIP,
+  68 upstream warnings; deployment/admission focus71 PASS, Ruff, mypy126 + strict
+  deploy7, OpenAPI and staged Gitleaks PASS (zero findings). Exact-SHA CI pending.
+- Actual owned disposable production Compose proof PASS: enforced cgroup memory
+  and zero swap, SQL settings, real HTTPS paused Content-Length/chunked third
+  uploads rejected before body completion and without receipts, strict TLS,
+  real browser authentication/collector lifecycle and isolated backup/restore.
+  Initial fixture build failed because host buildx was absent; direct runtime
+  build and read-only buildx diagnostic identified it. The owned fixture used
+  supported legacy builder fallback; no production Docker changes were made.
+  Candidate fixture provenance is separate from upcoming exact-head/main CI.
+- Operator disk screenshot does not allocate its unused data disk to PostgreSQL.
+  Protected exact-disk migration/rollback plan and restored off-VM backup are
+  prepared. Formatting approval requested for the additional disk only; disk
+  writes and live rollout remain pending. Source acceptance does not imply live.
