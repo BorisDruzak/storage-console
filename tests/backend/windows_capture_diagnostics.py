@@ -2,8 +2,12 @@
 
 import json
 import math
+import re
 import sqlite3
+from dataclasses import replace
+from datetime import datetime
 
+from collectors.common.outbox import Limits, Outbox
 from collectors.windows.diagnostics import detail, valid_detail
 from collectors.windows.inventory import CODES
 
@@ -12,6 +16,71 @@ _CODES = CODES | {
     "AUTH_REQUIRED", "HTTP_REJECTED", "REDIRECT", "STATE_INVALID", "RUNTIME_FAILED",
     "STATE_UNAVAILABLE",
 }
+
+
+def readonly_observer(loaded):
+    return Outbox(
+        loaded.outbox.path, loaded.outbox.collector_id,
+        replace(loaded.outbox.limits, busy_timeout_seconds=Limits().busy_timeout_seconds),
+        read_only=True,
+    )
+
+
+def source_metadata(row, now):
+    cursor = row.get("cursor") or ""
+    match = re.fullmatch(r"ntfs-usn:(continuous|unknown|gap):([0-9]{13}):[0-9a-f]{64}", cursor)
+    return {
+        "freshness_state": _enum(row.get("freshness_state"),
+                                 {"HEALTHY", "OBSERVE", "WARNING", "CRITICAL", "UNKNOWN"}),
+        "freshness_reason": _enum(row.get("freshness_reason"),
+                                  {"CURRENT", "COLLECTION_ERROR", "FUTURE_TIMESTAMP",
+                                   "NEVER_SEEN", "NOT_CONFIGURED", "MISSED_INTERVALS"}),
+        "collector_count": row.get("collector_count")
+        if type(row.get("collector_count")) is int and 0 <= row["collector_count"] <= 100 else None,
+        "cursor_class": match[1] if match else "INVALID_OR_ABSENT",
+        "proof_age_ms": round(now.timestamp() * 1000 - int(match[2])) if match else None,
+    }
+
+
+def activity_snapshot(engine, source, response, runtime, path, failures, outcomes):
+    from sqlalchemy import select
+
+    from apps.api.read.sources import database_time, snapshot, source_data
+    from packages.shared.models.core import collector_heartbeats, collectors
+
+    # This sample follows the response; it is not its repeatable-read transaction.
+    value = {"sampled_after_response": True,
+             "runtime": runtime_snapshot(runtime, path, failures, outcomes)}
+    try:
+        body = response.json()
+        value["quality"] = _enum(body.get("quality"), {"COMPLETE", "STALE", "UNAVAILABLE"})
+        value["continuity"] = _enum(body.get("continuity"),
+                                    {"CONTINUOUS_SINCE_BASELINE", "GAP", "UNKNOWN"})
+        value["evaluated_at"] = datetime.fromisoformat(body["evaluated_at"]).isoformat()
+        value["validity_ms"] = int(response.headers["X-Evidence-Valid-For-Ms"])
+        with snapshot(engine) as connection:
+            now = database_time(connection)
+            data = source_data()
+            row = connection.execute(select(data).where(data.c.id == source)).mappings().one()
+            value["source"] = source_metadata(row, now)
+            heartbeat = connection.execute(
+                select(collector_heartbeats.c.occurred_at, collector_heartbeats.c.received_at,
+                       collector_heartbeats.c.error_code)
+                .join(collectors, collectors.c.id == collector_heartbeats.c.collector_id)
+                .where(collectors.c.source_node_id == source)
+                .order_by(collector_heartbeats.c.occurred_at.desc(),
+                          collector_heartbeats.c.id.desc())
+                .limit(1)
+            ).mappings().one_or_none()
+            if heartbeat:
+                value["heartbeat"] = {
+                    "occurred_age_ms": round((now - heartbeat["occurred_at"]).total_seconds()*1000),
+                    "receipt_age_ms": round((now - heartbeat["received_at"]).total_seconds()*1000),
+                    "error_code": _enum(heartbeat["error_code"], _CODES),
+                }
+    except Exception:
+        value["diagnostic_error"] = "UNAVAILABLE"
+    return value
 
 
 def _enum(value, choices):
@@ -28,7 +97,7 @@ def safe_failure(error):
     return {"diagnostic_error": "UNAVAILABLE"}
 
 
-def outcome_metadata(domain, underlying, effective):
+def outcome_metadata(domain, underlying, effective, *, elapsed_ms=None):
     def metadata(value):
         read = value.get if isinstance(value, dict) else lambda key: getattr(value, key, None)
         retry, duplicate = read("retry_after"), read("duplicate")
@@ -37,8 +106,11 @@ def outcome_metadata(domain, underlying, effective):
                 "duplicate": duplicate if type(duplicate) is bool else None,
                 "retry_after": retry if type(retry) in (int, float)
                 and math.isfinite(retry) and 0 <= retry <= 300 else None}
-    return {"domain": _enum(domain, {"heartbeat", "inventory", "changes"}),
-            "underlying": metadata(underlying), "effective": metadata(effective)}
+    result = {"domain": _enum(domain, {"heartbeat", "inventory", "changes"}),
+              "underlying": metadata(underlying), "effective": metadata(effective)}
+    if type(elapsed_ms) is int and 0 <= elapsed_ms <= 600000:
+        result["elapsed_ms"] = elapsed_ms
+    return result
 
 
 def runtime_snapshot(runtime, path, failures, outcomes=()):
@@ -68,7 +140,7 @@ def _runtime_snapshot(runtime, path, failures, outcomes):
     except Exception:
         queue = {"diagnostic_error": "UNAVAILABLE"}
     safe_outcomes = [outcome_metadata(value.get("domain"), value.get("underlying", {}),
-                                     value.get("effective", {}))
+                                     value.get("effective", {}), elapsed_ms=value.get("elapsed_ms"))
                      for value in list(outcomes)[-24:]]
     return {"events": events, "failures": safe_details,
             "outcomes": safe_outcomes, "queue": queue}

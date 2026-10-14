@@ -8,8 +8,15 @@ from dataclasses import replace
 import pytest
 from sqlalchemy import func, select
 from test_windows_runtime_native import installed_python as installed_python
-from windows_capture_diagnostics import outcome_metadata, runtime_snapshot, safe_failure
+from windows_capture_diagnostics import (
+    activity_snapshot,
+    outcome_metadata,
+    readonly_observer,
+    runtime_snapshot,
+    safe_failure,
+)
 
+from collectors.common.outbox import OutboxError
 from collectors.common.transport import DeliveryOutcome
 from collectors.windows.capture_process import CaptureProcess
 from collectors.windows.configuration import RuntimeSettings, activate, load, set_usn_enabled
@@ -39,6 +46,7 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                      RuntimeSettings(poll_seconds=0.05))
             set_usn_enabled(state, True)
             loaded = load(state)
+            observer = readonly_observer(loaded)
 
             class LoseOnce:
                 collector_id = collector
@@ -49,6 +57,7 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                     self.lost = False
                     self.duplicate = False
                     self.outcomes = deque(maxlen=24)
+                    self.started = time.monotonic()
 
                 def send(self, claim):
                     self.all_bodies.append(claim.body)
@@ -60,7 +69,10 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                         if not self.lost:
                             self.lost = True
                             outcome = DeliveryOutcome("retry", code="NETWORK")
-                    self.outcomes.append(outcome_metadata(claim.domain, underlying, outcome))
+                    self.outcomes.append(outcome_metadata(
+                        claim.domain, underlying, outcome,
+                        elapsed_ms=round((time.monotonic() - self.started)*1000),
+                    ))
                     return outcome
 
             sender = LoseOnce()
@@ -118,7 +130,15 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                     return {"CREATE", "WRITE", "RENAME", "DELETE"} <= kinds and sender.duplicate
 
                 wait(accepted, phase="accepted_changes")
-                wait(lambda: loaded.outbox.status().pending_count == 0, phase="queue_drained")
+                def queue_empty():
+                    try:
+                        return observer.status().pending_count == 0
+                    except OutboxError as error:
+                        if error.retryable:
+                            return False
+                        raise
+
+                wait(queue_empty, phase="queue_drained")
                 page = client.get("/api/v1/activity", params={"source_id":str(source)}).json()
                 assert page["items"] and {"CREATE", "WRITE", "RENAME", "DELETE"} <= {
                     row["event_type"] for row in page["items"]
@@ -146,9 +166,12 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                 assert loaded.config.settings.heartbeat_seconds == 30
                 for _ in range(4):
                     response = client.get("/api/v1/activity", params={"source_id":str(source)})
-                    assert response.json()["quality"] == "COMPLETE"
-                    assert response.json()["continuity"] == "CONTINUOUS_SINCE_BASELINE"
-                    assert 0 < int(response.headers["X-Evidence-Valid-For-Ms"]) <= 15000
+                    assert (response.json()["quality"] == "COMPLETE"
+                            and response.json()["continuity"] == "CONTINUOUS_SINCE_BASELINE"
+                            and 0 < int(response.headers["X-Evidence-Valid-For-Ms"]) <= 15000), (
+                        activity_snapshot(engine, source, response, runtime,
+                                          loaded.outbox.path, failure_details, sender.outcomes)
+                    )
                     time.sleep(5)
             finally:
                 stop.set()

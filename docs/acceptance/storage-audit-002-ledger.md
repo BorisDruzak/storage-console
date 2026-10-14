@@ -140,5 +140,31 @@ Production scope and identities remain in the approved private operator design.
   Candidate fixture provenance is separate from upcoming exact-head/main CI.
 - Operator disk screenshot does not allocate its unused data disk to PostgreSQL.
   Protected exact-disk migration/rollback plan and restored off-VM backup are
-  prepared. Formatting approval requested for the additional disk only; disk
+  prepared. Operator separately approved that exact additional-disk plan; disk
   writes and live rollout remain pending. Source acceptance does not imply live.
+
+## B merged-main failure and test observation follow-up
+
+- PR32 head 9ed7e3354e285761702cb1762b61dde66c6bff93 / run38577118541:
+  six required checks PASS; Sonar SKIPPED. Merged main
+  cf16928423c1c58026f1f454351871ab7ee11a17 / run38578636658 remains FAIL.
+  First native attempt passed groups 14 + 104 + 81 + 97, then Activity returned
+  UNAVAILABLE instead of COMPLETE. Its freshness cause is UNKNOWN; no threshold
+  or continuity requirement is weakened. Five other required checks PASS.
+- One controlled rerun again passed those groups, then the test's writable
+  queue observer competed for SQLite BEGIN IMMEDIATE and failed STATE_UNAVAILABLE.
+  This observed lock failure is distinct from the first attempt's quality failure.
+  No repeated blind rerun or live rollout follows a failed merged-main gate.
+- RED: a reserved SQLite writer blocked the existing writable observer. GREEN:
+  use the established read-only observer pattern, retry only BUSY/LOCKED inside
+  the existing bounded wait, propagate other errors, and preserve database bytes.
+  Sanitized post-response diagnostics expose proof age and bounded delivery timing
+  without identities, paths, tokens or cursor fingerprints. All COMPLETE,
+  CONTINUOUS_SINCE_BASELINE and 15-second validity assertions remain intact.
+- Test-only follow-up: focus26 PASS, frozen full regression947 PASS / 86 platform
+  SKIP / 68 upstream warnings; Ruff, strict application mypy126 and deployment
+  mypy7 PASS. Fresh independent review: no Critical/Important findings, independent
+  focus6 PASS. Exact native head/main gates remain pending.
+- The earlier read-only timing timeout was isolated to an oversized SSH stdin
+  line; bounded framing completed a 2,000-object sample without read errors or
+  service changes. This is timing evidence only, not full-tree SACL readiness.
