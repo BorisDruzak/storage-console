@@ -119,32 +119,51 @@ def test_native_journal_commits_do_not_fail_validation(tmp_path):
         db.commit()
     stop = threading.Event()
     ready = threading.Event()
+    validate_started = threading.Event()
     failures = []
     commits = []
 
     def writer():
-        with closing(sqlite3.connect(box.path)) as db:
-            ready.set()
-            try:
-                while not stop.is_set():
+        try:
+            with closing(sqlite3.connect(box.path)) as db:
+                for index in range(32):
+                    if stop.is_set():
+                        break
                     db.execute("UPDATE synthetic_counter SET value=value+1")
+                    if index == 0:
+                        # First validation observes a real open rollback journal;
+                        # the writer cannot finish before validation begins.
+                        ready.set()
+                        if not validate_started.wait(5) or stop.is_set():
+                            return
                     db.commit()
                     commits.append(1)
-            except Exception as error:
-                failures.append(type(error).__name__)
+        except Exception as error:
+            failures.append(type(error).__name__)
 
     thread = threading.Thread(target=writer)
     thread.start()
-    assert ready.wait(5)
+    validations = 0
     try:
-        deadline = time.monotonic() + 5
-        while time.monotonic() < deadline:
+        assert ready.wait(5), failures
+        assert thread.is_alive() and not failures
+        box._file()
+        validations += 1
+        validate_started.set()
+        # Fixed native work, not a minimum disk-throughput claim. Continue
+        # validating concurrently with commits until completion or guard expiry.
+        deadline = time.monotonic() + 40
+        while len(commits) < 32 and not failures and time.monotonic() < deadline:
             box._file()
+            validations += 1
+            time.sleep(0)
     finally:
         stop.set()
+        validate_started.set()
         thread.join(5)
     assert not thread.is_alive()
     assert not failures
-    assert len(commits) > 20
+    assert len(commits) == 32 and validations > 0
     with closing(sqlite3.connect(box.path)) as db:
+        assert db.execute("SELECT value FROM synthetic_counter").fetchone()[0] == 32
         assert db.execute("PRAGMA quick_check").fetchone()[0] == "ok"

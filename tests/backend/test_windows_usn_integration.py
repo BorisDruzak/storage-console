@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 import time
@@ -9,6 +10,8 @@ import pytest
 from sqlalchemy import func, select
 from test_windows_runtime_native import installed_python as installed_python
 from windows_capture_diagnostics import (
+    drain_watermark,
+    drained_through,
     emit_activity_snapshot,
     outcome_metadata,
     readonly_observer,
@@ -99,9 +102,13 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                         runtime, loaded.outbox.path, failure_details, sender.outcomes,
                     )}
                     time.sleep(0.1)
-                assert condition() and not failures, {"phase": phase, **runtime_snapshot(
-                    runtime, loaded.outbox.path, failure_details, sender.outcomes,
-                )}
+                ready = condition() and not failures
+                if not ready:
+                    diagnostic = {"phase": phase, **runtime_snapshot(
+                        runtime, loaded.outbox.path, failure_details, sender.outcomes,
+                    )}
+                    print("NATIVE_RUNTIME_DIAGNOSTIC " + json.dumps(diagnostic), flush=True)
+                    assert ready, diagnostic
 
             thread = threading.Thread(target=run)
             thread.start()
@@ -130,15 +137,20 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                     return {"CREATE", "WRITE", "RENAME", "DELETE"} <= kinds and sender.duplicate
 
                 wait(accepted, phase="accepted_changes")
-                def queue_empty():
+                watermark = None
+
+                def closed_batches_acked():
+                    nonlocal watermark
                     try:
-                        return observer.status().pending_count == 0
+                        if watermark is None:
+                            watermark = drain_watermark(observer)
+                        return drained_through(observer, watermark)
                     except OutboxError as error:
                         if error.retryable:
                             return False
                         raise
 
-                wait(queue_empty, phase="queue_drained")
+                wait(closed_batches_acked, phase="closed_batches_acked")
                 page = client.get("/api/v1/activity", params={"source_id":str(source)}).json()
                 assert page["items"] and {"CREATE", "WRITE", "RENAME", "DELETE"} <= {
                     row["event_type"] for row in page["items"]

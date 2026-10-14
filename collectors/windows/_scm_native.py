@@ -197,10 +197,12 @@ class NativeBackend:
             check(result)
 
     def delete(self, spec: ServiceSpec) -> None:
+        deadline = time.monotonic() + 150
         with self._service(spec, 0x10000 | 0x20 | 4) as handle:
-            if handle is not None:
+            if handle is None:
+                return
+            else:
                 check(self.api.DeleteService(handle))
-                deadline = time.monotonic() + 150
                 stop_sent = False
                 while True:
                     status, needed = Status(), D()
@@ -209,7 +211,7 @@ class NativeBackend:
                         ctypes.byref(needed),
                     ))
                     if status.state == 1:
-                        return
+                        break
                     if time.monotonic() >= deadline:
                         raise SecurityError("SERVICE_STOP_TIMEOUT")
                     if status.state == 4 and not stop_sent:
@@ -218,3 +220,19 @@ class NativeBackend:
                             check(result)
                         stop_sent = True
                     time.sleep(0.2)
+        # DeleteService only marks the registration. Our service handle must
+        # close before SCM can remove it; STOPPED alone is not completion.
+        with self._manager() as manager:
+            while True:
+                if time.monotonic() >= deadline:
+                    raise SecurityError("SERVICE_REMOVE_TIMEOUT")
+                probe = self.api.OpenServiceW(manager, spec.name, 4)
+                if probe:
+                    check(self.api.CloseServiceHandle(probe))
+                else:
+                    error = last_error()
+                    if error == 1060:
+                        return
+                    if error != 1072:
+                        check(probe)
+                time.sleep(0.2)

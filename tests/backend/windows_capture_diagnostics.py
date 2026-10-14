@@ -26,6 +26,23 @@ def readonly_observer(loaded):
     )
 
 
+def drain_watermark(observer):
+    """Close a finite batch set while the native producer continues running."""
+    assert observer._read_only
+    with observer._transaction() as connection:
+        return connection.execute("SELECT coalesce(max(seq),0) FROM batches").fetchone()[0]
+
+
+def drained_through(observer, watermark):
+    assert observer._read_only
+    with observer._transaction() as connection:
+        # Quarantined or leased work must still block this witness. Later
+        # producer batches do not change the closed set's ACK requirement.
+        return not connection.execute(
+            "SELECT EXISTS(SELECT 1 FROM batches WHERE seq <= ?)", (watermark,),
+        ).fetchone()[0]
+
+
 def source_metadata(row, now):
     cursor = row.get("cursor") or ""
     match = re.fullmatch(r"ntfs-usn:(continuous|unknown|gap):([0-9]{13}):[0-9a-f]{64}", cursor)

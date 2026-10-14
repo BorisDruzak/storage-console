@@ -342,3 +342,102 @@ Production scope and identities remain in the approved private operator design.
   cursor are detected. Frozen full regression1016 PASS / 91 platform SKIP /
   74 upstream warnings (394.57s); global Ruff, supported Linux-target mypy137
   and public-source secret scan PASS. New exact head/main CI required.
+
+## Finite native delivery witness
+
+- PR37 final head649be2d5792043a5ea0a5c25e09f7184a1274cb1 / run38633163428:
+  six required checks PASS, Sonar SKIPPED. Native groups14 + 41 + 109 + 81 + 97
+  + 1 PASS. Merged main1798af144854a5acf7a2c0880c8a584b461d285e /
+  run38634602404: five required checks PASS, Windows FAIL in the unchanged native
+  USN-to-HTTPS integration at queue_drained. Groups14 + 41 + 109 + 81 + 97 PASS.
+  Audit installation remains BLOCKED on exact main CI; no gate bypass.
+- Exact delay cause UNKNOWN: successful native changes/lost-ACK replay preceded
+  the failure, but pytest shortened the runtime/queue diagnostic. New failure
+  output prints the full bounded sanitized runtime witness, never payloads.
+- Controlled RED: globally-empty polling rejects acknowledged closed work when
+  the active producer adds another heartbeat. GREEN closes one sequence watermark
+  after accepted_changes and requires every earlier batch to disappear by ACK;
+  all domains/states count, including leased/quarantined work. Retryable reads
+  never mean success. Future batches do not change that finite requirement.
+- This is a finite delivery witness, not global empty-queue or latency acceptance.
+  The original40s deadline, strict four Activity freshness/continuity reads,
+  lost-ACK/duplicate and scope/privacy checks remain unchanged. Production code
+  and collector configuration are unchanged. Targeted65 PASS / 4 native SKIP;
+  portable witness3 PASS, global Ruff and Linux-target mypy137 PASS. Independent
+  review APPROVE:43 PASS / 4 SKIP, leased-batch witness and negative mutations
+  reject pending-only/global-empty predicates. Public source secret scan zero
+  findings. New exact head/main CI required before installing Audit.
+
+## Controlled independence scheduling
+
+- PR38 head0fe9aa616d53b879ab91400cda9637f56ce1b56e / run38637195251:
+  five required checks PASS; Windows FAIL in a different existing unit test,
+  blocked_usn_keeps_heartbeat_inventory_and_shutdown_independent, expecting two
+  delivered heartbeat records within4s but observing one. Native groups14 + 41
+  + 109 + 81 PASS; USN96 PASS / 1 FAIL. The final native HTTPS integration did
+  not execute; the original delay cause remains UNKNOWN. No installed apply.
+- Controlled delayed-ACK RED reproduces that old4s assumption. GREEN holds an
+  injected scheduler clock at0 until actual heartbeat ACK, inventory completion
+  and blocked-USN poll; then advances one configured period and requires second
+  ACK/completed inventory. Acknowledged receipts must have no retained batch:
+  creation receipts alone do not count as ACK. Startup/USN remains BOOTSTRAP with
+  unknown cursor, one USN child starts/stops, caught failures are empty and the
+  run lock is released. Wall40s is fixture emergency protection, not latency
+  acceptance; native strict15s freshness checks and production timing unchanged.
+- The same10s delayed ACK now GREEN (10.34s). Focus65 PASS / 4 native SKIP
+  (4.43s), global Ruff and Linux-target mypy137 PASS. Independent review APPROVE:
+  13 PASS, separate5s delayed-ACK GREEN, no-ACK/missing-restart/false-continuous
+  negative mutations rejected with threads closed. Public-source secret scan
+  zero findings. New exact head/main CI required.
+
+## Fixed native journal-race work
+
+- PR38 head3fafc695f8d465c1019d5997d734ef61e569b41d / run38639577545:
+  five required checks PASS; Windows FAIL in the unchanged native rollback-journal
+  stress test:20 commits in its5s window versus assertion greater than20. No
+  validation/writer failure was reported; CLI14 / directory41 / Audit109 and
+  service-group80 PASS. Remaining USN/integration groups did not execute. Exact
+  hardware/scheduling delay cause UNKNOWN; installation remains BLOCKED.
+- Controlled RED with0.3s writer commit delay produced17 commits in the old5s
+  window. GREEN uses fixed32 native commits with validation concurrent with the
+  writer; initial handshake requires validation of a real open rollback journal
+  before commits can finish. Yield0 avoids validator busy-spin starvation. Guard40s
+  is fixture protection, not disk-throughput acceptance; native work is increased,
+  not reduced. Finally stops/releases/joins the owned writer even on startup error.
+- Final witnesses require32 completed commits, nonzero validation, persisted
+  counter32, no writer failures, closed thread and SQLite quick_check=ok. Existing
+  hardlink/reparse/persistent-zero-link rejection tests and production unchanged.
+  Same delayed writer GREEN (9.85s); focus61 PASS / 4 native SKIP (3.83s), Ruff
+  and diff check PASS. Independent review APPROVE:53 PASS / 4 SKIP; early20 work,
+  absent validation and connection failure mutations rejected with writer closed.
+  Global Ruff, Linux-target mypy137 and public-source secret scan PASS. Fresh
+  exact head/main CI required.
+
+## SCM removal completion
+
+- PR38 head80bbcae96df778fd178f320497bb98a6cefe3b54 / run38641875108:
+  five required checks PASS; Windows FAIL after native second-crash recovery:
+  stop/uninstall completed, but immediate status still reported STOPPED instead
+  of absent. CLI14 / directory41 / Audit109 and service80 PASS; USN/integration
+  did not execute. Previous unit/race fixes were not represented as final native
+  acceptance. No corrected package installed.
+- Source-verified completion defect: native delete returned on STOPPED while its
+  own service handle was still held. Win32 DeleteService only marks deletion;
+  absence requires stop and all service handles closed. Canonical references:
+  [Microsoft DeleteService](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-deleteservice)
+  and matching Context7 Win32 documentation. Exact external handle owner in that
+  CI failure remains UNKNOWN.
+- RED6 / GREEN7 portable API timelines: close own drain handles, then read-only
+  OpenService/close probes; only1060 means absent,1072 remains pending, other
+  errors fail. Drain and absence share one150s budget. No repeated Delete/Stop,
+  force kill, registry edit or mutation of a possible replacement registration.
+- Focus68 PASS; global Ruff, Linux-target mypy137 and diff check PASS. An initial
+  wider local focus had75 PASS plus one old stored-heartbeat test setup error
+  because TEST_DATABASE_URL was absent; full disposable PostgreSQL regression
+  is required separately. Fresh frozen PostgreSQL full regression1026 PASS /
+  91 platform SKIP / 74 upstream warnings (366.20s). Strict deploy mypy7,
+  OpenAPI and public-source secret scan PASS. Installed-code witness includes SCM.
+  Independent review APPROVE: portable7 PASS; early return,1072-as-absent, second
+  deadline, foreign Delete and handle-leak mutations rejected. Actual PS5.1 code
+  witness rejects wrong SCM hash/path. Existing USN live runtime remains on its
+  accepted prior code. New exact head/main CI required before Audit apply.
