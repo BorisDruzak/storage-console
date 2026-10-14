@@ -75,6 +75,7 @@ jobs:
           python -m pytest tests/backend/test_windows_audit_events.py
           tests/backend/test_windows_audit_store.py tests/backend/test_windows_audit_runtime.py
           tests/backend/test_windows_audit_native.py tests/backend/test_windows_audit_delivery.py
+          tests/backend/test_windows_audit_large_readiness.py
           tests/backend/test_windows_audit_https.py tests/backend/test_windows_audit_readiness.py -q
       - name: Native SCM, LocalSystem, runtime and HTTPS ingest
         run: >-
@@ -90,6 +91,7 @@ jobs:
           tests/backend/test_windows_usn_native.py tests/backend/test_windows_usn_state.py
           tests/backend/test_windows_usn_scope.py tests/backend/test_windows_usn_capture.py
           tests/backend/test_windows_usn_bootstrap.py tests/backend/test_windows_usn_activation.py
+          tests/backend/test_windows_scope_extension.py tests/backend/test_windows_scope_extension_native.py
           tests/backend/test_windows_usn_runtime.py tests/backend/test_windows_usn_worker_native.py -q
       - name: Native USN to real HTTPS, PostgreSQL and Activity with lost ACK
         run: python -m pytest tests/backend/test_windows_usn_integration.py -q

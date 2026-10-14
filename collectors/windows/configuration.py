@@ -157,6 +157,12 @@ def _outbox(state: ProtectedState, config: PrivateConfig) -> Outbox:
 
 
 def load(state: ProtectedState) -> Loaded:
+    from .scope_extension import recover_scope
+
+    try:
+        recover_scope(state)
+    except (ValueError, KeyError, TypeError):
+        raise SecurityError("CONFIG_INVALID") from None
     config = _read(state)
     usn_enabled = _usn_enabled(state, config)
     box = _outbox(state, config)

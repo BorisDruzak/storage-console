@@ -52,7 +52,7 @@ def _parser() -> Parser:
         child.add_argument("--state", default=DEFAULT_STATE if action == "install" else None,
                            help="Каталог состояния; lifecycle по умолчанию читает регистрацию SCM")
     for command in ("activate", "status", "inventory-once", "run", "usn-enable", "usn-disable",
-                    "usn-rebaseline"):
+                    "usn-rebaseline", "scope-extend"):
         child = commands.add_parser(command, help={
             "activate": "Активировать защищённое состояние",
             "status": "Прочитать безопасный статус",
@@ -61,8 +61,11 @@ def _parser() -> Parser:
             "usn-enable": "Включить read-only USN при остановленном collector",
             "usn-disable": "Отключить USN, сохранив очередь и identity",
             "usn-rebaseline": "Начать новое наблюдение USN; пропущенная история не восстановится",
+            "scope-extend": "Расширить область наблюдения, сохранив прежнюю историю и очередь",
         }[command])
         child.add_argument("--state", default=DEFAULT_STATE, help="Каталог защищённого состояния")
+        if command == "scope-extend":
+            child.add_argument("--root", required=True, help="Новый ограниченный local root")
         if command == "activate":
             child.add_argument("--collector-id", type=UUID, required=True)
             child.add_argument("--origin", required=True)
@@ -242,6 +245,23 @@ def _execute(args: argparse.Namespace, stop: threading.Event) -> int:
         if args.command == "status" else ProtectedState(Path(args.state))
     )
     with protected as state:
+        if args.command == "scope-extend":
+            from .scope_extension import extend_scope, recover_scope
+
+            addition = _scope(args.root, args.state)
+            _validate_root(addition)
+            try:
+                recover_scope(state)
+            except ValueError as error:
+                if str(error) != "SCOPE_EXTENSION_PENDING":
+                    raise
+            config = _read(state)
+            roots = tuple(root for root in addition.roots if root.casefold() not in {
+                existing.casefold() for existing in config.roots
+            })
+            extend_scope(state, (*config.roots, *roots), stopped=stop.is_set)
+            print("Область наблюдения расширена; прежняя история и очередь сохранены.")
+            return 0
         if args.command in {"usn-enable", "usn-disable"}:
             set_usn_enabled(state, args.command == "usn-enable")
             print("Read-only USN включён; baseline будет проверен при запуске" if

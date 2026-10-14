@@ -34,6 +34,9 @@ class _Node(BaseModel):
     parent: Identifier | None = None
     name: str = ""
     root_parts: Annotated[int, Field(ge=1, le=32)] | None = None
+    observed_since_usn: Unsigned | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     created: bool = False
     outside: bool = False
     write_emitted: bool = False
@@ -266,6 +269,14 @@ class UsnState:
 
         for record in records:
             node = get(record.file_id)
+            parent = get(record.parent_id)
+            if any(
+                item is not None
+                and item.observed_since_usn is not None
+                and record.usn < item.observed_since_usn
+                for item in (node, parent)
+            ):
+                continue  # Newly added ancestry cannot admit earlier unobserved history.
             parent_path = path(record.parent_id)
             previous_path = path(record.file_id) if node else None
             # NTFS accumulates NEW with later reasons until CLOSE. Proof belongs

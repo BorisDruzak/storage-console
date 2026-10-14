@@ -55,3 +55,34 @@ Production scope and identities remain in the approved private operator design.
 - Operator screenshot clarified RAM versus disks. Second virtual data disk is
   present, unmounted and has no detected filesystem signature; PostgreSQL remains
   on system filesystem. No disk initialization/mount/migration performed.
+
+## Task 2 — explicit scope transition and independent A review
+
+- RED→GREEN: streamed atomic updates, iterator/capacity failure rollback, duplicate
+  identity refusal and unchanged queued bytes. A complete 52k ancestry is staged
+  on disk and committed without a width-sized Python group.
+- Independent review identified seven Important findings. A real scope commit
+  reproduced its own SQLite writer/reader lock after cache spill; transaction-local
+  collision/revision reads remove it. The real 52k regression passes under the
+  4 MiB traced-allocation budget while preserving the old cursor.
+- RED→GREEN: immutable transition backups survive interruption before publication;
+  DONE receipts permit later rotation/disable; CLI retry repairs half-written
+  config/activation without duplicate roots; default readiness also runs in the
+  background with expiry; failed unpublished stages do not accumulate; retained
+  producer handles close; changes after the frozen fence remain observable.
+- Missing-baseline and old-scope-move counterexamples were checked against source
+  and covered by GREEN guards. Extension requires initialized volume baselines;
+  staged identities in the old backlog cause refusal. These two guards have no
+  separately executed pre-fix RED claim. New-root earlier history stays unknown.
+- Journal retention is rechecked immediately before commit, including resume;
+  rollover refuses the transition. Published pending stages and historical
+  receipts survive for recovery. Existing gaps and credentials remain unchanged.
+- Current focused backend/deployment regression 145 PASS / 6 platform SKIP;
+  complete strict mypy and Ruff PASS; OpenAPI and staged secret scan PASS.
+  Earlier full snapshots 925/86 and 934/86 PASS/SKIP remain separate evidence;
+  final frozen full regression 936 PASS / 86 platform SKIP, 68 upstream warnings.
+- Owned native NTFS extension and readiness cases were added to Windows CI.
+  Native, exact head/main CI and live deployment remain PENDING.
+- A fresh existing-schema backup passed pg_restore --list and off-VM DPAPI
+  decrypt/hash verification. Writers and history unchanged. Backup integrity
+  evidence does not establish restoration acceptance.

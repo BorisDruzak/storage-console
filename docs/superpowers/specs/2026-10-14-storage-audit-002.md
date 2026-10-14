@@ -34,6 +34,11 @@ starts at a proven fence; old history is not reconstructed or relabelled. Atomic
 transition state is resumable after process interruption; startup either completes
 the approved transition or fails closed. No partial state/config combination can
 claim continuity. Operator rollback retains every new observation and pending body.
+The first implementation admits additions only on volumes with an initialized
+existing baseline. A genuinely new volume is refused until its original baseline
+is independently complete. If a staged identity occurs in the old backlog, refuse
+the transition and let ordinary old-scope capture catch up before retrying; do not
+discard previously observable old-root events.
 
 ## B: central resource admission
 
