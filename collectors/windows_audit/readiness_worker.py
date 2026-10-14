@@ -89,7 +89,15 @@ class ReadinessWorker:
             with self._lock:
                 self._proof, self._started = proof, started
             self._initial.set()
-            self._stop.wait(30)
+            # Schedule from probe start, so two valid <=30s scans fit within
+            # the unchanged 60s proof lifetime. Failed probes retain backoff.
+            elapsed = self.clock() - started
+            delay = (
+                max(0.0, 30 - elapsed)
+                if proof["readiness_complete"] and math.isfinite(elapsed) and elapsed >= 0
+                else 30
+            )
+            self._stop.wait(delay)
 
 
 def native_probe(roots: list[str], sids: list[str], limit: int) -> Probe:

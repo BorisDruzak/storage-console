@@ -299,3 +299,46 @@ Production scope and identities remain in the approved private operator design.
   One enabled scoped Audit registration remains; prior history and user roles
   retained. Audit service remains STOPPED pending the corrected installed package;
   USN remains RUNNING. No automatic baseline reset or history deletion.
+
+
+## Readiness cadence correction
+
+- PR36 exact head79457f5a7e16afd85909a56ed7b4491d7ca8ef4a / run38624122965
+  and merged maindd90de4499a23f4f2652e26b83c58328d16ff67a / run38626465344:
+  six required checks PASS; Sonar SKIPPED. Both Windows groups
+  14 + 41 + 104 + 81 + 97 + 1 PASS. Corrected installed package remains pending;
+  no source-only result is represented as department live acceptance.
+- Deterministic RED3 reproduces an additional scheduling defect: sleeping30s
+  after a22s scan lets the previous proof age reach74s before the next valid
+  proof is published. GREEN schedules the next complete probe from its start;
+  failure/nonfinite/backwards-clock paths retain30s backoff. Deadline30s and
+  freshness60s remain unchanged. Current ancestry/policy/SACL are never cached.
+- Focus69 PASS; fresh frozen full backend1016 PASS / 91 platform SKIP / 74 upstream
+  warnings (375.34s). Ruff, mypy135 plus strict deploy7, OpenAPI and diff check PASS.
+  Independent cadence review APPROVE, including30s boundary and clock failure
+  fixtures. New exact head/main CI required before corrected package installation.
+- Separate protected version/lifecycle installation helpers reviewed APPROVE.
+  All four prior owner journals must be QUIESCENT; both SACL and lifecycle mutexes
+  are acquired in one order. Child timeout cannot incorrectly publish QUIESCENT.
+  Target is only a new Audit runtime; old USN code/PID and Audit state/generation
+  are preserved. No new SACL/policy/GPO change or baseline reset.
+- Current read-only Security bookmark verification PASS, positive remaining record
+  margin; original20MiB channel setting untouched. VM follow-up: about13.6GiB
+  memory available, no container OOM, PostgreSQL mount still on approved data disk.
+
+## USN regression witness correction
+
+- PR37 head7753d09c3ac3aef4a60edbbccbee26cf8261763d / run38629369287:
+  five required checks PASS, windows-pilot FAIL; Sonar SKIPPED. Windows Audit109,
+  directory41 and SCM/runtime81 PASS. USN96 PASS / 1 FAIL: completed-inventory
+  GAP test observed delivered BOOTSTRAP while GAP was already durably queued.
+- Controlled RED reproduces the failure by delaying the first transport ACK.
+  GREEN checks the latest durable heartbeat through a closed read-only SQLite
+  connection after completed inventory, retaining exact CONTINUITY_GAP and gap
+  cursor assertions. ACK is released and threads joined in finally. Production
+  USN behavior, delivery contract and continuity requirements are unchanged.
+- Focused regression126 PASS; final focused5 PASS, Ruff and diff check PASS.
+  Independent review APPROVE; negative mutations removing GAP or replacing its
+  cursor are detected. Frozen full regression1016 PASS / 91 platform SKIP /
+  74 upstream warnings (394.57s); global Ruff, supported Linux-target mypy137
+  and public-source secret scan PASS. New exact head/main CI required.
