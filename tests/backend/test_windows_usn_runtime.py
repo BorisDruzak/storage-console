@@ -6,9 +6,11 @@ from contextlib import closing
 from dataclasses import replace
 from datetime import datetime
 
+import pytest
 from test_windows_runtime import Sender, prepared
-from windows_capture_diagnostics import runtime_snapshot, safe_failure
+from windows_capture_diagnostics import readonly_observer, runtime_snapshot, safe_failure
 
+from collectors.common.outbox import OutboxError
 from collectors.windows.inventory import CaptureError
 from collectors.windows.producer import CaptureReport
 from collectors.windows.runtime import Runtime
@@ -17,6 +19,14 @@ from collectors.windows.runtime import Runtime
 def test_blocked_usn_keeps_heartbeat_inventory_and_shutdown_independent(tmp_path):
     loaded = replace(prepared(tmp_path), usn_enabled=True)
     children = []
+    observer = readonly_observer(loaded)
+    usn_polled = threading.Event()
+    clock_lock = threading.Lock()
+    now = 0
+
+    def clock():
+        with clock_lock:
+            return now
 
     class Capture:
         def __init__(self, kind):
@@ -24,6 +34,8 @@ def test_blocked_usn_keeps_heartbeat_inventory_and_shutdown_independent(tmp_path
             children.append((kind, "start"))
 
         def poll(self):
+            if self.kind == "usn":
+                usn_polled.set()
             return CaptureReport(1, 1, True, ()) if self.kind == "inventory" else None
 
         def stop(self, grace):
@@ -31,24 +43,60 @@ def test_blocked_usn_keeps_heartbeat_inventory_and_shutdown_independent(tmp_path
             return CaptureReport(0, 0, False, ("STOPPED",))
 
     runtime = Runtime(loaded, capture_factory=lambda: Capture("inventory"),
-                      usn_factory=lambda: Capture("usn"))
+                      usn_factory=lambda: Capture("usn"), monotonic=clock)
     stop = threading.Event()
-    thread = threading.Thread(target=runtime.run, args=(stop,))
+    failures = []
+
+    def run():
+        try:
+            runtime.run(stop)
+        except Exception as error:
+            failures.append(safe_failure(error))
+
+    def wait_for_phase(count):
+        # Wall time is only fixture emergency protection. Advance scheduling
+        # explicitly after durable ACK, rather than asserting a disk-speed SLA.
+        deadline = time.monotonic() + 40
+        while time.monotonic() < deadline and not failures:
+            try:
+                with observer._transaction() as connection:
+                    acked = connection.execute(
+                        "SELECT count(*) FROM receipts r LEFT JOIN batches b "
+                        "ON b.batch_id=r.batch_id WHERE r.domain='heartbeat' "
+                        "AND b.batch_id IS NULL"
+                    ).fetchone()[0]
+            except OutboxError as error:
+                if not error.retryable:
+                    raise
+                acked = 0
+            completed = sum(e.kind == "inventory" and e.code is None for e in runtime.events)
+            if acked >= count and completed >= count and usn_polled.is_set():
+                return
+            time.sleep(0.05)
+        diagnostic = runtime_snapshot(runtime, loaded.outbox.path, failures)
+        print("NATIVE_RUNTIME_DIAGNOSTIC " + json.dumps(diagnostic), flush=True)
+        pytest.fail("runtime independence phase did not complete: " + str(diagnostic))
+
+    thread = threading.Thread(target=run)
     thread.start()
     try:
-        deadline = time.monotonic() + 4
-        while len(loaded.transport.records) < 2 and time.monotonic() < deadline:
-            time.sleep(0.05)
+        wait_for_phase(1)
+        with clock_lock:
+            now = loaded.config.settings.heartbeat_seconds
+        wait_for_phase(2)
         assert len(loaded.transport.records) >= 2
-        assert children.count(("inventory", "start")) >= 1
+        assert children.count(("inventory", "start")) >= 2
         assert children.count(("usn", "start")) == 1
         assert all(row["error_code"] == "USN_BOOTSTRAP" for row in loaded.transport.records)
         assert all(row["cursor"].startswith("ntfs-usn:unknown:")
                    for row in loaded.transport.records)
     finally:
         stop.set()
-        thread.join(2)
-    assert not thread.is_alive() and ("usn", "stop") in children
+        thread.join(loaded.config.settings.stop_seconds + 5)
+    assert not thread.is_alive() and not failures
+    assert children.count(("usn", "stop")) == 1
+    assert runtime._run_lock.acquire(blocking=False)
+    runtime._run_lock.release()
 
 
 def test_completed_inventory_does_not_clear_usn_gap(tmp_path):

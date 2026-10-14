@@ -367,3 +367,25 @@ Production scope and identities remain in the approved private operator design.
   review APPROVE:43 PASS / 4 SKIP, leased-batch witness and negative mutations
   reject pending-only/global-empty predicates. Public source secret scan zero
   findings. New exact head/main CI required before installing Audit.
+
+## Controlled independence scheduling
+
+- PR38 head0fe9aa616d53b879ab91400cda9637f56ce1b56e / run38637195251:
+  five required checks PASS; Windows FAIL in a different existing unit test,
+  blocked_usn_keeps_heartbeat_inventory_and_shutdown_independent, expecting two
+  delivered heartbeat records within4s but observing one. Native groups14 + 41
+  + 109 + 81 PASS; USN96 PASS / 1 FAIL. The final native HTTPS integration did
+  not execute; the original delay cause remains UNKNOWN. No installed apply.
+- Controlled delayed-ACK RED reproduces that old4s assumption. GREEN holds an
+  injected scheduler clock at0 until actual heartbeat ACK, inventory completion
+  and blocked-USN poll; then advances one configured period and requires second
+  ACK/completed inventory. Acknowledged receipts must have no retained batch:
+  creation receipts alone do not count as ACK. Startup/USN remains BOOTSTRAP with
+  unknown cursor, one USN child starts/stops, caught failures are empty and the
+  run lock is released. Wall40s is fixture emergency protection, not latency
+  acceptance; native strict15s freshness checks and production timing unchanged.
+- The same10s delayed ACK now GREEN (10.34s). Focus65 PASS / 4 native SKIP
+  (4.43s), global Ruff and Linux-target mypy137 PASS. Independent review APPROVE:
+  13 PASS, separate5s delayed-ACK GREEN, no-ACK/missing-restart/false-continuous
+  negative mutations rejected with threads closed. Public-source secret scan
+  zero findings. New exact head/main CI required.
