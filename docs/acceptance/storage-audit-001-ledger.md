@@ -632,6 +632,40 @@ pending replay are not accepted. The extended <=36-operation allowance is exhaus
   tracked sources PASS, findings0. C остаётся PARTIAL; positive HIGH для обеих
   учёток и окончательная exact-head/main приёмка ещё не объявлены.
 
+### Седьмой проход: capture подтверждён, историческое покрытие не принято
+
+- Окно 2026-10-14 01:00–01:25 UTC: оба DELETE выполнены двумя согласованными
+  доменными учётками с двух компьютеров; native receipts PASS, дочерние процессы
+  завершены. Суммарно 52 тестовые файловые операции / 885 bytes; незавершённых
+  операций нет. Разрешение оператора снимает численный лимит операций, сохраняя
+  узкую папку, две учётки/ПК и остальные границы пилота.
+- DELETE в 01:07:01.600 и 01:07:03.262 UTC имеют по одной полной цепочке
+  4663 → 4660 с предшествующим 4624 Type3. Read-only проверка реального engine:
+  PROVEN_PRIOR_IDENTITY, возраст prior FileId 15.300 / 16.810 s, расхождение
+  Windows/USN 0.000781 / 0.001268 s; подтверждены два разных клиентских IP.
+  Dated alias ещё отсутствует. Это диагностические предпосылки, не HIGH/PASS.
+- Историческое coverage FALSE для обоих DELETE: один Audit heartbeat
+  01:07:17.641 UTC имеет backlog_clear FALSE. Последнее необходимое событие
+  принято в 01:07:19.222 UTC. WINDOWS coverage чистое. Критерий engine не
+  ослаблен; повторная корреляция после inventory не исправляет такое покрытие.
+- Audit остановлен в 01:08:34 UTC, rollback завершён в 01:08:38 UTC:
+  исходные SACL/policy/Failure bit и root ACL восстановлены, собственная папка
+  и собственный helper второго ПК удалены. Queue0, GAP null, strict bookmark
+  resume/same boot проверены read-only; старое состояние с GAP сохранено целиком.
+  Legacy USN PID/конфигурация/cadence без изменений. C остаётся PARTIAL.
+- Следующий согласованный проход 02:00–02:25 UTC: восемь CRUD, та же узкая
+  папка и учётки/ПК, без 503 и без нового Security baseline/generation.
+  Native Status проверяется перед ожиданием свежего чистого heartbeat;
+  captured age ≤5 s перед новым witness, ≤8 s перед reservation/dispatch.
+  FileId admission45 / native deadline57 / engine60 s сохранены. После DELETE
+  coverage проверяется через API без дополнительных SSH-входов.
+  RED missing age parameter → GREEN: 7 actual age boundaries; regression
+  admission/chain/rollback/pair32, post-coverage11, dispatch lifecycle5 PASS.
+  Independent focused review: замечание по внешнему timeout устранено
+  ограниченным supervisor160 s для фаз native50 + heartbeat40 + witness18 +
+  dispatch25 + reaping10 s; повторное ревью Critical/Important0.
+  Успех capture по-прежнему требует последующего реального HIGH и UI-приёмки.
+
 ~~~text
 Explicit approval reference (not this technical task):
 Exact narrow synthetic folder (private evidence only):
