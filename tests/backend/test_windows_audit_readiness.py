@@ -72,10 +72,16 @@ def test_privilege_restore_failure_cannot_return_verified(monkeypatch, result, e
 
 
 def test_bounded_scope_verifies_descendants_and_rejects_reparse(tmp_path):
+    import os
+
     from collectors.windows_audit.readiness import scope_covered
 
     child = tmp_path / "protected"
     child.mkdir()
-    assert not scope_covered(str(tmp_path), ["sid"], lambda path, *_: path != str(child))
+    # Native enumeration uses the extended Windows prefix for long paths.
+    # Compare filesystem identity, not a textual spelling of the same object.
+    assert not scope_covered(
+        str(tmp_path), ["sid"], lambda path, *_: not os.path.samefile(path, child)
+    )
     assert scope_covered(str(tmp_path), ["sid"], lambda *_: True)
     assert not scope_covered(str(tmp_path), ["sid"], lambda *_: True, limit=1)

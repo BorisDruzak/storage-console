@@ -86,3 +86,8 @@ Production scope and identities remain in the approved private operator design.
 - A fresh existing-schema backup passed pg_restore --list and off-VM DPAPI
   decrypt/hash verification. Writers and history unchanged. Backup integrity
   evidence does not establish restoration acceptance.
+- PR31 first exact-head CI 38562589712: Windows readiness assertion failed because
+  its test double compared plain and extended path spellings. Changed that
+  assertion to filesystem identity; owned local Windows/Python3.14 check PASS,
+  Python3.13 readiness focus 64 PASS. Native CI rerun still required. Source
+  long-path support remains intact; this is a fixture correction, not a SACL bypass.
