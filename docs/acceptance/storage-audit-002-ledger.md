@@ -168,3 +168,15 @@ Production scope and identities remain in the approved private operator design.
 - The earlier read-only timing timeout was isolated to an oversized SSH stdin
   line; bounded framing completed a 2,000-object sample without read errors or
   service changes. This is timing evidence only, not full-tree SACL readiness.
+
+- PR33 head b22d439529a061eaa2ed0293ab234cf56b24f8af / run38587379983:
+  six required PASS, Sonar SKIPPED; native14 + 104 + 81 + 97 + 1 PASS.
+  Merged main d172a8a726bbe1e4369be25db003e2f13b904139 / run38588737929:
+  five required PASS, native FAIL at Activity quality; preceding groups all PASS.
+  Read-only observation did not report the previous writer-lock failure. Quality
+  RCA remains UNKNOWN because pytest shortened the diagnostic assertion repr.
+- RED→GREEN: an actual failing subprocess pytest case proves complete sanitized
+  JSON survives captured stdout. Emit that existing bounded snapshot on assertion
+  failure; production and all acceptance operands remain unchanged. Focus23 PASS,
+  independent focus7 PASS; no Critical/Important findings. New exact CI pending;
+  no formatting, migration, SACL/policy or service changes inferred from tests.

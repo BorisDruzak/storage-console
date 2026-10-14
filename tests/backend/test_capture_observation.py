@@ -3,6 +3,8 @@
 import json
 import os
 import sqlite3
+import subprocess
+import sys
 from contextlib import closing
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -41,6 +43,32 @@ def test_source_diagnostics_exclude_identities_and_cursor_fingerprint():
         "cursor_class": "continuous", "proof_age_ms": 2000,
     }
     assert "PRIVATE" not in str(result) and fingerprint not in str(result)
+
+
+def test_failed_pytest_keeps_complete_json_diagnostic(tmp_path):
+    from pathlib import Path
+
+    helper = str(Path(__file__).parent.absolute())
+    case = tmp_path / "test_owned_failure.py"
+    case.write_text(f'''import sys
+sys.path.insert(0, {helper!r})
+import windows_capture_diagnostics as diagnostics
+def test_owned_failure():
+    value = {{"runtime": {{"outcomes": [{{"elapsed_ms": n}} for n in range(24)]}},
+             "source": {{"proof_age_ms": 16000}}, "sampled_after_response": True}}
+    diagnostics.activity_snapshot = lambda *args: value
+    assert False, diagnostics.emit_activity_snapshot(None)
+''', encoding="utf8")
+    result = subprocess.run([sys.executable, "-m", "pytest", "-q", str(case)],
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 1
+    marker = "NATIVE_ACTIVITY_DIAGNOSTIC "
+    lines = [line for line in result.stdout.splitlines() if line.startswith(marker)]
+    assert len(lines) == 1
+    value = json.loads(lines[0][len(marker):])
+    assert value["source"]["proof_age_ms"] == 16000
+    assert len(value["runtime"]["outcomes"]) == 24
+    assert value["sampled_after_response"] is True
 
 
 @pytest.mark.skipif(not os.getenv("TEST_DATABASE_URL"), reason="PostgreSQL required")

@@ -83,6 +83,14 @@ def activity_snapshot(engine, source, response, runtime, path, failures, outcome
     return value
 
 
+def emit_activity_snapshot(*args):
+    # Pytest shortens assertion-value reprs even when every nested field is safe.
+    # Captured stdout retains the complete bounded, sanitized JSON on failure.
+    value = activity_snapshot(*args)
+    print("NATIVE_ACTIVITY_DIAGNOSTIC " + json.dumps(value, sort_keys=True), flush=True)
+    return value
+
+
 def _enum(value, choices):
     return value if value is None or isinstance(value, str) and value in choices else "UNKNOWN"
 

@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import func, select
 from test_windows_runtime_native import installed_python as installed_python
 from windows_capture_diagnostics import (
-    activity_snapshot,
+    emit_activity_snapshot,
     outcome_metadata,
     readonly_observer,
     runtime_snapshot,
@@ -169,8 +169,8 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                     assert (response.json()["quality"] == "COMPLETE"
                             and response.json()["continuity"] == "CONTINUOUS_SINCE_BASELINE"
                             and 0 < int(response.headers["X-Evidence-Valid-For-Ms"]) <= 15000), (
-                        activity_snapshot(engine, source, response, runtime,
-                                          loaded.outbox.path, failure_details, sender.outcomes)
+                        emit_activity_snapshot(engine, source, response, runtime,
+                                               loaded.outbox.path, failure_details, sender.outcomes)
                     )
                     time.sleep(5)
             finally:
