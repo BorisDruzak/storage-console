@@ -1,6 +1,6 @@
 # STORAGE-AUDIT-002 — bounded single-root rollout ledger
 
-Status: A source PASS, B IN_PROGRESS, C/D PENDING. Live rollout not yet accepted.
+Status: A/B/C source PASS; data-disk migration PASS; department live rollout IN_PROGRESS.
 Specification and plan: docs/superpowers/{specs,plans}/2026-10-14-storage-audit-002.md.
 Production scope and identities remain in the approved private operator design.
 
@@ -224,3 +224,78 @@ Production scope and identities remain in the approved private operator design.
   Final independent C source verdict APPROVE: fresh34 PostgreSQL/source cases,
   prior41 native/backend and7 Web cases independently PASS. Exact head/main CI
   remains required before disk apply and production rollout.
+
+## C exact source acceptance and approved data-disk migration
+
+- PR35 exact head0a825a5c1546f24e04751c313266f24c11bc4bf2 / run38609971123 and
+  merged main927e4c5107785765b5040f571dd6b9cf6f119014 / run38611708662:
+  six required checks PASS; Sonar SKIPPED. Both native groups
+  14 + 41(directory) + 104 + 81 + 97 + 1 PASS. Independent source review APPROVE.
+  Final frozen backend1003 PASS / 91 platform SKIP / 74 upstream warnings;
+  Web135 and desktop/mobile Playwright14 PASS. Ruff, supported Linux-target
+  mypy135 plus strict deployment7, OpenAPI/API generation, TypeScript, i18n,
+  production Compose and secret scan PASS. Historical B failures remain recorded.
+- Installed main wheel SHA256
+  3659d4202360b52e481d22ca7456c29280a68082d14e23545bb877a0536406b5;
+  selected packaged module bytes match exact merged main. Central revision is
+  927e4c5107785765b5040f571dd6b9cf6f119014; schema0009.
+- Operator-approved additional250GiB disk migration PASS. Fresh identity/blank
+  guards, independent protected-helper review and restored off-VM backup preceded
+  the single formatting operation. UUID-mounted data filesystem; original system
+  disk and stopped original state retained. Four writers were proven quiescent.
+  Full old/new manifest:1565 files / 725702501 bytes, equal SHA/size/mode/owner/group.
+  SHA256 fa1ef7f3c22754e114207a3cb6b809d5b5d58480990c40e7faf0e0f9e3ac5bfd.
+- Canonical deployment/strict TLS/browser verification PASS. PostgreSQL actual
+  data mount is on the approved new filesystem. Every historical table count
+  remains at least its closed pre-stop baseline; native evidence and GAP records
+  retained. Free data-disk bytes248919089152 (about231.8GiB). Enforced memory/swap
+  ceilings: PostgreSQL2048/API768/worker512/Web128MiB; no OOM. Follow-up read at
+  2026-10-14T19:00Z confirms data mount and healthy running containers, about
+  13.7GiB VM memory available. Rollback must retain new writes/schema and cannot
+  silently replace current history with the stopped old copy.
+- Live department rollout is separate from this migration acceptance and remains
+  in progress. No synthetic production CRUD, content capture or GPO write.
+
+## Live bootstrap and readiness performance follow-up
+
+- Independent protected SACL/lifecycle/enrollment helper reviews APPROVE. Fresh
+  metadata scan51988 objects; read-only signed/sealed directory preflight208 users.
+  Narrow selected-root11-principal Success Write/Append/Delete SACL and local
+  FileSystem Success policy applied. DACL/Owner/Group, Failure and GPO unchanged;
+  all six governing GPO audit definitions checked read-only. Full-tree proofs
+  initially PASS29.696/29.901s against the unchanged30-second deadline.
+- USN exact-main stopped-runtime extension PASS: prior queue bytes/digests,
+  credentials and old cursor/journal preserved; protected backup and immutable
+  transition receipt retained. Restarted with two roots; fresh readonly queue0,
+  nodecount62342, continuity codeNULL. Independent Audit generation/state initialized;
+  old state/GAP retained. Machine-only directory collection/delivery has no local
+  collection/delivery error or backlog; no operator password was installed.
+- Actual service readiness remains unaccepted: OBSERVE with
+  AUDIT_READINESS_UNAVAILABLE. Audit explicitly STOPPED for correction; USN remains
+  RUNNING. Profiling reproduces AUDIT_READINESS_INCOMPLETE at30.0009s after51229
+  objects, with11.79s ancestry work. The same installed-main readonly probe can
+  complete near29.9s; there is insufficient timing margin. No deadline, proof
+  freshness or configured/HEALTHY requirement is weakened.
+- RED8 to GREEN36 focused cases for reuse of typed Win32 binding and bounded256
+  immutable SID-byte decoding. Every current parent/leaf attribute, ACL, ACE mask,
+  SID validity and length still checked; failed conversion is not cached. Read-only
+  in-memory candidate diagnostic complete51988 proof22.375s; no deployment/gate
+  claim from that diagnostic. Fresh full regression, independent review and exact
+  CI remain required before restarting Audit with the corrected package.
+- Repeated isolated browser checks reached the existing5-login/10-minute account
+  rate bound. Normal window expiry is awaited; no throttle/reset/policy bypass.
+  A real strict-TLS Sources-detail check confirms the new directory component and
+  honest NOT_CONFIGURED/STALE pre-start state. Final role/name/live checks pending.
+
+- Performance correction source commit6891130e3d3c0976da0221547fcd69ef8c3a9dd6:
+  frozen full backend1011 PASS / 91 platform SKIP / 74 upstream warnings (377.97s),
+  focused64 PASS, Ruff, supported deployment-target mypy and OpenAPI PASS; public
+  source Gitleaks zero findings. Independent source verdict APPROVE, with actual
+  owned local Win32 SID/attribute fixtures. Exact new head/main CI pending.
+  Local combined focus initially lacked TEST_DATABASE_URL for one stored-heartbeat
+  replay test; that environment setup error is separate from the passing full
+  disposable PostgreSQL regression and is not represented as a product failure.
+- Normal login window expired; exact prior Audit API registration disabled PASS.
+  One enabled scoped Audit registration remains; prior history and user roles
+  retained. Audit service remains STOPPED pending the corrected installed package;
+  USN remains RUNNING. No automatic baseline reset or history deletion.

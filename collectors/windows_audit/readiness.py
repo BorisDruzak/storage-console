@@ -5,6 +5,7 @@ import math
 import os
 import stat
 import time
+from collections import OrderedDict
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Protocol
@@ -140,6 +141,7 @@ def scope_covered(
 
 class Native:
     def __init__(self) -> None:
+        self._sid_cache: OrderedDict[bytes, str] = OrderedDict()
         self.api = vars(ctypes)["WinDLL"]("advapi32", use_last_error=True)
         self.kernel = vars(ctypes)["WinDLL"]("kernel32", use_last_error=True)
         void, dword = ctypes.c_void_p, ctypes.c_uint32
@@ -175,6 +177,8 @@ class Native:
         for name, (args, result) in prototypes.items():
             function = getattr(self.api, name)
             function.argtypes, function.restype = args, result
+        self.kernel.GetFileAttributesW.argtypes = [ctypes.c_wchar_p]
+        self.kernel.GetFileAttributesW.restype = dword
         self.kernel.GetCurrentProcess.argtypes = []
         self.kernel.GetCurrentProcess.restype = void
         self.kernel.CloseHandle.argtypes = [void]
@@ -236,7 +240,7 @@ class Native:
         return scope_covered(root, sids, self.sacl_entry)
 
     def sacl_entry(self, root: str, sids: list[str], directory: bool) -> bool:
-        if not no_reparse_ancestry(root):
+        if not no_reparse_ancestry(root, attributes=self.kernel.GetFileAttributesW):
             return False
         acl, descriptor = ctypes.c_void_p(), ctypes.c_void_p()
         result = self.api.GetNamedSecurityInfoW(
@@ -259,18 +263,41 @@ class Native:
                 if ace.kind != 2 or ace.size < 16:
                     continue
                 sid = ctypes.c_void_p(value.value + 8)
-                if not self.api.IsValidSid(sid) or self.api.GetLengthSid(sid) > ace.size - 8:
+                if not self.api.IsValidSid(sid):
                     return False
-                text = ctypes.c_wchar_p()
-                if not self.api.ConvertSidToStringSidW(sid, ctypes.byref(text)):
+                length = self.api.GetLengthSid(sid)
+                if not 8 <= length <= min(68, ace.size - 8):
                     return False
-                try:
-                    entries.append((ace.kind, ace.flags, ace.mask, text.value or ""))
-                finally:
-                    self.kernel.LocalFree(ctypes.cast(text, ctypes.c_void_p))
+                if sid.value is None:
+                    return False
+                text = self._sid_text(sid.value, length)
+                if text is None:
+                    return False
+                entries.append((ace.kind, ace.flags, ace.mask, text))
             return covered(entries, sids, directory=directory)
         finally:
             self.kernel.LocalFree(descriptor)
+
+    def _sid_text(self, pointer: int, length: int) -> str | None:
+        # SID bytes are immutable identity values. Cache only their decoding;
+        # every object's current ACE flags/masks and ancestry are still checked.
+        key = ctypes.string_at(pointer, length)
+        if key in self._sid_cache:
+            self._sid_cache.move_to_end(key)
+            return self._sid_cache[key]
+        text = ctypes.c_wchar_p()
+        if not self.api.ConvertSidToStringSidW(pointer, ctypes.byref(text)):
+            return None
+        try:
+            if not text.value:
+                return None
+            value = text.value
+            self._sid_cache[key] = value
+            if len(self._sid_cache) > 256:
+                self._sid_cache.popitem(last=False)
+            return value
+        finally:
+            self.kernel.LocalFree(ctypes.cast(text, ctypes.c_void_p))
 
 
 def readiness(
