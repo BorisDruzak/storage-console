@@ -389,3 +389,26 @@ Production scope and identities remain in the approved private operator design.
   13 PASS, separate5s delayed-ACK GREEN, no-ACK/missing-restart/false-continuous
   negative mutations rejected with threads closed. Public-source secret scan
   zero findings. New exact head/main CI required.
+
+## Fixed native journal-race work
+
+- PR38 head3fafc695f8d465c1019d5997d734ef61e569b41d / run38639577545:
+  five required checks PASS; Windows FAIL in the unchanged native rollback-journal
+  stress test:20 commits in its5s window versus assertion greater than20. No
+  validation/writer failure was reported; CLI14 / directory41 / Audit109 and
+  service-group80 PASS. Remaining USN/integration groups did not execute. Exact
+  hardware/scheduling delay cause UNKNOWN; installation remains BLOCKED.
+- Controlled RED with0.3s writer commit delay produced17 commits in the old5s
+  window. GREEN uses fixed32 native commits with validation concurrent with the
+  writer; initial handshake requires validation of a real open rollback journal
+  before commits can finish. Yield0 avoids validator busy-spin starvation. Guard40s
+  is fixture protection, not disk-throughput acceptance; native work is increased,
+  not reduced. Finally stops/releases/joins the owned writer even on startup error.
+- Final witnesses require32 completed commits, nonzero validation, persisted
+  counter32, no writer failures, closed thread and SQLite quick_check=ok. Existing
+  hardlink/reparse/persistent-zero-link rejection tests and production unchanged.
+  Same delayed writer GREEN (9.85s); focus61 PASS / 4 native SKIP (3.83s), Ruff
+  and diff check PASS. Independent review APPROVE:53 PASS / 4 SKIP; early20 work,
+  absent validation and connection failure mutations rejected with writer closed.
+  Global Ruff, Linux-target mypy137 and public-source secret scan PASS. Fresh
+  exact head/main CI required.
