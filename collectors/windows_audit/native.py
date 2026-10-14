@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from pathlib import PureWindowsPath
@@ -323,18 +324,25 @@ class SecurityReader:
         self.close()
 
 
-def no_reparse_ancestry(path: str) -> bool:
+def no_reparse_ancestry(path: str, *, attributes: Callable[[str], int] | None = None) -> bool:
     """Conservative present-time privacy guard; NOT a claim about historical ancestry."""
-    kernel = vars(ctypes)["WinDLL"]("kernel32", use_last_error=True)
-    kernel.GetFileAttributesW.argtypes, kernel.GetFileAttributesW.restype = [W], D
+    if attributes is None:
+        kernel = vars(ctypes)["WinDLL"]("kernel32", use_last_error=True)
+        reader = kernel.GetFileAttributesW
+        reader.argtypes, reader.restype = [W], D
+        attributes = reader
     value = PureWindowsPath(path)
     # Deleted leaf may be absent; every parent must still be a known local directory.
     for parent in reversed(value.parents):
-        attributes = kernel.GetFileAttributesW(str(parent))
-        if attributes == 0xFFFFFFFF or attributes & 0x400 or not attributes & 0x10:
+        value_attributes = attributes(str(parent))
+        if (
+            value_attributes == 0xFFFFFFFF
+            or value_attributes & 0x400
+            or not value_attributes & 0x10
+        ):
             return False
-    attributes = kernel.GetFileAttributesW(str(value))
-    return safe_leaf_attributes(attributes, vars(ctypes)["get_last_error"]())
+    value_attributes = attributes(str(value))
+    return safe_leaf_attributes(value_attributes, vars(ctypes)["get_last_error"]())
 
 
 def safe_leaf_attributes(attributes: int, error: int) -> bool:
