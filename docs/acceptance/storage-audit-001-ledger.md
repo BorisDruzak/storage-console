@@ -548,6 +548,90 @@ pending replay are not accepted. The extended <=36-operation allowance is exhaus
   CORRELATED_HIGH для обеих учёток, negative AMBIGUOUS/UNKNOWN, queued replay и
   полного rollback/UI/acceptance; Git publication и CI этого не заменяют.
 
+### Фактический пятый проход и проверка replay
+
+- 23:00–23:25 UTC 13 октября: реально выполнены 10 операций, суммарно 46
+  операций / 820 bytes; незавершённых reservations нет. Две учётки работали через
+  SMB с двух согласованных компьютеров. Одновременный shared-file negative
+  выполнен; в сохранённой выборке его WRITE пока UNKNOWN до позднего dated alias.
+  Шесть AMBIGUOUS относятся к original-name операциям A/B, не к shared pair;
+  финальная приёмка проверяет точный shared WRITE, source и approved window.
+- B DELETE выполнен после обычного inventory. A DELETE остановлен до reservation:
+  private admission требовал witness не старше 30 секунд; последовательные проверки
+  исчерпали этот срок. Свидетельство FileId в payload существовало: отсутствие
+  FileId НЕ является установленной причиной. Сильный engine предел 60 секунд
+  не изменён. Продолжение использует admission 45 секунд и native UTC deadline
+  oldest witness +57 секунд непосредственно перед DELETE.
+- Разрешённые 30 секунд HTTP 503 затронули только точный Audit ingest route.
+  Исходная nginx-конфигурация восстановлена; unauthenticated Audit route снова 401.
+  Один queued 4660 batch сохранил raw receipt digest и event identity между двумя
+  read-only STOPPED snapshots. После отдельного обычного resume доставка дала
+  BYTE_IDENTICAL_RECEIPTS: один batch, одно unique event, zero duplicate event IDs;
+  queue0 / GAP null. Replay не считается сильной атрибуцией B DELETE: его coverage
+  соседствует с outage.
+- Audit STOPPED/PID0; temporary policy Success и SACL восстановлены, Failure bit
+  и root ACL сохранены; старый USN Running с прежним PID. Два собственных synthetic
+  файла пока удержаны для продолжения; полный cleanup ещё не объявлен.
+- Actual strict-TLS admin/mobile/reload: 62 events (4624=8, 4660=8, 4663=46),
+  два SID, 15 session contexts, два Windows-reported client IP; workstation не
+  выведен из IP. В текущем окне 17 changes: UNKNOWN9 / AMBIGUOUS6 /
+  ACCESS_OBSERVED2. CORRELATED_HIGH для обеих учёток ещё не подтверждён.
+- Следующее узкое продолжение: 00:00–00:25 UTC 14 октября, те же folder/accounts/
+  компьютеры/generation, шесть плановых операций, без нового baseline и без 503.
+  После обоих DELETE — clean coverage, Stop, scoped rollback/cleanup; поздний
+  ordinary volume witness проверяется read-only. Новый native check не разрешает
+  DELETE после 60-second engine identity bound. Source review zero Critical/Important;
+  actual local checks: admission9, target-chain8, outage-finally6, positive-finally5,
+  pair lifecycle/timing4 PASS. Installed PC-B helper обновлён и проверен:
+  exact new SHA, trusted owner/write grants, unchanged file/directory ACL.
+  Четыре реальные браузерные role sessions на новом central получили 403
+  по четырём Audit endpoints, no sensitive payload и hidden pane; fixtures
+  отключены, active sessions0, existing roles unchanged, LDAP login не заявлен.
+- PR #26 остаётся draft. Exact head
+  `4c59a6deb918269dde30c67345fc68609505d715`, run 38480628501:
+  шесть required jobs SUCCESS, Sonar SKIPPED. Это CI предыдущего ledger head;
+  C остаётся PARTIAL, окончательная live приёмка и final head/main CI не заявлены.
+
+### Фактический шестой проход и узкий параллельный DELETE
+
+- 00:00–00:25 UTC 14 октября: B CREATE/WRITE/RENAME PASS (три операции /
+  65 bytes); DELETE не запущены, отказ до reservation. Суммарно 49 операций /
+  885 bytes, незавершённых client reservations нет. Три собственных файла удержаны.
+- Actual timing RCA: обычное identity observation 00:06:39, повторный central
+  witness probe закончился 00:07:26; старый 45-second admission правильно отказал.
+  Последовательные native Status/clean-heartbeat проверки расходовали freshness;
+  FileId в данных был. Engine60 / native57 / admission45 не ослаблены.
+- Automatic Stop/Restore PASS: Audit STOPPED/PID0, root ACL и Failure bit сохранены,
+  temporary SACL/Success восстановлены, old USN Running с прежним PID. Queue0 /
+  GAP null, checkpoint retained. Read-only strict resume/same boot подтверждены,
+  new/old states не менялись диагностикой; old latched GAP сохранён.
+- Поздний обычный volume witness реально разрешил fifth negative: две именно
+  shared-file WRITE получили AMBIGUOUS / MULTIPLE_CONTEXTS, actor NULL. Actual
+  strict-TLS admin/mobile/reload: 67 events (4624=9, 4660=8, 4663=50), SID2,
+  session contexts16, Windows client IP2; в расширенной выборке changes23 /
+  UNKNOWN9 / AMBIGUOUS11 / ACCESS_OBSERVED3. Граница fifth window/source/target
+  проверяется отдельно; эти общие counts не подменяют scoped proof.
+- Операторское разрешение на любой operation-count сохраняется. Следующее узкое
+  окно 01:00–01:25 UTC: только два DELETE разных файлов параллельно и shared-file
+  cleanup (три операции), прежние folder/accounts/PC/generation, no new baseline,
+  no CREATE/no 503, ≤2 MiB. После захвата clean coverage → Audit STOPPED → scoped
+  rollback/cleanup; поздний ordinary volume witness проверяется read-only.
+- Private batch делает один реальный native SCM/current HEALTHY check и один
+  fresh FileId query. Local cache проверяется после witness, перед atomic two-row
+  reservation и непосредственно перед spawn: HTTP200, exact generation/host,
+  configured policy/SACL, gap null, clean backlog/error, age0–5s/collected0–35s,
+  old USN HEALTHY/continuous. Absolute native deadline имеет ≥12s remaining перед
+  reserve/spawn, оба клиента проверяют oldest identity +57 перед File.Delete.
+  Остальные strong engine criteria неизменны; B helper exact SHA проверяется при
+  загрузке. Любой частичный результат сохраняет reservations, no automatic retry,
+  rollback удерживает own folder; pre-spawn отказ фиксирует operations0.
+- RED отсутствующий dispatch → GREEN actual success/partial launch/timeout/bad
+  receipt/wrong identity controls5. Existing admission/finally/pair32 и actual
+  scope/complete-chain23 PASS; pycompile/PowerShell parse/node syntax PASS.
+  Independent focused review zero remaining Critical/Important. Secret scan
+  tracked sources PASS, findings0. C остаётся PARTIAL; positive HIGH для обеих
+  учёток и окончательная exact-head/main приёмка ещё не объявлены.
+
 ~~~text
 Explicit approval reference (not this technical task):
 Exact narrow synthetic folder (private evidence only):
