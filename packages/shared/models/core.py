@@ -11,6 +11,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 
 from .base import identity, metadata, reference, timestamp
 
@@ -35,6 +36,7 @@ collectors = Table(
     identity(),
     reference("source_node_id", "source_nodes.id"),
     Column("collector_type", String(32), nullable=False),
+    Column("directory_scope", JSONB(none_as_null=True)),
     Column("version", String(64)),
     Column("token_hash", String(64), nullable=False, unique=True),
     Column("enabled", Boolean, nullable=False, server_default="true"),

@@ -42,10 +42,13 @@ test('sensitive search fields stay in CSRF protected POST body and never URL', a
 });
 
 test('Audit GAP is rendered independently and retains safe diagnostics', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ state: 'GAP', evaluated_at: time }), {headers:{'X-Evidence-Valid-For-Ms':'35000'}})));
+  vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => url.endsWith('/directory')
+    ? new Response(JSON.stringify({state:'NOT_CONFIGURED', evaluated_at:time, valid_for_ms:0}))
+    : new Response(JSON.stringify({ state: 'GAP', evaluated_at: time }), {headers:{'X-Evidence-Valid-For-Ms':'35000'}})));
   await show(<AuditSourceStatus source={id} />);
   expect(await screen.findByText('Аудит: обнаружен разрыв')).toBeInTheDocument();
   expect(screen.getByText('Состояние аудита независимо от непрерывности журнала NTFS USN.')).toBeInTheDocument();
+  expect(await screen.findByText('Справочник не настроен')).toBeInTheDocument();
 });
 
 test('forbidden direct evidence read never renders previous account', async () => {

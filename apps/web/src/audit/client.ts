@@ -6,7 +6,13 @@ type Models = components['schemas'];
 export type AuditSearch = Models['AuditSearch'];
 export type AuditRecord = Models['AuditRecordView'];
 export type ChangeAudit = Models['ChangeAudit'];
-type Name = 'AuditStream' | 'AuditPage' | 'ChangeAudit' | 'AuditObject';
+type Name = 'AuditStream' | 'AuditPage' | 'ChangeAudit' | 'AuditObject' | 'DirectoryStream';
+
+function namesEvidence(value: Pick<AuditRecord, 'account_observation' | 'client_observation'>, startedAt: number) {
+  for (const observation of [value.account_observation, value.client_observation]) {
+    if (observation) recordEvidence(observation, startedAt, observation.valid_for_ms ?? 0);
+  }
+}
 
 async function request<N extends Name>(path: string, name: N, signal?: AbortSignal, body?: AuditSearch): Promise<Models[N]> {
   const startedAt = performance.now();
@@ -32,6 +38,13 @@ async function request<N extends Name>(path: string, name: N, signal?: AbortSign
   if (text.length > 4 * 1024 * 1024) throw new Error('INVALID_RESPONSE');
   const value: unknown = JSON.parse(text);
   if (!validators[name](value)) throw new Error('INVALID_RESPONSE');
+  if (name === 'AuditPage') (value as Models['AuditPage']).items.forEach(record => namesEvidence(record, startedAt));
+  if (name === 'ChangeAudit') {
+    const change = value as Models['ChangeAudit'];
+    if (change.actor) namesEvidence(change.actor, startedAt);
+    change.candidates.forEach(candidate => namesEvidence(candidate.evidence, startedAt));
+  }
+  if (name === 'DirectoryStream') recordEvidence(value as object, startedAt, (value as Models['DirectoryStream']).valid_for_ms ?? 0);
   if (name === 'AuditStream' || name === 'ChangeAudit') {
     const ttl = response.headers.get('X-Evidence-Valid-For-Ms');
     if (ttl === null || !/^(0|[1-9][0-9]{0,4})$/.test(ttl) || Number(ttl)>35000) throw new Error('INVALID_RESPONSE');
@@ -47,3 +60,4 @@ export const auditStream = (source: string, signal?: AbortSignal) => request(`so
 export const changeAudit = (change: string, signal?: AbortSignal) => request(`changes/${identity(change)}`, 'ChangeAudit', signal);
 export const searchAudit = (filters: AuditSearch, signal?: AbortSignal) => request('search', 'AuditPage', signal, filters);
 export const auditObject = (id: string, signal?: AbortSignal) => request(`objects/${identity(id)}`, 'AuditObject', signal);
+export const directoryStream = (source: string, signal?: AbortSignal) => request(`sources/${identity(source)}/directory`, 'DirectoryStream', signal);

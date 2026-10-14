@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 from .common import Contract
+from .directory import AccountObservation, ClientObservation
 
 Text = Annotated[str, Field(min_length=1, max_length=32768)]
 Number = Annotated[int, Field(ge=0, le=2**64 - 1, strict=True)]
@@ -117,9 +118,9 @@ class AuditHealth(Contract):
     readiness_age_seconds: Annotated[float, Field(ge=0, allow_inf_nan=False)] | None = Field(
         default=None, exclude_if=lambda value: value is None
     )
-    readiness_duration_seconds: (
-        Annotated[float, Field(ge=0, le=30, allow_inf_nan=False)] | None
-    ) = Field(default=None, exclude_if=lambda value: value is None)
+    readiness_duration_seconds: Annotated[float, Field(ge=0, le=30, allow_inf_nan=False)] | None = (
+        Field(default=None, exclude_if=lambda value: value is None)
+    )
     readiness_error: str | None = Field(
         default=None, max_length=64, exclude_if=lambda value: value is None
     )
@@ -158,6 +159,12 @@ class AuditRecordView(Contract):
     digest: str
     evidence: AuditEvent
     numeric_fields: dict[str, str]
+    account_observation: AccountObservation | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    client_observation: ClientObservation | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class AuditPage(Contract):
@@ -186,6 +193,12 @@ class AuditActor(Contract):
     client_ip: str | None
     workstation: str | None
     identity_evidence_id: UUID
+    account_observation: AccountObservation | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    client_observation: ClientObservation | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class ChangeAudit(Contract):

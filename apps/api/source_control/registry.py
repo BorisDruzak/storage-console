@@ -73,8 +73,9 @@ def enroll_collector(
         )
         if source_type is None:
             raise RegistryError(404, "SOURCE_NOT_FOUND")
-        if (_PAIRING.get(source_type) != data.collector_type
-                and not (source_type == "FILESERVER" and data.collector_type == "AUDIT_WINDOWS")):
+        if _PAIRING.get(source_type) != data.collector_type and not (
+            source_type == "FILESERVER" and data.collector_type == "AUDIT_WINDOWS"
+        ):
             raise RegistryError(409, "COLLECTOR_TYPE_CONFLICT")
         row = (
             conn.execute(
@@ -82,6 +83,9 @@ def enroll_collector(
                 .values(
                     source_node_id=source_id,
                     collector_type=data.collector_type,
+                    directory_scope=(
+                        data.directory_scope.model_dump() if data.directory_scope else None
+                    ),
                     token_hash=token_hash(secret),
                 )
                 .returning(*_COLLECTOR_COLUMNS)
@@ -142,7 +146,7 @@ def set_collector_enabled(
 
 
 def list_collectors(
-    engine: Engine, source_id: UUID, limit: int, offset: int
+    engine: Engine, source_id: UUID, limit: int, offset: int, *, include_directory: bool = False
 ) -> Page[CollectorView]:
     if (
         type(limit) is not int
@@ -167,7 +171,12 @@ def list_collectors(
             .offset(offset)
         ).mappings()
         return Page[CollectorView](
-            items=[CollectorView.model_validate(row) for row in rows],
+            items=[
+                CollectorView.model_validate(
+                    dict(row) if include_directory else dict(row, directory_scope=None)
+                )
+                for row in rows
+            ],
             total=total or 0,
             limit=limit,
             offset=offset,

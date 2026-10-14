@@ -84,6 +84,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/sources/{source_id}/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Directory Status */
+        get: operations["directory_status_api_v1_audit_sources__source_id__directory_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -311,6 +328,32 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountObservation */
+        AccountObservation: {
+            /** Latest Attempt State */
+            latest_attempt_state?: ("COLLECTING" | "COMPLETE" | "ERROR") | null;
+            /** Observed At */
+            observed_at?: string | null;
+            /**
+             * Provenance
+             * @default LDAP_KERBEROS_SIGNED_SEALED
+             * @constant
+             */
+            provenance: "LDAP_KERBEROS_SIGNED_SEALED";
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "CURRENT" | "STALE" | "UNKNOWN" | "PARTIAL" | "ERROR";
+            user?: components["schemas"]["DirectoryUser"] | null;
+            /**
+             * Valid For Ms
+             * @default 0
+             */
+            valid_for_ms: number;
+        };
         /** Activity */
         Activity: {
             /**
@@ -411,10 +454,12 @@ export interface components {
         AuditActor: {
             /** Account */
             account: string | null;
+            account_observation?: components["schemas"]["AccountObservation"] | null;
             /** Boot Id */
             boot_id: string;
             /** Client Ip */
             client_ip: string | null;
+            client_observation?: components["schemas"]["ClientObservation"] | null;
             /** Domain */
             domain: string | null;
             /**
@@ -643,11 +688,13 @@ export interface components {
         };
         /** AuditRecordView */
         AuditRecordView: {
+            account_observation?: components["schemas"]["AccountObservation"] | null;
             /**
              * Audit Collector Id
              * Format: uuid
              */
             audit_collector_id: string;
+            client_observation?: components["schemas"]["ClientObservation"] | null;
             /** Digest */
             digest: string;
             evidence: components["schemas"]["AuditEvent"];
@@ -772,6 +819,45 @@ export interface components {
             rule_version: string | null;
             stream: components["schemas"]["AuditStream"];
         };
+        /** ClientObservation */
+        ClientObservation: {
+            /** Computer Guid */
+            computer_guid?: string | null;
+            /** Computer Name */
+            computer_name?: string | null;
+            /** Computer Sid */
+            computer_sid?: string | null;
+            /**
+             * Event Time Confirmed
+             * @default false
+             * @constant
+             */
+            event_time_confirmed: false;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Observed At */
+            observed_at?: string | null;
+            /**
+             * Provenance
+             * @default DNS_PTR_FORWARD_AD_CURRENT
+             * @constant
+             */
+            provenance: "DNS_PTR_FORWARD_AD_CURRENT";
+            /** Ptr Name */
+            ptr_name?: string | null;
+            /** Reason */
+            reason?: ("DNS_UNAVAILABLE" | "PTR_MISSING" | "FORWARD_MISMATCH" | "DOMAIN_MISMATCH" | "COMPUTER_MISSING" | "COMPUTER_DISABLED" | "MULTIPLE_MATCHES" | "LDAP_UNAVAILABLE" | "LOCAL_ADDRESS" | "LOOKUP_LIMIT") | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "CONFIRMED_CURRENT" | "STALE" | "UNKNOWN" | "AMBIGUOUS";
+            /**
+             * Valid For Ms
+             * @default 0
+             */
+            valid_for_ms: number;
+        };
         /** CollectorCredential */
         CollectorCredential: {
             /**
@@ -784,6 +870,7 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            directory_scope?: components["schemas"]["DirectoryScope"] | null;
             /** Enabled */
             enabled: boolean;
             /**
@@ -815,6 +902,7 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            directory_scope?: components["schemas"]["DirectoryScope"] | null;
             /** Enabled */
             enabled: boolean;
             /**
@@ -850,6 +938,7 @@ export interface components {
              * @enum {string}
              */
             collector_type: "WINDOWS" | "AUDIT_WINDOWS" | "PVE" | "PBS";
+            directory_scope?: components["schemas"]["DirectoryScope"] | null;
         };
         /** CreateSource */
         CreateSource: {
@@ -869,6 +958,60 @@ export interface components {
              * @enum {string}
              */
             source_type: "FILESERVER" | "PVE" | "PBS";
+        };
+        /** DirectoryScope */
+        DirectoryScope: {
+            /** Dns Domain */
+            dns_domain: string;
+            /** Domain Sid */
+            domain_sid: string;
+        };
+        /** DirectoryStream */
+        DirectoryStream: {
+            /** Error Code */
+            error_code?: ("LDAP_UNAVAILABLE" | "DIRECTORY_LIMIT" | "DIRECTORY_STOPPED") | null;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Latest Attempt At */
+            latest_attempt_at?: string | null;
+            /** Observed At */
+            observed_at?: string | null;
+            scope?: components["schemas"]["DirectoryScope"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "NOT_CONFIGURED" | "CURRENT" | "STALE" | "UNKNOWN" | "PARTIAL" | "ERROR";
+            /** User Count */
+            user_count?: number | null;
+            /**
+             * Valid For Ms
+             * @default 0
+             */
+            valid_for_ms: number;
+        };
+        /** DirectoryUser */
+        DirectoryUser: {
+            /** Account */
+            account: string;
+            /** Display Name */
+            display_name?: string | null;
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Object Guid
+             * Format: uuid
+             */
+            object_guid: string;
+            /** Primary Group Id */
+            primary_group_id: number;
+            /** Sid */
+            sid: string;
+            /** Upn */
+            upn?: string | null;
         };
         /** DomainHealth */
         DomainHealth: {
@@ -1511,6 +1654,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditStream"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    directory_status_api_v1_audit_sources__source_id__directory_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectoryStream"];
                 };
             };
             /** @description Unauthorized */

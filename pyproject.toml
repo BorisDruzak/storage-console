@@ -18,6 +18,9 @@ dependencies = {file = ["requirements.txt"]}
 [tool.setuptools.packages.find]
 include = ["apps*", "packages*", "collectors*"]
 
+[tool.setuptools.package-data]
+"collectors.windows_audit" = ["directory_query.ps1"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests/backend"]
 pythonpath = ["."]

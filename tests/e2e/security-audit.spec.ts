@@ -15,6 +15,14 @@ const verdict = { change_id: id, object_id: null, classification: 'CORRELATED_HI
     workstation: null, identity_evidence_id: id }, candidates: [{ method: 'SCOPED_SECURITY_USN',
     classification: 'CORRELATED_HIGH', reason: 'UNIQUE_DELETE_CHAIN', rule_version: 'windows-security-usn-v1', evidence }],
   stream: { state: 'NOT_CONFIGURED', evaluated_at: time } };
+const accountObservation = {state:'CURRENT', observed_at:time, snapshot_id:id,
+  latest_attempt_state:'COMPLETE', valid_for_ms:900000, user:{
+    sid:evidence.evidence.sid, object_guid:id, account:'CurrentDirectoryName',
+    upn:'current@example.test', display_name:'Тестовый сотрудник', enabled:false, primary_group_id:513}};
+const clientObservation = {state:'CONFIRMED_CURRENT', observed_at:time,
+  expires_at:'2026-10-13T00:15:00Z', computer_name:'SyntheticClientPC', ptr_name:'pc.example.test',
+  computer_sid:'S-1-5-21-100-200-300-1002', computer_guid:id,
+  reason:null, event_time_confirmed:false, valid_for_ms:900000};
 
 test('admin audit evidence, private POST filters, mobile and reload', async ({ page, context }, testInfo) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
@@ -24,7 +32,8 @@ test('admin audit evidence, private POST filters, mobile and reload', async ({ p
     const url = route.request().url();
     let body: object = { detail: 'UNAVAILABLE' };
     if (url.includes('/auth/me')) body = { id, username: 'synthetic-admin', roles: ['storage_admin'] };
-    else if (url.includes('/audit/changes/')) body = verdict;
+    else if (url.includes('/audit/changes/')) body = {...verdict,
+      actor:{...verdict.actor, account_observation:accountObservation, client_observation:clientObservation}};
     else if (url.includes('/audit/search')) {
       expect(route.request().method()).toBe('POST'); expect(url).not.toContain('SyntheticUserA');
       expect(route.request().postDataJSON()).toMatchObject({ account: 'SyntheticUserA' });
@@ -45,6 +54,8 @@ test('admin audit evidence, private POST filters, mobile and reload', async ({ p
     await expect(page.getByText('Обоснованная атрибуция', { exact: true })).toBeVisible();
     await expect(page.getByText('Событие 4663, RecordID 10')).toBeVisible();
     await expect(page.getByText('SyntheticUserA').first()).toBeVisible();
+    await expect(page.getByText('CurrentDirectoryName', {exact:true})).toBeVisible();
+    await expect(page.getByText('SyntheticClientPC', {exact:true})).toBeVisible();
     await expect(page.getByText('Учётная запись использовала право доступа к объекту.', { exact: false }).first()).toBeVisible();
     await page.getByLabel('Учётная запись', { exact: true }).fill('SyntheticUserA');
     await page.getByRole('button', { name: 'Найти свидетельства' }).click();

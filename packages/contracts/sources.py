@@ -1,10 +1,18 @@
 import re
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 from uuid import UUID
 
-from pydantic import AwareDatetime, Field, SecretStr, field_serializer, field_validator
+from pydantic import (
+    AwareDatetime,
+    Field,
+    SecretStr,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from .common import Contract
+from .directory import DirectoryScope
 
 SourceType = Literal["FILESERVER", "PVE", "PBS"]
 CollectorType = Literal["WINDOWS", "AUDIT_WINDOWS", "PVE", "PBS"]
@@ -42,6 +50,15 @@ class SourceRegistration(CreateSource):
 
 class CreateCollector(Contract):
     collector_type: CollectorType
+    directory_scope: DirectoryScope | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+
+    @model_validator(mode="after")
+    def explicit_audit_capability(self) -> Self:
+        if self.directory_scope is not None and self.collector_type != "AUDIT_WINDOWS":
+            raise ValueError("DIRECTORY_AUDIT_REQUIRED")
+        return self
 
 
 class RotateCollector(Contract):
@@ -60,6 +77,9 @@ class CollectorView(Contract):
     enabled: Annotated[bool, Field(strict=True)]
     created_at: AwareDatetime
     last_seen_at: AwareDatetime | None
+    directory_scope: DirectoryScope | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class CollectorCredential(CollectorView):

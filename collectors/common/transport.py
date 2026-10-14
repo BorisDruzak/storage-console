@@ -25,6 +25,8 @@ _ROUTES = {
     "telemetry": "telemetry",
     "events": "events",
     "audit": "audit-events",
+    "directory": "directory",
+    "client-names": "client-names",
     "acl": "acl",
     "recovery": "recovery",
     "hygiene": "hygiene",

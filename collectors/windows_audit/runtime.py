@@ -47,10 +47,12 @@ class Capture:
         boot_id: str,
         generation: UUID,
         boot_started_at: datetime | None = None,
+        track_client_ips: bool = False,
     ) -> None:
         self.store, self.reader, self.scope = store, reader, scope
         self.host_id, self.boot_id, self.generation = host_id, boot_id, generation
         self.boot_started_at = boot_started_at
+        self.track_client_ips = track_client_ips
         _, self.cache = store.checkpoint()
         if self.cache.get("boot_id", boot_id) != boot_id:
             store.latch_gap("AUDIT_BOOT_CHANGED")
@@ -107,12 +109,13 @@ class Capture:
             else self.cache.get("last_event_at"),
         }
         body = None
+        batch_id = uuid4().hex if accepted else None
         if accepted:
             body = json.dumps(
                 {
                     "schema_version": 1,
                     "collector_id": str(self.store.collector_id),
-                    "batch_id": uuid4().hex,
+                    "batch_id": batch_id,
                     "sent_at": datetime.now(UTC).isoformat(),
                     "records": [
                         {**e.model_dump(mode="json"), "digest": e.digest()} for e in accepted
@@ -122,6 +125,26 @@ class Capture:
                 sort_keys=True,
                 separators=(",", ":"),
             ).encode()
+        if self.track_client_ips:
+            from packages.contracts.directory import normalized_ip
+
+            targets = dict(self.cache.get("directory_targets", {}))
+            for witness in accepted:
+                if witness.event_id != 4624 or witness.client_ip is None:
+                    continue
+                try:
+                    key = normalized_ip(witness.client_ip)
+                except ValueError:
+                    continue
+                previous_target = targets.get(key, {})
+                targets[key] = {
+                    "ip": witness.client_ip,
+                    "batch": previous_target.get("batch", batch_id),
+                    "seen": time.time(),
+                }
+            while len(targets) > 512:
+                targets.pop(min(targets, key=lambda key: targets[key]["seen"]))
+            cache["directory_targets"] = targets
         try:
             self.store.commit(bookmark, cache, body)
         except BaseException:
@@ -160,10 +183,23 @@ def _run_capture(
         name="audit-https",
     )
     delivery.start()
+    directory = None
+    if getattr(config, "directory", None) is not None:
+        from .directory_worker import run_directory
+
+        directory = threading.Thread(target=run_directory, args=(state, config, stop),
+                                     name="audit-directory", daemon=False)
+        directory.start()
     try:
         _capture(state, config, stop, publish_status=shared.publish, verifier=verifier)
     finally:
         stop.set()
+        if directory is not None:
+            directory.join(timeout=15)
+            if directory.is_alive():
+                from collectors.windows.errors import SecurityError
+
+                raise SecurityError("DIRECTORY_STOP_TIMEOUT")
         delivery.join(timeout=25)
         if delivery.is_alive():
             from collectors.windows.errors import SecurityError
@@ -261,6 +297,7 @@ def _capture(
             boot_id=boot,
             generation=config.generation,
             boot_started_at=boot_started_at,
+            track_client_ips=getattr(config, "directory", None) is not None,
         )
         refresh_at = 0.0
         while not stop.is_set():

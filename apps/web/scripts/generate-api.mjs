@@ -33,7 +33,7 @@ const ajv = new Ajv2020({ code: { source: true, formats: _`require("ajv-formats/
 addFormats(ajv);
 ajv.addSchema({ ...JSON.parse(validation), $id: 'storage-console-read' });
 const responses = ['Activity', 'Overview', 'Domains', 'Source', 'Freshness', 'Page_Source_', 'Page_Volume_', 'Page_Share_', 'UserResponse',
-  'SourceRegistration', 'CollectorView', 'CollectorCredential', 'Page_CollectorView_', 'AuditStream', 'AuditPage', 'ChangeAudit', 'AuditObject'];
+  'SourceRegistration', 'CollectorView', 'CollectorCredential', 'Page_CollectorView_', 'AuditStream', 'AuditPage', 'ChangeAudit', 'AuditObject', 'DirectoryStream'];
 const compiled = standalone(ajv, Object.fromEntries(responses.map(name => [name, `storage-console-read#/$defs/${name}`])));
 const bundled = await build({ stdin: { contents: compiled, resolveDir: fileURLToPath(new URL('../', import.meta.url)) }, bundle: true, platform: 'browser', format: 'esm', minify: true, write: false });
 const declarations = `declare const validators: Record<${responses.map(name => JSON.stringify(name)).join(' | ')}, (value: unknown) => boolean>;\nexport default validators;\n`;
