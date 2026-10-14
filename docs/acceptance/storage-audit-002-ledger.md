@@ -325,3 +325,20 @@ Production scope and identities remain in the approved private operator design.
 - Current read-only Security bookmark verification PASS, positive remaining record
   margin; original20MiB channel setting untouched. VM follow-up: about13.6GiB
   memory available, no container OOM, PostgreSQL mount still on approved data disk.
+
+## USN regression witness correction
+
+- PR37 head7753d09c3ac3aef4a60edbbccbee26cf8261763d / run38629369287:
+  five required checks PASS, windows-pilot FAIL; Sonar SKIPPED. Windows Audit109,
+  directory41 and SCM/runtime81 PASS. USN96 PASS / 1 FAIL: completed-inventory
+  GAP test observed delivered BOOTSTRAP while GAP was already durably queued.
+- Controlled RED reproduces the failure by delaying the first transport ACK.
+  GREEN checks the latest durable heartbeat through a closed read-only SQLite
+  connection after completed inventory, retaining exact CONTINUITY_GAP and gap
+  cursor assertions. ACK is released and threads joined in finally. Production
+  USN behavior, delivery contract and continuity requirements are unchanged.
+- Focused regression126 PASS; final focused5 PASS, Ruff and diff check PASS.
+  Independent review APPROVE; negative mutations removing GAP or replacing its
+  cursor are detected. Frozen full regression1016 PASS / 91 platform SKIP /
+  74 upstream warnings (394.57s); global Ruff, supported Linux-target mypy137
+  and public-source secret scan PASS. New exact head/main CI required.

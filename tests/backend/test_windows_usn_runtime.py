@@ -1,10 +1,12 @@
 import json
+import sqlite3
 import threading
 import time
+from contextlib import closing
 from dataclasses import replace
 from datetime import datetime
 
-from test_windows_runtime import prepared
+from test_windows_runtime import Sender, prepared
 from windows_capture_diagnostics import runtime_snapshot, safe_failure
 
 from collectors.windows.inventory import CaptureError
@@ -51,6 +53,17 @@ def test_blocked_usn_keeps_heartbeat_inventory_and_shutdown_independent(tmp_path
 
 def test_completed_inventory_does_not_clear_usn_gap(tmp_path):
     loaded = replace(prepared(tmp_path), usn_enabled=True)
+    sending = threading.Event()
+    release_ack = threading.Event()
+
+    class DelayedAck(Sender):
+        def send(self, claim):
+            outcome = super().send(claim)
+            sending.set()
+            assert release_ack.wait(10), "test did not release transport ACK"
+            return outcome
+
+    loaded = replace(loaded, transport=DelayedAck(loaded.outbox.collector_id))
 
     class Capture:
         def __init__(self, report):
@@ -78,17 +91,34 @@ def test_completed_inventory_does_not_clear_usn_gap(tmp_path):
     thread = threading.Thread(target=run)
     thread.start()
     try:
+        assert sending.wait(4), runtime_snapshot(runtime, loaded.outbox.path, failures)
         deadline = time.monotonic() + 4
+        rows = []
+        inventory_completed = False
         while time.monotonic() < deadline:
-            rows = list(loaded.transport.records)
-            if rows and rows[-1].get("error_code") == "CONTINUITY_GAP":
+            # GAP retention is a durable producer property, independent of ACK
+            # latency. Read without claiming, acknowledging or locking writers.
+            with closing(sqlite3.connect(loaded.outbox.path.as_uri() + "?mode=ro",
+                                         uri=True, timeout=0.1)) as observer:
+                observer.execute("PRAGMA query_only=ON")
+                bodies = observer.execute(
+                    "SELECT body FROM batches WHERE domain='heartbeat' AND state='pending' "
+                    "ORDER BY seq DESC LIMIT 1"
+                ).fetchall()
+            rows = [row for (body,) in bodies for row in json.loads(body)["records"]]
+            inventory_completed = any(event.kind == "inventory" and event.code is None
+                                      for event in runtime.events)
+            if inventory_completed and rows and rows[-1].get("error_code") == "CONTINUITY_GAP":
                 break
             time.sleep(0.05)
-        assert rows[-1]["error_code"] == "CONTINUITY_GAP", runtime_snapshot(
+        assert (inventory_completed and rows
+                and rows[-1]["error_code"] == "CONTINUITY_GAP"), runtime_snapshot(
             runtime, loaded.outbox.path, failures,
         )
         assert rows[-1]["cursor"].startswith("ntfs-usn:gap:")
+        assert loaded.transport.records[0]["error_code"] == "USN_BOOTSTRAP"
     finally:
+        release_ack.set()
         stop.set()
         thread.join(2)
     assert not thread.is_alive() and not failures
