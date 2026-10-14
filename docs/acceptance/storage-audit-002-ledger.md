@@ -412,3 +412,32 @@ Production scope and identities remain in the approved private operator design.
   absent validation and connection failure mutations rejected with writer closed.
   Global Ruff, Linux-target mypy137 and public-source secret scan PASS. Fresh
   exact head/main CI required.
+
+## SCM removal completion
+
+- PR38 head80bbcae96df778fd178f320497bb98a6cefe3b54 / run38641875108:
+  five required checks PASS; Windows FAIL after native second-crash recovery:
+  stop/uninstall completed, but immediate status still reported STOPPED instead
+  of absent. CLI14 / directory41 / Audit109 and service80 PASS; USN/integration
+  did not execute. Previous unit/race fixes were not represented as final native
+  acceptance. No corrected package installed.
+- Source-verified completion defect: native delete returned on STOPPED while its
+  own service handle was still held. Win32 DeleteService only marks deletion;
+  absence requires stop and all service handles closed. Canonical references:
+  [Microsoft DeleteService](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-deleteservice)
+  and matching Context7 Win32 documentation. Exact external handle owner in that
+  CI failure remains UNKNOWN.
+- RED6 / GREEN7 portable API timelines: close own drain handles, then read-only
+  OpenService/close probes; only1060 means absent,1072 remains pending, other
+  errors fail. Drain and absence share one150s budget. No repeated Delete/Stop,
+  force kill, registry edit or mutation of a possible replacement registration.
+- Focus68 PASS; global Ruff, Linux-target mypy137 and diff check PASS. An initial
+  wider local focus had75 PASS plus one old stored-heartbeat test setup error
+  because TEST_DATABASE_URL was absent; full disposable PostgreSQL regression
+  is required separately. Fresh frozen PostgreSQL full regression1026 PASS /
+  91 platform SKIP / 74 upstream warnings (366.20s). Strict deploy mypy7,
+  OpenAPI and public-source secret scan PASS. Installed-code witness includes SCM.
+  Independent review APPROVE: portable7 PASS; early return,1072-as-absent, second
+  deadline, foreign Delete and handle-leak mutations rejected. Actual PS5.1 code
+  witness rejects wrong SCM hash/path. Existing USN live runtime remains on its
+  accepted prior code. New exact head/main CI required before Audit apply.
