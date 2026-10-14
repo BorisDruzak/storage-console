@@ -812,6 +812,46 @@ pending replay are not accepted. The extended <=36-operation allowance is exhaus
   5145/WEF/SIEM/версии/массовый аудит не реализованы; исходный USN soak остаётся
   FAIL. После final review и exact publication CI — STOP, без новых live действий.
 
+### Исторические первые попытки CI окончательной публикации C
+
+- Docs commit `06448ccc1417535a9cffade85c49267c9de07fd3`
+  (`docs(audit): record two-account live attribution acceptance`) изменяет только
+  ledger. Run https://github.com/BorisDruzak/storage-console/actions/runs/38515701582,
+  attempt1: five required jobs SUCCESS, windows-pilot FAIL, Sonar SKIPPED.
+  Audit84/SCM81 PASS; USN65 PASS/2 FAIL: `test_completed_inventory_does_not_clear_usn_gap`
+  увидел USN_BOOTSTRAP вместо CONTINUITY_GAP к wall deadline4 s;
+  `test_success_then_blocked_usn_never_keeps_fresh_heartbeat_continuous` не увидел
+  USN_STALE к deadline2 s. Код runtime и эти тесты совпадали с accepted source05.
+- Один failed-job retry того же SHA, attempt2: предыдущие USN67 PASS, но
+  `test_native_usn_runtime_changes_https_lost_ack_and_activity_read` FAIL после
+  реальных accepted CRUD и lost-ACK duplicate: pending_count не достиг0 за40 s.
+  Пять остальных jobs SUCCESS. Обе неуспешные попытки сохранены; причина
+  каждого CI отказа **UNKNOWN**, они не объявлены исправленными или успешными.
+  Живое доказательство C не заменяет publication gate; PR не объединялся.
+- Дополнительное локальное воспроизведение двух исходных portable functions на
+  Windows/Python3.14.3: по три PASS. Это не CI Python3.13.15 и не доказанная RCA.
+  Source review выявило диагностические ограничения baseline fixtures:
+  wall4/2 s не разделяет poll/production/SQLite/delivery; monotonic×100 ускоряет
+  state-retry budget, но не реальные ожидания SQLite; Sender records до ACK.
+  Эти факты не доказывают конкретную причину provider failure.
+- Test-only commit `bdab761117d8b5cb93175e18bb479d92c47e22a9`
+  (`test(collector): expose safe USN runtime failure diagnostics`) меняет четыре
+  тестовых файла. При отказе выводятся только fixed codes/kinds, validated
+  RuntimeFailure detail, последние24 runtime events/outcomes и один read-only
+  queue-count snapshot (SQLite mode=ro/query_only, timeout0.1 s). Реальный HTTPS
+  outcome отделён от synthetic lost-ACK outcome; bodies/headers/IDs/paths/token/
+  exception messages не выводятся. Ошибка snapshot даёт UNAVAILABLE и сохраняет
+  исходный FAIL. Assertions, deadlines и production runtime не ослаблены.
+- RED missing diagnostic helper → GREEN; отдельный RED malformed-outcome token
+  leakage → GREEN whitelist sanitation. На isolated Python3.13.16: target10 PASS /
+  1 Windows-native SKIP; вся USN regression65 PASS /8 native SKIP на Linux.
+  Ruff, Python compile, diff check и tracked-source Gitleaks PASS, findings0.
+  Independent complete four-file review Critical/Important0. Native acceptance
+  остаётся обязательной в новом exact-head/main CI, Linux skips её не заменяют.
+- Production API/worker/Web source05 и installed Audit source982 не изменились;
+  нового deployment/службы/SACL/policy/CRUD/baseline нет. Финальные publication
+  SHAs/run IDs и terminal verdict записываются в PR #26; первые FAIL сохранены.
+
 ## Mandatory reporting
 
 - Не ставить PASS по одному CI, без реального подтверждения обязательных live критериев.
