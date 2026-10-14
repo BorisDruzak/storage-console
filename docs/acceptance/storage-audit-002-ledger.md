@@ -1,6 +1,7 @@
 # STORAGE-AUDIT-002 — bounded single-root rollout ledger
 
-Status: A/B/C source PASS; data-disk migration PASS; department live rollout IN_PROGRESS.
+Status: A/B/C source PASS; corrected runtime CI/installation PASS; data-disk
+migration PASS; ordinary new-root activity acceptance PENDING.
 Specification and plan: docs/superpowers/{specs,plans}/2026-10-14-storage-audit-002.md.
 Production scope and identities remain in the approved private operator design.
 
@@ -441,3 +442,61 @@ Production scope and identities remain in the approved private operator design.
   deadline, foreign Delete and handle-leak mutations rejected. Actual PS5.1 code
   witness rejects wrong SCM hash/path. Existing USN live runtime remains on its
   accepted prior code. New exact head/main CI required before Audit apply.
+
+## Corrected runtime exact-SHA acceptance
+
+- PR38 final head4e8122738af1ee0b0146e4c4537183ff336a9d6f /
+  run38644651966 and merged main9296ca51357635207325e50c447f2213997e4093 /
+  run38645998236: all six required checks PASS. Native groups14 + 41 + 109 + 81
+  + 97 + 1 PASS on both revisions, including real SCM crash recovery/removal and
+  strict HTTPS/USN replay. Sonar SKIPPED remains unverified, not Quality Gate PASS.
+  Earlier failures and UNKNOWN scheduling causes above remain recorded.
+- Exact merged-main wheel SHA256
+  `059587b0a4dfd05e7a109a9bc61b9c792a4bee0e80049ca0d8105129f333e698`;
+  all138 packaged Python/PowerShell members matched the committed Git archive.
+  Protected offline installation and four installed module path/hash witnesses
+  PASS. Both lifecycle/SACL locks and all four QUIESCENT owner journals checked.
+- Audit switched while stopped, preserving the same protected state/generation
+  and exact SQLite bytes across registration replacement; then started RUNNING.
+  Original runtime and private receipts retained. Existing USN registration,
+  command, PID, state and running disposition unchanged; no additional SACL,
+  policy, GPO, baseline, Security-channel or production-file mutation.
+- Installed Audit9296ca51357635207325e50c447f2213997e4093; central API/worker/Web
+  and existing USN remain927e4c5107785765b5040f571dd6b9cf6f119014, schema0009.
+  Publication, central deployment and installed collector revisions are distinct.
+
+## Final migration and bounded live verification
+
+- Fresh read-only verification2026-10-14 around22:30 UTC: PostgreSQL uses the
+  approved additional250GiB filesystem UUID; schema0009; all historical table
+  counts at least the closed pre-stop baseline; original data copy retained.
+  Free248991617024 bytes (about231.9GiB). Existing off-VM restore-verified backup
+  and initial full file manifest remain retained. No second format or migration.
+- All four containers healthy with enforced PostgreSQL2048/API768/worker512/
+  Web128MiB limits and no recorded OOM. Finite admission/pools/queues remain;
+  no automatic history deletion or unlimited-retention promise.
+- Owned strict-TLS storage_admin browser/UI read and confirmed logout/revocation
+  PASS. Four samples22:26:50–22:28:06 UTC: AuditHEALTHY, directoryCURRENT208 users,
+  exact UI count, only enabled WINDOWS/AUDIT_WINDOWS collectors. Three distinct
+  completed readiness probes cover51988 objects; durations23.64–24.25s,
+  published proof ages31.09–32.70s, complete/non-stale, policy/SACL verified.
+- Fresh local read22:29:50 UTC: AuditHEALTHY with advancing observed-through,
+  full readiness24.16s, no readiness/bounds error; Audit/directory queues empty,
+  no GAP, suspension or quarantine. USN retains two roots, approved addition,
+  empty queue, one volume stream and ordinary3600s inventory cadence.
+- Old pilot object identity is still readable through the sensitive API. The
+  bounded Activity sample contains100 of121 recent rows and zero selected-root
+  rows. Activity qualityUNAVAILABLE/continuityUNKNOWN remains an honest live
+  limitation; exact cause is not established by this check. This sample is not
+  proof that no events exist outside the sampled rows or that new-root history
+  and attribution have passed acceptance. Audit last accepted batch remains NULL
+  during this quiet interval; directory delivery is independently CURRENT.
+- Requested CI correction and approved disk migration are complete. Permanent
+  Audit remains RUNNING as authorized. Task5 ordinary-event/history acceptance
+  remains PENDING, without synthetic production CRUD, outage injection, relaxed
+  freshness/continuity gates or a new scheduled monitor. Original001 PASS and
+  historical USN-SOAK FAIL/GAP are unchanged. Stop this execution after recording
+  these results; no full department acceptance claim.
+- Independent final documentation review APPROVE: all three changed documents,
+  private CI/install/migration/live receipts and all138 wheel members verified;
+  no material discrepancy. Documentation-only diff check and secret scan PASS.
