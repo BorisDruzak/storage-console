@@ -16,6 +16,8 @@ from deploy.scripts import lifecycle
 from deploy.scripts.backup import create_backup, restore_backup
 from deploy.scripts.commands import ROOT, Compose, run
 from deploy.scripts.environment import ConfigError, parse_environment
+from deploy.scripts.resources import verify as verify_resources
+from tests.deployment.ingest_https import verify_overload
 
 
 def authenticate_runtime(
@@ -371,6 +373,9 @@ def main() -> None:
         # Production preflight/lifecycle code is unchanged.
         lifecycle.run = synthetic_client
         lifecycle.healthcheck(values, compose)
+        verify_resources(compose)
+        print("Actual cgroup memory/swap and PostgreSQL budgets: PASS")
+        verify_overload(values, compose, root)
         authenticate_runtime(values, compose, root, password)
         browser_acceptance(values, compose, root, password)
 

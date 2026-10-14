@@ -9,6 +9,7 @@ from pathlib import Path
 from deploy.scripts.commands import ROOT, Compose, run
 from deploy.scripts.environment import ConfigError, load_environment
 from deploy.scripts.preflight import preflight
+from deploy.scripts.resources import verify as verify_resources
 
 
 @contextlib.contextmanager
@@ -58,6 +59,7 @@ def healthcheck(values: dict[str, str], compose: Compose) -> None:
             ).split()
             if identity != [expected_id, values["APP_RELEASE"]]:
                 raise ConfigError("Работающий контейнер не соответствует образу release")
+    verify_resources(compose)
     host, port = values["STORAGE_HOSTNAME"], values["HTTPS_PORT"]
     tls = [
         "curl",

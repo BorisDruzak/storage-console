@@ -15,6 +15,7 @@ from apps.api.audit_ingest import router as audit_ingest_router
 from apps.api.audit_read import router as audit_read_router
 from apps.api.body_limit import IngestBodyLimit
 from apps.api.ingest import router as ingest_router
+from apps.api.ingest_admission import IngestAdmission
 from apps.api.read.routes import router as read_router
 from apps.api.source_control.routes import router as source_router
 from apps.api.source_control.transport import ControlTransport
@@ -75,6 +76,8 @@ def create_app(
     )
     application.add_middleware(AuthTransport)
     application.add_middleware(ControlTransport)
+    # Last-added middleware wraps body buffering and reserves heartbeat capacity.
+    application.add_middleware(IngestAdmission)
 
     @application.exception_handler(RequestValidationError)
     async def invalid_request(_: Request, __: RequestValidationError) -> JSONResponse:

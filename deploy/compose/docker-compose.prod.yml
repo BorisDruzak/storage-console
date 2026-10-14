@@ -29,7 +29,11 @@ x-runtime: &runtime
 
 services:
   postgres:
+    mem_limit: 2048m
+    memswap_limit: 2048m
     image: postgres:16-alpine
+    command: [postgres, -c, shared_buffers=256MB, -c, work_mem=4MB,
+              -c, maintenance_work_mem=128MB, -c, max_connections=40]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-storage_console}
       POSTGRES_USER: ${POSTGRES_USER:-storage_console}
@@ -50,12 +54,16 @@ services:
       options: {max-size: 10m, max-file: '3'}
 
   migrate:
+    mem_limit: 512m
+    memswap_limit: 512m
     <<: *runtime
     command: [alembic, upgrade, head]
     depends_on:
       postgres: {condition: service_healthy}
 
   api:
+    mem_limit: 768m
+    memswap_limit: 768m
     <<: *runtime
     environment:
       <<: *environment
@@ -86,6 +94,8 @@ services:
     restart: unless-stopped
 
   worker:
+    mem_limit: 512m
+    memswap_limit: 512m
     <<: *runtime
     command: [python, -m, apps.worker.main]
     depends_on:
@@ -99,6 +109,8 @@ services:
     restart: unless-stopped
 
   web:
+    mem_limit: 128m
+    memswap_limit: 128m
     image: ${WEB_IMAGE:?Set matching release-specific WEB_IMAGE}
     build:
       context: ../..

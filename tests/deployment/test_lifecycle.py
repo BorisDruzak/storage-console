@@ -208,7 +208,7 @@ def test_private_provider_config_rejects_nonprivate_permissions(tmp_path, mode):
         check_auth_file(path)
 
 
-@pytest.mark.parametrize("wrong_identity", ["image", "revision", None])
+@pytest.mark.parametrize("wrong_identity", ["image", "revision", "resource", None])
 def test_healthcheck_verifies_running_release_identity(monkeypatch, wrong_identity):
     from deploy.scripts import lifecycle
 
@@ -233,9 +233,18 @@ def test_healthcheck_verifies_running_release_identity(monkeypatch, wrong_identi
         return "HTTP/1.1 308 Permanent Redirect\nLocation: https://storage.example.test/\n"
 
     monkeypatch.setattr(lifecycle, "run", synthetic_run)
+    verified = []
+
+    def verify_resources(compose):
+        verified.append(compose)
+        if wrong_identity == "resource":
+            raise ConfigError("Synthetic missing resource limit")
+
+    monkeypatch.setattr(lifecycle, "verify_resources", verify_resources)
     values = parse_environment(valid_text())
     if wrong_identity:
         with pytest.raises(ConfigError):
             lifecycle.healthcheck(values, HealthyCompose())
     else:
         lifecycle.healthcheck(values, HealthyCompose())
+        assert len(verified) == 1
