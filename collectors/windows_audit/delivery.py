@@ -102,6 +102,13 @@ def run_delivery(
                     error_code=outcome_state.get("error_code") or status.get("bounds_error"),
                     policy_verified=bool(status.get("policy_verified")),
                     sacl_verified=bool(status.get("sacl_verified")),
+                    readiness_complete=status.get("readiness_complete"),
+                    readiness_stale=status.get("readiness_stale"),
+                    readiness_checked_at=status.get("readiness_checked_at"),
+                    readiness_objects=status.get("readiness_objects"),
+                    readiness_age_seconds=status.get("readiness_age_seconds"),
+                    readiness_duration_seconds=status.get("readiness_duration_seconds"),
+                    readiness_error=status.get("readiness_error"),
                 )
                 now = datetime.now(UTC)
                 if pending_heartbeat is None:

@@ -1,9 +1,13 @@
 """Read-only Win32 policy/SACL proof; privileges affect only this Audit process."""
 
 import ctypes
+import math
 import os
+import stat
+import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from typing import Protocol
 from uuid import UUID
 
 from .native import no_reparse_ancestry
@@ -62,27 +66,76 @@ def covered(
     return bool(masks) and all(mask & 0x10006 == 0x10006 for mask in masks.values())
 
 
+class _Scan(Protocol):
+    def __next__(self) -> os.DirEntry[str]: ...
+    def close(self) -> None: ...
+
+
 def scope_covered(
-    root: str, sids: list[str], check: Callable[[str, list[str], bool], bool], *, limit: int = 256
+    root: str,
+    sids: list[str],
+    check: Callable[[str, list[str], bool], bool],
+    *,
+    limit: int = 256,
+    max_depth: int = 128,
+    max_seconds: float = 30,
+    stopped: Callable[[], bool] = lambda: False,
+    clock: Callable[[], float] = time.monotonic,
 ) -> bool:
-    """Bounded approved scope only; inherited root ACEs cannot prove protected descendants."""
-    pending = [(root, True)]
-    seen = 0
-    while pending:
-        path, directory = pending.pop()
-        seen += 1
-        if seen > limit or not check(path, sids, directory):
+    """Lazy DFS: resident directory iterators scale with bounded depth, never width."""
+    if (
+        type(limit) is not int
+        or not 1 <= limit <= 100000
+        or type(max_depth) is not int
+        or not 1 <= max_depth <= 128
+        or isinstance(max_seconds, bool)
+        or not math.isfinite(max_seconds)
+        or not 0 < max_seconds <= 30
+    ):
+        return False
+    started = clock()
+    frames: list[_Scan] = []
+
+    def expired() -> bool:
+        return stopped() or clock() - started > max_seconds
+
+    def children(path: str) -> _Scan:
+        if os.name == "nt" and not path.startswith("\\\\?\\"):
+            path = "\\\\?\\" + os.path.abspath(path)
+        return os.scandir(path)
+
+    try:
+        if expired() or not check(root, sids, True):
             return False
-        if directory:
-            with os.scandir(path) as children:
-                for child in children:
-                    if seen + len(pending) >= limit:
-                        return False
-                    stat = child.stat(follow_symlinks=False)
-                    if child.is_symlink() or getattr(stat, "st_file_attributes", 0) & 0x400:
-                        return False
-                    pending.append((child.path, child.is_dir(follow_symlinks=False)))
-    return True
+        seen = 1
+        frames.append(children(root))
+        while frames:
+            if expired():
+                return False
+            try:
+                child = next(frames[-1])
+            except StopIteration:
+                frames.pop().close()
+                continue
+            seen += 1
+            if seen > limit:
+                return False
+            attributes = child.stat(follow_symlinks=False)
+            if child.is_symlink() or getattr(attributes, "st_file_attributes", 0) & 0x400:
+                return False
+            directory = stat.S_ISDIR(attributes.st_mode)
+            if not check(child.path, sids, directory) or expired():
+                return False
+            if directory:
+                if len(frames) >= max_depth:
+                    return False
+                frames.append(children(child.path))
+        return not expired()
+    except OSError:
+        return False
+    finally:
+        for iterator in reversed(frames):
+            iterator.close()
 
 
 class Native:

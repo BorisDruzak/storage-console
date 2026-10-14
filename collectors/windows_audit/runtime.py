@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from .events import parse_event
 from .native import STALE, EventLogError, EventLogPending
+from .readiness_worker import ReadinessWorker, native_probe
 from .scope import AuditScope, Selector
 from .store import AuditStore
 
@@ -131,6 +132,18 @@ class Capture:
 
 
 def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
+    if config.mode == "deliver" and getattr(config, "readiness_max_objects", 256) != 256:
+        with ReadinessWorker(
+            native_probe(list(config.roots), config.audit_sids, config.readiness_max_objects)
+        ) as verifier:
+            _run_capture(state, config, stop, verifier=verifier)
+        return
+    _run_capture(state, config, stop)
+
+
+def _run_capture(
+    state: Any, config: Any, stop: threading.Event, *, verifier: ReadinessWorker | None = None
+) -> None:
     if config.mode == "capture_only":
         _capture(state, config, stop)
         return
@@ -145,7 +158,7 @@ def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
     )
     delivery.start()
     try:
-        _capture(state, config, stop, publish_status=shared.publish)
+        _capture(state, config, stop, publish_status=shared.publish, verifier=verifier)
     finally:
         stop.set()
         delivery.join(timeout=25)
@@ -161,6 +174,7 @@ def _capture(
     stop: threading.Event,
     *,
     publish_status: Callable[[dict[str, Any]], None] | None = None,
+    verifier: ReadinessWorker | None = None,
 ) -> None:
     from collectors.windows.errors import SecurityError
 
@@ -197,8 +211,19 @@ def _capture(
         stop.wait()
         return
     if config.mode == "deliver":
-        policy, sacl = readiness(list(config.roots), config.audit_sids)
-        diagnostics.update(policy_verified=policy, sacl_verified=sacl)
+        if verifier is None:
+            policy, sacl = readiness(list(config.roots), config.audit_sids)
+            diagnostics.update(policy_verified=policy, sacl_verified=sacl)
+        else:
+            while not stop.is_set():
+                diagnostics.update(verifier.snapshot())
+                if diagnostics.get("readiness_complete") and not diagnostics.get("readiness_stale"):
+                    break
+                status("OBSERVE")
+                stop.wait(1)
+            if stop.is_set():
+                return
+            policy, sacl = diagnostics["policy_verified"], diagnostics["sacl_verified"]
         if not (policy and sacl):
             status("NOT_CONFIGURED")
             stop.wait()
@@ -236,8 +261,16 @@ def _capture(
         )
         refresh_at = 0.0
         while not stop.is_set():
+            if verifier is not None:
+                diagnostics.update(verifier.snapshot())
+                if (
+                    diagnostics.get("readiness_complete")
+                    and not diagnostics.get("readiness_stale")
+                    and not (diagnostics["policy_verified"] and diagnostics["sacl_verified"])
+                ):
+                    store.latch_gap("AUDIT_CONFIGURATION_CHANGED")
             if time.monotonic() >= refresh_at:
-                if config.mode == "deliver":
+                if config.mode == "deliver" and verifier is None:
                     policy, sacl = readiness(list(config.roots), config.audit_sids)
                     diagnostics.update(policy_verified=policy, sacl_verified=sacl)
                     if not (policy and sacl):
@@ -282,7 +315,14 @@ def _capture(
                     break  # OBSERVE, without advancing the historical coverage timestamp.
                 if result == "idle":
                     diagnostics["observed_through_at"] = datetime.now(UTC).isoformat()
-                    if config.mode == "deliver" and not diagnostics.get("bounds_error"):
+                    if verifier is not None:
+                        diagnostics.update(verifier.snapshot())
+                    if (
+                        config.mode == "deliver"
+                        and not diagnostics.get("bounds_error")
+                        and diagnostics.get("policy_verified")
+                        and diagnostics.get("sacl_verified")
+                    ):
                         health = "HEALTHY"
                     break
             status(health)

@@ -581,6 +581,20 @@ export interface components {
              * @default 0
              */
             read_count: number;
+            /** Readiness Age Seconds */
+            readiness_age_seconds?: number | null;
+            /** Readiness Checked At */
+            readiness_checked_at?: string | null;
+            /** Readiness Complete */
+            readiness_complete?: boolean | null;
+            /** Readiness Duration Seconds */
+            readiness_duration_seconds?: number | null;
+            /** Readiness Error */
+            readiness_error?: string | null;
+            /** Readiness Objects */
+            readiness_objects?: number | null;
+            /** Readiness Stale */
+            readiness_stale?: boolean | null;
             /** Remaining Record Margin */
             remaining_record_margin?: number | null;
             /**
