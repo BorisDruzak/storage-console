@@ -1,8 +1,11 @@
-# STORAGE-AUDIT-001 — журнал промежуточной приёмки
+# STORAGE-AUDIT-001 — журнал приёмки
 
 Задача: docs/tasks/storage-audit-001-windows-security-attribution.md
 
-**Статус:** A PASS → B IN_PROGRESS → C BLOCKED (отдельное разрешение отсутствует).
+**Статус живой приёмки:** A PASS → B PASS → C PASS. Окончательные exact-head/main
+SHA и CI публикации этого ledger фиксируются в PR #26; source CI приведён ниже.
+Оператор отдельно снял лимит числа операций; узкий scope, объём данных,
+30 секунд Audit-only 503 и итоговый Audit STOPPED сохранены.
 Следующий этап не начинается до предыдущего PASS.
 
 ## Выполнение 2026-10-13 — этап A
@@ -98,10 +101,14 @@
   никаких SACL/auditpol/GPO/USN/SMB/file CRUD mutations. Original 72h FAIL сохраняется.
 
 GATE A: PASS.
-GATE B: IN_PROGRESS — начинается с accepted merged-main SHA и повторной сверки Issue #22.
+Исторический статус при закрытии A: GATE B IN_PROGRESS — начинается с accepted
+merged-main SHA и повторной сверки Issue #22.
 GATE C: BLOCKED — нет отдельного разрешения на новую службу, pilot root, SACL/policy и CRUD.
 
-## Выполнение 2026-10-13 — этап B (code verified, publication pending)
+## Исторический ход 2026-10-13 — этап B
+
+Промежуточные pending/failure ниже относятся к указанным ревизиям;
+актуальный итог — в разделе «GATE B PASS».
 
 - Branch `codex/storage-audit-001-b`, base accepted A merged-main
   dd65c4844e540f235b23f3c456ec09d8784f62e5. Fresh origin/main совпадает;
@@ -203,7 +210,64 @@ GATE C: BLOCKED — нет отдельного разрешения на нов
   persistent draining state and a separate pending outcome. GREEN runtime/delivery
   33 PASS; no checkpoint/coverage advance on timeout. Exact native CI still required.
 
-## Baseline (каждый раз перепроверять)
+### GATE B PASS — 2026-10-13
+
+- PR B https://github.com/BorisDruzak/storage-console/pull/25 merged.
+  Final source head 9bc560319c29d0da955d143b627d167e3d735270.
+  Exact-head CI https://github.com/BorisDruzak/storage-console/actions/runs/38427397293:
+  backend/frontend/windows-pilot/compose-smoke/production-smoke/secrets SUCCESS,
+  sonar SKIPPED (unconfigured).
+- Final native Windows: Audit 80 PASS, original CLI 14 PASS, SCM/runtime 81 PASS,
+  USN 67 PASS, actual USN HTTPS/PostgreSQL/Activity 1 PASS. Installed Audit owns
+  its LocalSystem process/state/DPAPI, captures scoped real runner Security events,
+  preserves a committed-but-unacknowledged receipt and retained bytes across restart.
+  Strict stale handling remains; concurrent signal and native timeout regressions PASS.
+- Final Python 3.13/PostgreSQL CI: 860 PASS / 84 platform skips. Deployment tests,
+  migration upgrade/check/downgrade/upgrade, Ruff, mypy (122 source files plus
+  deployment scripts), shellcheck, generated OpenAPI and secret scan PASS.
+  Frontend 133 PASS and Playwright 14 PASS; final isolated runtime/delivery/real HTTPS
+  focus 34 PASS. Independent focused reviews: no open Critical/Important findings.
+- Merged main 3d018245a91bec2092e10f38fb06e0c51c967970.
+  Exact push-main CI https://github.com/BorisDruzak/storage-console/actions/runs/38428786928:
+  all six mandatory jobs SUCCESS, sonar SKIPPED. Deployment waited for this result.
+- Fresh verified custom PostgreSQL backup and checksum/decryption-verified encrypted
+  off-VM copy prepared before deployment; original API/Web/config retained for rollback.
+  No destructive schema downgrade or DB restore performed. Migration 0007 is additive.
+- Deployment uses a fresh clean checkout of the exact merged SHA, preserving the
+  original active checkout. Initial scoped build failures occurred before writer stop;
+  read-only confirmation still showed original API SHA and schema 0006. The operations
+  container required a checksum-verified official Buildx binary and writable temporary
+  Buildx state. Host-global plugin installation and public lifecycle edits NONE.
+  Original canonical preflight/deploy/healthcheck gates then PASS with actual host NTP proof.
+- Actual central API/worker/Web image revisions all
+  3d018245a91bec2092e10f38fb06e0c51c967970; PostgreSQL schema 0007;
+  API/worker/Web/PostgreSQL all HEALTHY. Strict TLS, HTTP redirect, health/readiness,
+  root 200 and unauthenticated API 401 PASS.
+- Genuine admin Chromium, ru-RU/Asia-Yekaterinburg, strict TLS: login/Sources/Activity
+  200; Windows Security Audit NOT_CONFIGURED, empty authorized POST search without
+  query filters, old USN change has NULL actor and explicit uncertainty. Desktop,
+  mobile 390px and reload PASS, horizontal overflow/page errors 0. Sensitive screenshots
+  and snapshots remain in the approved private evidence location. No production fixture.
+- Existing source ID and WINDOWS collector ID/count preserved, heartbeat and cursor
+  advanced after deployment, USN HEALTHY and CONTINUOUS_SINCE_BASELINE before/after.
+  Existing token acceptance and historical data retained; no USN reinstall/restart.
+  Isolated 0/1/2-collector and all nonadmin 403 regressions PASS. Real central evidence
+  remains absent until an authorized pilot; no real nonadmin accounts created for tests.
+- Issue #22 remains OPEN; latest main synchronized before merge, no competing open PR.
+  Existing timeline/path algorithms retained; only equivalent sensitive-read guard added.
+- FILESERVER installation, SACL/audit policy/GPO changes and synthetic file CRUD NONE.
+  GATE C BLOCKED. Private Russian operator plan prepared: two accounts/two PCs,
+  30-minute window, <=20 total sanctioned operations, <=2 MiB, precise approval fields,
+  stop conditions, rollback and cleanup/service disposition. Ordinary inventory schedule
+  must admit the <=60-second identity witness; cadence/USN changes are not a workaround.
+  Actor/client proof for real domain users remains NOT ACCEPTED, not implied by CI.
+- Prepared pilot wheel source 3d018245a91bec2092e10f38fb06e0c51c967970;
+  SHA-256 b05d99390fd211cc778d0d850a8390132cb441d460e40441847a5f59b21421ab.
+  Transfer checksum verified; all 124 packaged Python sources match committed source
+  with CRLF/LF normalization. Stored privately, NOT_INSTALLED on FILESERVER.
+  This is package preparation, not exact-artifact installed/live acceptance.
+
+## Historical preparation baseline (перепроверять; live результаты ниже)
 
 - Baseline documentation main перед созданием задачи: 34d49cc5c1aa42953ce3d400ff9e9ddc448bcac9.
 - Issue #22 (MVP-005 History/Statistics): OPEN на момент подготовки; ожидаются возможные конфликтующие изменения Activity/RBAC. Сверять самый новый main/PR.
@@ -240,7 +304,7 @@ Remaining blocker / next step authorized:
 
 ## B — central evidence и correlation engine
 
-GATE B: IN_PROGRESS — completed code checks above; publication/deployment pending.
+GATE B: PASS — completed exact CI and central live checks above; template below is historical.
 
 ~~~text
 Source SHA / PR / merged SHA / exact CI:
@@ -265,36 +329,528 @@ Independent review and known limitations:
 Remaining blocker / next step authorized:
 ~~~
 
-## C — operator-approved real pilot
+## Исторический ход C — operator-approved real pilot
 
-GATE C: BLOCKED / HUMAN APPROVAL REQUIRED. Private bounded pilot plan prepared;
-exact folder, two domain accounts, two PCs and GPO owner await operator selection.
-No new FILESERVER service, synthetic directory, SACL/policy/GPO write or CRUD executed.
+Исторический статус после первых четырёх проходов: GATE C PARTIAL /
+further live execution BLOCKED. Four approved bounded passes
+were fully rolled back. Strong live attribution for both users and byte-identical
+pending replay are not accepted. The extended <=36-operation allowance is exhausted.
 
-~~~text
-Explicit approval reference (not this technical task):
-Exact narrow synthetic folder (private evidence only):
-Effective GPO / Audit File System before and after:
-Approved SACL diff and rollback:
-Security log capacity risk accepted:
-Approved test UserA and UserB (private evidence only):
-Approved PC-A and PC-B (private evidence only):
-Domain SID A/B observed in native 4663:
-Logon IDs and 4624 Type3 session linkage:
-SourceNetworkAddress/WorkstationName actually available?:
-USN CREATE/WRITE/RENAME/DELETE evidence:
-4660 deletion w/out fabricated path:
-Matching / ambiguous / unknown results and reasons:
-No false cross-user attribution:
-Admin Web history and evidence, nonadmin 403:
-Bookmark restart, network loss/replay, queue:
-Old USN remains healthy, unchanged cursor/collector identity:
-Operator-approved cleanup and SACL rollback:
-No reboot / no 5145 / no WEF:
-Exact installed Audit package SHA, central deployed SHA:
-Issue/PR/CI and live acceptance evidence:
-STOP or precise remaining operator action:
-~~~
+### Live execution 2026-10-13 UTC (sanitized)
+
+- Operator approved the separate service, narrow SACL/policy and two existing domain
+  accounts on two distinct computers; final Audit state STOPPED, evidence preserved.
+  Actual identities, topology, paths and Security evidence remain private.
+- Effective-policy/GPO preflight found no managed FileSystem setting requiring a
+  bypass. Temporary FileSystem Success and synthetic-directory write/append/delete
+  SACL applied only to the two approved SIDs. Failure, Logon policy, working/root
+  DACLs, GPO, SMB configuration and USN journal were preserved.
+- Initial independent Audit install used source
+  `3d018245a91bec2092e10f38fb06e0c51c967970`, wheel SHA-256
+  `b05d99390fd211cc778d0d850a8390132cb441d460e40441847a5f59b21421ab`; offline
+  bundle/file hashes and protected own-code ACL validation passed.
+- First pass 17:50–18:20 UTC: eight operations. Audit restart retained bookmark with
+  no gap/queue; this was not pending byte-identical replay. Full rollback verified.
+- Second pass 19:00–19:20 UTC, reply «делай сейчас»: both CREATE/WRITE/RENAME,
+  common-file negative test and bounded cleanup. First two passes: 20 operations,
+  345 bytes. Independent inventory was real but the identity-freshness window was
+  missed. No matching requirements were relaxed.
+- Real evidence from these passes: 24 scoped 4663 + five linked 4660, two SIDs and
+  seven session contexts. A private read-only exact SID/logon lookup found Type 3
+  logons version 3 with IP and no WorkstationName. These facts were not manually
+  backfilled into the centre. Centre 4624 remains zero; no client identity claim.
+- After normal USN retry recovered, second-pass Activity held 11 UNKNOWN, two
+  ACCESS_OBSERVED and six AMBIGUOUS; actor was NULL for all 19 results. No false
+  cross-user attribution was reported. Real strict-TLS admin audit/source pages,
+  desktop/mobile/reload: no page errors or overflow.
+- Four controlled synthetic authorization sessions exercised actual deployed
+  viewer, analyst, storage_operator and auditor restrictions: /auth/me 200, three
+  protected GETs and valid-CSRF audit-search POST all 403/no evidence payload;
+  selected Source Detail loaded, Audit controls hidden. This proves authorization,
+  not actual LDAP authentication. Scoped fixture users disabled and sessions revoked
+  (active count zero); existing accounts/roles unchanged. A cleanup selector failed
+  during concurrent one-off preflight; fixed oneoff=False and explicit cleanup
+  verified zero sessions. No cleanup PASS was claimed before this verification.
+- Final extension, reply «Разрешаю всё необходимое» to the concrete 20:00–20:20 UTC
+  plan: eight additional operations, cumulative limit 28, and 30 seconds audit-only
+  HTTPS-ingest 503. Same directory/accounts/computers and rollback. Per-pass <=8 and
+  cumulative <=28 guarded under the existing atomic single-flight operation ledger.
+- Both participants completed CREATE/WRITE/RENAME, then DELETE after independent
+  ordinary inventory contained both FileIds/link_count=1 (witness ages ~7 seconds).
+  Three passes total **28 successful operations / 475 bytes written**. No USN forced
+  inventory, cadence change, service restart or queue clearing was performed.
+- The exact Audit-ingest route returned 503 for 30 seconds under the deployment lock;
+  self-contained restoration used same-directory verified files and atomic rename.
+  Original configuration restored; real strict-TLS browser POST without collector
+  credentials returned 401 afterwards, proving active 503 was removed. Other routes,
+  TLS, FILESERVER firewall and USN ingest were not blocked. A late review found
+  restoration nginx-test failure could be masked; helper corrected and live route
+  restoration verified independently. This does not establish pending replay.
+- Final queue check showed AUDIT_BOOT_CHANGED, zero queued batches. The service had
+  refused capture at startup; it did not collect the final CRUD as Security evidence.
+  Native read-only RCA: unchanged OS boot and old-USN process creation, but exact
+  SystemTimeOfDay BootTime changed by 3820 ticks (0.382 ms). The old numeric epoch
+  used this mutable value as boot identity. Real final Activity: 14 UNKNOWN, actor
+  NULL throughout. No CORRELATED_HIGH or successful replay is claimed.
+- At 20:07 UTC, Audit STOPPED; temporary SACL/Success policy restored, Failure bit and
+  original root ACL verified, empty owned folder removed through retained NTFS
+  identity. Original USN Running with its unchanged PID; cursor advanced normally,
+  own pilot nodes gone, queue empty. Config/credentials/bookmark/evidence/GAP retained.
+  Centre reports Audit GAP separately from USN HEALTHY. No automatic baseline reset.
+
+### Compatibility corrections and exact deployed provenance
+
+- PR #27 `fix(ingest): preserve USN index inference in prepared plans`:
+  head `d16fd298a75f951f5944d0bda86379515562d180`, merge
+  `21294c9cdae9597c55c9421957234821cdd1b498`. Pre-existing parameterized partial-index
+  predicate failed PostgreSQL generic prepared plans (42P10/503), blocking changes
+  while heartbeat stayed fresh. RED two tests; GREEN eight idempotency tests and
+  65 targeted/deployment/schema checks. Independent Critical/Important zero. Exact
+  head run 38449850312 all six SUCCESS/Sonar SKIPPED. Main run 38451204922 initially
+  failed native STATE_UNAVAILABLE while reading the USN queue; provider attempt 2
+  completed all six SUCCESS on the same merge SHA. The initial failure's cause was
+  not confirmed. Verified backup and canonical deploy passed; normal USN retry then
+  drained backlog to zero without manually replaying or altering the collector.
+- PR #28 `fix(audit): accept Windows network logon event version 3`:
+  head `151aeeb7eb93bb20beed67b2f1334091c8313b01`, merge
+  `ef1daf13e5e3130565981ab11ee6f401c9e04749`. v3 accepted only for 4624; same minimal
+  fields/scoped linking; v4 and other-event v3 rejected. RED parser returned None;
+  GREEN 103 Audit regression tests and final event/HTTPS selection 25 PASS/eight
+  Windows-native SKIP on Linux. Independent Critical/Important zero. Exact head
+  run 38453315506 and main run 38454679148: all six SUCCESS/Sonar SKIPPED.
+- Central deployed **ef1daf13e5e3130565981ab11ee6f401c9e04749**, schema 0007, all four
+  services healthy, exact image labels verified. Fresh PostgreSQL custom backups,
+  pg_restore --list and hash-verified protected copies off VM preceded each deploy.
+- The third-pass stopped Audit runtime used the exact merge SHA above; wheel SHA-256
+  `5e979299e826ef8fc20ced8bf13251ccb79c3c8f07d7b6dd8e11625796862b17`; all 124 installed
+  Python file bytes verified. Config, credentials and bookmark SQLite hashes remained
+  unchanged. Original USN package/state/token/cadence/PID untouched. The original USN
+  whole-package SHA remains unconfirmed; checked critical modules match its baseline.
+- PR #29 `fix(audit): keep boot identity stable across clock corrections`:
+  head `26984c3114b65980b4ae9be84dae3dbe50b0e881`, merge
+  `982c442e5760d265efba8e59bd2933b4b20e2889`.
+  Independent review Critical/Important zero. Focused correction: immutable local Kernel-General boot
+  event identity, bounded current-boot consistency check, no old-witness fallback or
+  automatic GAP clearance. Nine regression tests RED; 148 Audit/USN tests GREEN,
+  nine Windows-native SKIP on Linux; 54 deployment tests, Ruff/mypy131/strict6,
+  OpenAPI and source secret scan PASS. Read-only candidate on FILESERVER returned a
+  stable epoch across three calls and retained the existing GAP. Exact head run
+  38461692345 and merged-main run 38462941302: all six SUCCESS/Sonar SKIPPED.
+  Main native checks: Windows CLI 14, Audit 84, SCM 81, USN 67 and real-USN HTTPS 1
+  passed; backend 874 PASS/85 SKIP. Own stopped installed wheel SHA-256
+  `d15e06d01e2af2b03ffbdb0cac6018fa03ea5cbe2d42f8be50d10dcb8e0fd6a5`:
+  all 124 Python files verified; old state/config/token hashes preserved.
+  Collector-only correction required no central API/Web redeployment: central
+  remains the separately verified `ef1daf13e5e3130565981ab11ee6f401c9e04749`.
+- Fourth pass 21:00–21:20 UTC was explicitly approved, including a new protected
+  Audit state/generation, eight additional operations (cumulative <=36) and another
+  audit-only 30-second 503. Old state and its latched AUDIT_BOOT_CHANGED were preserved
+  intact. New state retained enrollment, scoped roots/SIDs and credentials, with the
+  stable native boot identity; no old GAP was cleared. Audit current HEALTHY,
+  policy/SACL, generation and native SCM binding were verified before every CRUD.
+  A stopped/GAP negative control refused file operations before budget reservation.
+- Both accounts completed CREATE/WRITE/RENAME. Two real scoped 4624 version-3 network
+  logons and two different Security-provided client IPs reached the centre. No
+  WorkstationName was reported and no computer name was inferred from an IP.
+  An independent ordinary USN inventory observed both renamed FileIds/link_count=1.
+  The controller's manual analysis delayed DELETE beyond the identity-validity
+  window; admission refused without deleting or consuming its operation budget.
+  This was an execution error, not an unavailable inventory or relaxed requirement.
+- Permission to retain the two files and move their remaining DELETE/replay to a
+  later window was requested but had not arrived before cleanup. Both remaining
+  authorized DELETE operations were used only for cleanup; their stale identity
+  witnesses cannot establish CORRELATED_HIGH. At 21:18 UTC the owned empty folder
+  was removed through its pinned NTFS identity, temporary SACL/Success policy and
+  original root ACL were restored, Failure preserved, Audit STOPPED and original
+  USN Running with the same PID. Four passes total **36 operations / 605 bytes**.
+  New Audit queue empty, checkpoint retained and GAP null; this is not pending replay.
+  The fourth-pass 503 was not executed. The proposed two-file transfer is superseded
+  because those files were cleaned up; it does not authorize further CRUD.
+- Final genuine strict-TLS admin browser: 45 total retained audit events (34 scoped
+  4663, seven linked 4660, four scoped 4624), two SIDs, eleven session contexts and
+  two Security-provided client IPs. Fourth-pass Activity: fourteen UNKNOWN, actor
+  NULL throughout. Desktop/mobile/reload had no page errors or overflow. Exact
+  audit-ingest route returned unauthenticated 401, confirming no residual 503.
+  Service STOPPED and last accepted HEALTHY evidence are distinct observations;
+  no claim of a currently collecting stopped service is made. Health-check browser
+  session logged out and closed. Real file-history navigation was also verified,
+  but live strong actor attribution and queued replay remain unaccepted.
+- Issue #23 remains open; final live file-history attribution for both users and
+  pending byte-identical replay remain required. Any further CRUD needs a separately
+  approved new window/operation extension; the new valid Audit generation can resume
+  without another baseline reset if its strict bookmark/continuity still validate.
+  Before another pass, review an automatic dependent inventory-to-DELETE/replay
+  runner so manual controller pauses cannot consume the freshness window. C stays
+  draft; its final exact-head/main acceptance and merge are not claimed. Original
+  USN-SOAK-001 remains FAIL; no new long-term PASS is inferred.
+
+### Поздний volume witness и разрешённое продолжение
+
+- Read-only RCA четвёртого прохода: фактические Security/USN совпадения существовали,
+  но часовой volume inventory поступил позднее обычного ±120-second receipt window.
+  Уже закрытое dated alias coverage не вызывало повторного сопоставления старых
+  изменений. Сильные identity/coverage/delete-chain критерии не ослаблялись.
+- PR #30: https://github.com/BorisDruzak/storage-console/pull/30,
+  `fix(audit): reconcile changes after late volume witnesses`. Для принятого forward
+  WINDOWS volume observation транзакционно создаётся отдельная idempotent job на
+  реально продвинутый source/volume interval; pagination по time/UUID, page 32.
+  Duplicate, старые/equal receipts, object-only batches и heartbeat её не создают.
+  Миграция 0008 добавляет только source/volume/time/id index; history/RBAC и runtime
+  существующего USN не изменены. Issue #22 остаётся в своём scope.
+- RED: обе arrival-order проверки оставались UNKNOWN после достаточного позднего
+  witness; GREEN: обе проходят. RED EXPLAIN на 100k synthetic rows фильтровал 19,845
+  посторонних строк; GREEN first/middle/last pages ≤33 rows, ≤65 filtered rows,
+  ≤128 shared buffers, без sequential scan, все 65 target rows посещены ровно один раз.
+  Проверены retry, изоляция source/volume, receipt replay, отсутствие identity/coverage,
+  transactional rejection и 0007→0008→0007→head с сохранением immutable evidence.
+- Focused backend: 31 PASS; Audit/USN/ingest/schema/deployment regression:
+  308 PASS, 17 native Windows SKIP на Linux. Independent review: zero remaining
+  Critical/Important. Ruff, mypy122/strict deployment6, OpenAPI, Alembic check,
+  tracked-source Gitleaks и diff check PASS.
+- Первый head `4fe373acd1bc727c2609c569d55f5e97183dba67`, run 38474010920:
+  пять jobs PASS, backend 882 PASS/85 SKIP и три FAIL. Две migration assertions
+  фиксировали старый head 0007; прежняя USN timing fixture зависела от 1.2-second
+  wall-clock deadline. Эти ошибки сохранены в истории приёмки, не скрыты rerun.
+- Отдельные test commits: `9f6b3d222ebf71e3bb05b2df7b0e415d30aef3fe`
+  (`test(migrations): preserve current revision on rejected rollback`, один migration
+  test file) и `0e691e3fdfc61c6caa4a258fb86a6163683635dc`
+  (`test(collector): control heartbeat proof timing deterministically`, один USN test
+  file). Protected revision проверяется сразу после rejected downgrade; controlled
+  clock ждёт capture completion до следующего шага. Production USN не менялся.
+  Target 14 PASS, пять timing повторов PASS, disabled heartbeat cap даёт expected RED.
+  Fresh static/schema/secret checks PASS; focused review zero Critical/Important.
+- Exact PR head `0e691e3fdfc61c6caa4a258fb86a6163683635dc`, run 38477066486:
+  все шесть обязательных jobs SUCCESS, Sonar SKIPPED. Backend 885 PASS/85 SKIP;
+  Windows CLI14/Audit84/SCM81/USN67/real-USN HTTPS1 PASS. PR объединён в
+  `05eaa7fadd3d6d9c9833f40f6811b68db771a755`; exact main run 38478424249: все шесть jobs SUCCESS, Sonar SKIPPED.
+- Fresh verified PostgreSQL backup текущего central EF/schema0007 и hash-verified
+  protected off-VM copy готовы. Read-only table-size/EXPLAIN: 710 changes, 917,504
+  bytes total, 0.396 ms. После exact main six-job PASS canonical stop old API/worker → migrate → start
+  matching API/worker/Web выполнен. Central deployed
+  `05eaa7fadd3d6d9c9833f40f6811b68db771a755`, schema0008; healthcheck PASS.
+  Actual new-index EXPLAIN: Index Only Scan, 14 rows, six shared buffers, 0.241 ms.
+- Оператор ответил «Разрешаю любой лимит»: operation-count cap снят. Следующий
+  закрытый план выбирает 23:00–23:25 UTC вокруг обычного inventory; плановые 12 CRUD
+  включают прежний согласованный shared-file negative. Те же две учётки/ПК и папка,
+  ≤2 MiB, 30 секунд exact Audit-only 503, без forced inventory/USN изменений. Уже
+  существующая valid Audit generation/state сохраняется, новый baseline не создаётся.
+- До выполнения независимое ревью private automatic runner обязательно. Actual
+  local guards: 8 admission, 8 target-chain, 6 executed-finally outcome и 4 pair lifecycle/timing checks PASS,
+  без host/file операций. B/старый 4660 не заменяет A DELETE; actual 503 interval,
+  exact enabled-WINDOWS source/volume/path witness и durable rollback failure
+  проверяются отдельно. Shared pair и полный dependent flow прошли focused independent review: zero
+  remaining Critical/Important. Bounded supervisor timeout сохраняет client UNKNOWN
+  и owned folder, но не задерживает Stop/policy/SACL rollback; исходный cfg не пишет.
+- Read-only перед продолжением: Audit STOPPED/PID0, native registration verified,
+  current_healthy_verified=false, queue0/GAP null/checkpoint retained, old USN Running
+  с прежним PID. Read-only strict resume anchor/same boot подтверждены без изменения new/old state;
+  old latched GAP сохранён целиком. Actual admin/mobile/reload после central deploy
+  PASS, Audit STALE/USN HEALTHY, 14 UNKNOWN, unauthenticated Audit401.
+  Новый проход ещё НЕ выполнен. C остаётся PARTIAL до реальных
+  CORRELATED_HIGH для обеих учёток, negative AMBIGUOUS/UNKNOWN, queued replay и
+  полного rollback/UI/acceptance; Git publication и CI этого не заменяют.
+
+### Фактический пятый проход и проверка replay
+
+- 23:00–23:25 UTC 13 октября: реально выполнены 10 операций, суммарно 46
+  операций / 820 bytes; незавершённых reservations нет. Две учётки работали через
+  SMB с двух согласованных компьютеров. Одновременный shared-file negative
+  выполнен; в сохранённой выборке его WRITE пока UNKNOWN до позднего dated alias.
+  Шесть AMBIGUOUS относятся к original-name операциям A/B, не к shared pair;
+  финальная приёмка проверяет точный shared WRITE, source и approved window.
+- B DELETE выполнен после обычного inventory. A DELETE остановлен до reservation:
+  private admission требовал witness не старше 30 секунд; последовательные проверки
+  исчерпали этот срок. Свидетельство FileId в payload существовало: отсутствие
+  FileId НЕ является установленной причиной. Сильный engine предел 60 секунд
+  не изменён. Продолжение использует admission 45 секунд и native UTC deadline
+  oldest witness +57 секунд непосредственно перед DELETE.
+- Разрешённые 30 секунд HTTP 503 затронули только точный Audit ingest route.
+  Исходная nginx-конфигурация восстановлена; unauthenticated Audit route снова 401.
+  Один queued 4660 batch сохранил raw receipt digest и event identity между двумя
+  read-only STOPPED snapshots. После отдельного обычного resume доставка дала
+  BYTE_IDENTICAL_RECEIPTS: один batch, одно unique event, zero duplicate event IDs;
+  queue0 / GAP null. Replay не считается сильной атрибуцией B DELETE: его coverage
+  соседствует с outage.
+- Audit STOPPED/PID0; temporary policy Success и SACL восстановлены, Failure bit
+  и root ACL сохранены; старый USN Running с прежним PID. Два собственных synthetic
+  файла пока удержаны для продолжения; полный cleanup ещё не объявлен.
+- Actual strict-TLS admin/mobile/reload: 62 events (4624=8, 4660=8, 4663=46),
+  два SID, 15 session contexts, два Windows-reported client IP; workstation не
+  выведен из IP. В текущем окне 17 changes: UNKNOWN9 / AMBIGUOUS6 /
+  ACCESS_OBSERVED2. CORRELATED_HIGH для обеих учёток ещё не подтверждён.
+- Следующее узкое продолжение: 00:00–00:25 UTC 14 октября, те же folder/accounts/
+  компьютеры/generation, шесть плановых операций, без нового baseline и без 503.
+  После обоих DELETE — clean coverage, Stop, scoped rollback/cleanup; поздний
+  ordinary volume witness проверяется read-only. Новый native check не разрешает
+  DELETE после 60-second engine identity bound. Source review zero Critical/Important;
+  actual local checks: admission9, target-chain8, outage-finally6, positive-finally5,
+  pair lifecycle/timing4 PASS. Installed PC-B helper обновлён и проверен:
+  exact new SHA, trusted owner/write grants, unchanged file/directory ACL.
+  Четыре реальные браузерные role sessions на новом central получили 403
+  по четырём Audit endpoints, no sensitive payload и hidden pane; fixtures
+  отключены, active sessions0, existing roles unchanged, LDAP login не заявлен.
+- PR #26 остаётся draft. Exact head
+  `4c59a6deb918269dde30c67345fc68609505d715`, run 38480628501:
+  шесть required jobs SUCCESS, Sonar SKIPPED. Это CI предыдущего ledger head;
+  C остаётся PARTIAL, окончательная live приёмка и final head/main CI не заявлены.
+
+### Фактический шестой проход и узкий параллельный DELETE
+
+- 00:00–00:25 UTC 14 октября: B CREATE/WRITE/RENAME PASS (три операции /
+  65 bytes); DELETE не запущены, отказ до reservation. Суммарно 49 операций /
+  885 bytes, незавершённых client reservations нет. Три собственных файла удержаны.
+- Actual timing RCA: обычное identity observation 00:06:39, повторный central
+  witness probe закончился 00:07:26; старый 45-second admission правильно отказал.
+  Последовательные native Status/clean-heartbeat проверки расходовали freshness;
+  FileId в данных был. Engine60 / native57 / admission45 не ослаблены.
+- Automatic Stop/Restore PASS: Audit STOPPED/PID0, root ACL и Failure bit сохранены,
+  temporary SACL/Success восстановлены, old USN Running с прежним PID. Queue0 /
+  GAP null, checkpoint retained. Read-only strict resume/same boot подтверждены,
+  new/old states не менялись диагностикой; old latched GAP сохранён.
+- Поздний обычный volume witness реально разрешил fifth negative: две именно
+  shared-file WRITE получили AMBIGUOUS / MULTIPLE_CONTEXTS, actor NULL. Actual
+  strict-TLS admin/mobile/reload: 67 events (4624=9, 4660=8, 4663=50), SID2,
+  session contexts16, Windows client IP2; в расширенной выборке changes23 /
+  UNKNOWN9 / AMBIGUOUS11 / ACCESS_OBSERVED3. Граница fifth window/source/target
+  проверяется отдельно; эти общие counts не подменяют scoped proof.
+- Операторское разрешение на любой operation-count сохраняется. Следующее узкое
+  окно 01:00–01:25 UTC: только два DELETE разных файлов параллельно и shared-file
+  cleanup (три операции), прежние folder/accounts/PC/generation, no new baseline,
+  no CREATE/no 503, ≤2 MiB. После захвата clean coverage → Audit STOPPED → scoped
+  rollback/cleanup; поздний ordinary volume witness проверяется read-only.
+- Private batch делает один реальный native SCM/current HEALTHY check и один
+  fresh FileId query. Local cache проверяется после witness, перед atomic two-row
+  reservation и непосредственно перед spawn: HTTP200, exact generation/host,
+  configured policy/SACL, gap null, clean backlog/error, age0–5s/collected0–35s,
+  old USN HEALTHY/continuous. Absolute native deadline имеет ≥12s remaining перед
+  reserve/spawn, оба клиента проверяют oldest identity +57 перед File.Delete.
+  Остальные strong engine criteria неизменны; B helper exact SHA проверяется при
+  загрузке. Любой частичный результат сохраняет reservations, no automatic retry,
+  rollback удерживает own folder; pre-spawn отказ фиксирует operations0.
+- RED отсутствующий dispatch → GREEN actual success/partial launch/timeout/bad
+  receipt/wrong identity controls5. Existing admission/finally/pair32 и actual
+  scope/complete-chain23 PASS; pycompile/PowerShell parse/node syntax PASS.
+  Independent focused review zero remaining Critical/Important. Secret scan
+  tracked sources PASS, findings0. C остаётся PARTIAL; positive HIGH для обеих
+  учёток и окончательная exact-head/main приёмка ещё не объявлены.
+
+### Седьмой проход: capture подтверждён, историческое покрытие не принято
+
+- Окно 2026-10-14 01:00–01:25 UTC: оба DELETE выполнены двумя согласованными
+  доменными учётками с двух компьютеров; native receipts PASS, дочерние процессы
+  завершены. Суммарно 52 тестовые файловые операции / 885 bytes; незавершённых
+  операций нет. Разрешение оператора снимает численный лимит операций, сохраняя
+  узкую папку, две учётки/ПК и остальные границы пилота.
+- DELETE в 01:07:01.600 и 01:07:03.262 UTC имеют по одной полной цепочке
+  4663 → 4660 с предшествующим 4624 Type3. Read-only проверка реального engine:
+  PROVEN_PRIOR_IDENTITY, возраст prior FileId 15.300 / 16.810 s, расхождение
+  Windows/USN 0.000781 / 0.001268 s; подтверждены два разных клиентских IP.
+  Dated alias ещё отсутствует. Это диагностические предпосылки, не HIGH/PASS.
+- Историческое coverage FALSE для обоих DELETE: один Audit heartbeat
+  01:07:17.641 UTC имеет backlog_clear FALSE. Последнее необходимое событие
+  принято в 01:07:19.222 UTC. WINDOWS coverage чистое. Критерий engine не
+  ослаблен; повторная корреляция после inventory не исправляет такое покрытие.
+- Audit остановлен в 01:08:34 UTC, rollback завершён в 01:08:38 UTC:
+  исходные SACL/policy/Failure bit и root ACL восстановлены, собственная папка
+  и собственный helper второго ПК удалены. Queue0, GAP null, strict bookmark
+  resume/same boot проверены read-only; старое состояние с GAP сохранено целиком.
+  Legacy USN PID/конфигурация/cadence без изменений. C остаётся PARTIAL.
+- Следующий согласованный проход 02:00–02:25 UTC: восемь CRUD, та же узкая
+  папка и учётки/ПК, без 503 и без нового Security baseline/generation.
+  Native Status проверяется перед ожиданием свежего чистого heartbeat;
+  captured age ≤5 s перед новым witness, ≤8 s перед reservation/dispatch.
+  FileId admission45 / native deadline57 / engine60 s сохранены. После DELETE
+  coverage проверяется через API без дополнительных SSH-входов.
+  RED missing age parameter → GREEN: 7 actual age boundaries; regression
+  admission/chain/rollback/pair32, post-coverage11, dispatch lifecycle5 PASS.
+  Independent focused review: замечание по внешнему timeout устранено
+  ограниченным supervisor160 s для фаз native50 + heartbeat40 + witness18 +
+  dispatch25 + reaping10 s; повторное ревью Critical/Important0.
+  Успех capture по-прежнему требует последующего реального HIGH и UI-приёмки.
+
+### Восьмой проход: отказ допуска до DELETE, сохранены исходные свидетельства
+
+- Окно 2026-10-14 02:00–02:25 UTC: обе согласованные учётки выполнили
+  CREATE/WRITE/RENAME через SMB, native receipts PASS. Суммарно 58 файловых
+  операций / 1015 bytes. DELETE не выполнены и не зарезервированы: bounded
+  ожидание свежего clean heartbeat завершилось отказом допуска до dispatch.
+  Два собственных переименованных файла сохранены для следующего inventory.
+- Stop подтверждён 02:07:50 UTC, rollback 02:07:54 UTC: SACL/policy/Failure bit
+  и root ACL восстановлены, исходный USN PID сохранён. Queue0, GAP null, strict
+  bookmark resume и same boot проверены read-only. C остаётся PARTIAL.
+- Read-only PostgreSQL timing: heartbeat interval около 30 s, captured age
+  при report 0.111–1.042 s, receipt timestamp delta 0.239–0.278 s (не ACK completion latency); backlog0/GAP false.
+  Точная причина отказа локального admission gate **UNKNOWN**; не объявлена
+  неисправность Windows collector и не ослаблены критерии Correlation Engine.
+- В том же согласованном окне проведена heartbeat-only диагностика140 s,
+  без CRUD/503/нового baseline. Затем Audit STOPPED, temporary rollback PASS.
+  Actual clean_cache5 PASS; 120 API samples, 12 fresh5 samples,
+  minimum capture age0.974 s, maximum response age0.237 s. Для последующего
+  прохода добавлена private трасса времени и условий admission; production
+  identities, IP, paths и event bodies в Git не попали.
+- Продолжение 03:00–03:25 UTC: только два DELETE существующих собственных
+  файлов после обычного inventory; CREATE/WRITE/RENAME повторно не выполняются.
+  Та же папка/учётки/ПК/поколение, без 503 и нового Security baseline.
+  Все guards45/57/60 s и clean5/8 s сохраняются; failure удерживает собственные
+  файлы и исходы, success удаляет только собственную папку/helper и оставляет
+  Audit остановленным. Existing USN и MVP-005 не изменяются.
+
+### Девятый проход: причина operational admission отказа подтверждена
+
+- 03:00–03:25 UTC: DELETE не выполнены, reservations0; total58 операций /
+  1015 bytes. Audit STOPPED, temporary SACL/policy/Failure bit/root ACL rollback
+  PASS; два собственных файла сохранены. Queue0/GAP null/strict resume/same boot
+  и unchanged old state проверены read-only. исходный USN PID без изменений.
+- Exact same-snapshot trace: первый доступный controller clean heartbeat
+  имеет age5.199094 s (API evaluation age5.0213 s) при operational limit5 s.
+  Все остальные admission conditions true: current cache, configured/policy/SACL,
+  context, backlog0/no GAP/error, healthy continuous USN. Refusal происходит
+  исключительно на age gate до reservation/dispatch. Причина дополнительной
+  latency UNKNOWN; неисправность Windows collector не объявлена.
+- Следующий same-scope проход 04:00–04:25 UTC — только два DELETE прежних
+  собственных файлов. Operational timing6 s перед witness /10 s перед dispatch
+  учитывает измеренный доступный снимок; engine identity60/time window2/full
+  historical coverage, prior FileId45/native57 и cache age0–5 s неизменны.
+  Никаких новых CREATE/WRITE/RENAME/503/поколения. Failure retain / final STOPPED
+  и original rollback сохранены. Independent focused review Critical/Important0.
+  RED operational timing check → GREEN; actual age boundaries7, admission/chain/
+  rollback32, post-coverage11, scope/complete-chain24 и PS parse/Python compile PASS.
+
+### Десятый проход: оба DELETE и чистое историческое покрытие подтверждены
+
+- 04:00–04:25 UTC: native DELETE A в 04:07:44.540 UTC и B в 04:07:46.242 UTC
+  PASS, разные согласованные компьютеры/доменные SID, SMB, оба локальных
+  дочерних процесса завершены. Total60 операций /1015 bytes. Queue0/GAP null.
+- Audit STOPPED подтверждён 04:08:21 UTC, rollback 04:08:25 UTC: исходные
+  SACL/policy/Failure bit/root ACL восстановлены, собственная папка удалена.
+  Helper второго ПК удалён с exact owned hash guard, без recursive deletion.
+  Strict bookmark resume/same boot и untouched old protected GAP state PASS.
+  исходный USN PID/конфигурация/cadence и MVP-005 без изменений.
+- Read-only реальные engine preconditions для каждого DELETE: complete chain1,
+  PROVEN_PRIOR_IDENTITY; identity age36.352 /37.855 s; Access↔USN delta
+  0.000011 /0.000743 s. Историческое coverage TRUE: шесть Audit и 55 WINDOWS
+  witnesses, bad0, prior/after brackets есть. Два разных Windows client IP.
+- Central92 normalized events: 4624=16, 4660=13, 4663=63; SID2, client IP2,
+  один FILESERVER source. Actual strict-TLS admin desktop/mobile/reload PASS,
+  audit ingest без auth401, legacy USN HEALTHY, остановленный Audit STALE.
+  Пока eligible dated aliases0 и текущие изменения UNKNOWN; это не C PASS.
+  Следующий штатный volume observation ожидается около 05:07 UTC. До него
+  только read-only ожидание, без новой службы/policy/SACL/CRUD или forced USN.
+  Обязательны последующие actual HIGH2, точный UI для цепочек4663/4660/4624,
+  независимое acceptance review и final exact PR/main CI.
+
+### Реальная приёмка C после штатного volume observation
+
+- 2026-10-14 05:08 UTC: actual admin API возвращает два CORRELATED_HIGH для
+  точных DELETE десятого прохода, остальные три изменения текущего окна UNKNOWN.
+  Read-only PostgreSQL подтверждает eligible dated alias1 для каждого DELETE;
+  ранее доказанные prior identity, полная цепочка и чистое историческое покрытие
+  сохранились. Штатный USN inventory не форсировался, confidence rules не менялись.
+- Финальный checker связывает ровно один DELETE каждой согласованной учётки
+  с утверждёнными source/window/generation, canonical volume и FileId; actor SID,
+  account/domain совпадают с исходным 4663. Единственная цепочка требует nonzero
+  handle/process, record order, linked 4660 без ObjectName и prior 4624 Type3
+  того же host/boot/generation/SID/logon. Возраст FileId36.352/37.855 s,
+  Access↔USN delta0.000011/0.000743 s, coverage TRUE (Audit6/WINDOWS55, bad0).
+- Windows Security подтверждает две доменные SID, два разных logon session и
+  два разных SourceNetworkAddress. WorkstationName отсутствует у обоих:
+  имена физических ПК по Windows Security **не установлены**, не выведены из IP.
+  Два согласованных компьютера подтверждены native client receipts; второй
+  использует точный доменный токен согласованного RDP-сеанса и SMB.
+- Actual browser PASS: strict TLS, два точных HIGH change ID, account/SID/session/
+  IP и отсутствие workstation, связанные 4663/4660/4624 с точными RecordID,
+  два object history с точными FileId/volume, desktop/mobile/reload, overflow0,
+  page errors0. Sources показывает USN HEALTHY и остановленный Audit STALE.
+  Unauthenticated Audit ingest401, sourceCount1; никакого дублирующего source.
+- Негативный сценарий проверен повторно по реальному API после volume observation.
+  В исходном согласованном пятом окне/source два scoped Shared-negative WRITE
+  имеют AMBIGUOUS и actor NULL. UNKNOWN проверяется отдельно на других scoped
+  изменениях того же окна/source; у них actor также NULL.
+  Общие классы snapshot (AMBIGUOUS17/UNKNOWN24) не подменяют exact-window checks.
+  Rename не объявлен DELETE по одному DELETE AccessMask; actual CREATE→RENAME
+  identity proof сохраняет тот же FileId/canonical volume для обоих файлов.
+- Независимое focused review финального verifier обнаружило missing account/domain
+  binding. RED `WINDOWS_ACCOUNT_DOMAIN_FALSE_PASS` → GREEN сравнение actor с
+  исходным 4663 единственной цепочки; wrong-account/wrong-domain отвергаются.
+  Actual scope10 + complete-chain14 + account/domain3 PASS; admission/finally/
+  pair32, post-coverage11, dispatch lifecycle5, Python compile/Node syntax PASS.
+  Повторное source review Critical/Important0. Финальный независимый evidence
+  review подтвердил HIGH2, exact Windows fields, обе истории и rollback; уточнено,
+  что Shared-negative WRITE доказывает AMBIGUOUS, а scoped UNKNOWN — другие
+  изменения пятого окна. Открытых Critical/Important нет; publication CI отдельно.
+- Ранее подтверждённый 30 s Audit-only HTTP503 и service restart сохраняют
+  byte-identical receipt, один unique event, duplicate0, bookmark и GAP null.
+  Replay не повторялся после успешной проверки. Четыре nonadmin роли — viewer,
+  analyst, storage_operator, auditor — получили403 на четырёх Audit endpoints;
+  чувствительного payload нет, временные sessions отозваны и fixture accounts
+  отключены, существующие роли сохранены. LDAP login этим тестом не проверялся.
+- Итог60 тестовых файловых операций /1015 bytes. Audit STOPPED/PID0, queue0,
+  собственная папка и exact-owned helper второго ПК удалены; исходные
+  SACL/policy/Failure bit/root ACL восстановлены. Старое protected state с GAP
+  сохранено целиком. Legacy USN service, token/state/scope/cadence не изменялись;
+  его исходный PID сохранён. Whole-package SHA legacy collector остаётся
+  UNCONFIRMED: ранее сопоставлены только пять critical modules, не весь пакет.
+- Installed Audit source `982c442e5760d265efba8e59bd2933b4b20e2889`, wheel SHA256
+  `d15e06d01e2af2b03ffbdb0cac6018fa03ea5cbe2d42f8be50d10dcb8e0fd6a5`;
+  124 source files сверены byte-for-byte. Central API/worker/Web deployed
+  `05eaa7fadd3d6d9c9833f40f6811b68db771a755`, schema0008. Их exact PR/main
+  CI (шесть обязательных jobs SUCCESS, Sonar SKIPPED как unconfigured)
+  приведён в разделах #29/#30. Эта документация не требует нового deployment.
+- Промежуточный docs head `a64dfadac1f511de8a22214bbfce19d197f88a33`:
+  run https://github.com/BorisDruzak/storage-console/actions/runs/38510783091,
+  six required jobs SUCCESS с этим exact SHA, Sonar SKIPPED. Окончательная
+  публикационная приёмка проверяется по exact head и merged-main PR
+  https://github.com/BorisDruzak/storage-console/pull/26; self-referential SHA
+  текущего документа не вписывается в его собственный commit.
+- Private evidence: `c-evidence-tenth-final.json`,
+  `c-evidence-fifth-final-negative.json`, `c-final-acceptance-browser.dpapi`,
+  `c-final-histories.json`, native receipts, replay и rollback proofs в
+  согласованном закрытом evidence directory. Real identities/IP/paths/event
+  bodies/screenshots/credentials в публичный Git не опубликованы.
+- Границы сохранены: MVP-005 history/RBAC не перезаписаны; SMB/USN journal/GPO,
+  Security log retention/size не менялись, FILESERVER не перезагружался.
+  5145/WEF/SIEM/версии/массовый аудит не реализованы; исходный USN soak остаётся
+  FAIL. После final review и exact publication CI — STOP, без новых live действий.
+
+### Исторические первые попытки CI окончательной публикации C
+
+- Docs commit `06448ccc1417535a9cffade85c49267c9de07fd3`
+  (`docs(audit): record two-account live attribution acceptance`) изменяет только
+  ledger. Run https://github.com/BorisDruzak/storage-console/actions/runs/38515701582,
+  attempt1: five required jobs SUCCESS, windows-pilot FAIL, Sonar SKIPPED.
+  Audit84/SCM81 PASS; USN65 PASS/2 FAIL: `test_completed_inventory_does_not_clear_usn_gap`
+  увидел USN_BOOTSTRAP вместо CONTINUITY_GAP к wall deadline4 s;
+  `test_success_then_blocked_usn_never_keeps_fresh_heartbeat_continuous` не увидел
+  USN_STALE к deadline2 s. Код runtime и эти тесты совпадали с accepted source05.
+- Один failed-job retry того же SHA, attempt2: предыдущие USN67 PASS, но
+  `test_native_usn_runtime_changes_https_lost_ack_and_activity_read` FAIL после
+  реальных accepted CRUD и lost-ACK duplicate: pending_count не достиг0 за40 s.
+  Пять остальных jobs SUCCESS. Обе неуспешные попытки сохранены; причина
+  каждого CI отказа **UNKNOWN**, они не объявлены исправленными или успешными.
+  Живое доказательство C не заменяет publication gate; PR не объединялся.
+- Дополнительное локальное воспроизведение двух исходных portable functions на
+  Windows/Python3.14.3: по три PASS. Это не CI Python3.13.15 и не доказанная RCA.
+  Source review выявило диагностические ограничения baseline fixtures:
+  wall4/2 s не разделяет poll/production/SQLite/delivery; monotonic×100 ускоряет
+  state-retry budget, но не реальные ожидания SQLite; Sender records до ACK.
+  Эти факты не доказывают конкретную причину provider failure.
+- Test-only commit `bdab761117d8b5cb93175e18bb479d92c47e22a9`
+  (`test(collector): expose safe USN runtime failure diagnostics`) меняет четыре
+  тестовых файла. При отказе выводятся только fixed codes/kinds, validated
+  RuntimeFailure detail, последние24 runtime events/outcomes и один read-only
+  queue-count snapshot (SQLite mode=ro/query_only, timeout0.1 s). Реальный HTTPS
+  outcome отделён от synthetic lost-ACK outcome; bodies/headers/IDs/paths/token/
+  exception messages не выводятся. Ошибка snapshot даёт UNAVAILABLE и сохраняет
+  исходный FAIL. Assertions, deadlines и production runtime не ослаблены.
+- RED missing diagnostic helper → GREEN; отдельный RED malformed-outcome token
+  leakage → GREEN whitelist sanitation. На isolated Python3.13.16: target10 PASS /
+  1 Windows-native SKIP; вся USN regression65 PASS /8 native SKIP на Linux.
+  Ruff, Python compile, diff check и tracked-source Gitleaks PASS, findings0.
+  Independent complete four-file review Critical/Important0. Native acceptance
+  остаётся обязательной в новом exact-head/main CI, Linux skips её не заменяют.
+- Production API/worker/Web source05 и installed Audit source982 не изменились;
+  нового deployment/службы/SACL/policy/CRUD/baseline нет. Финальные publication
+  SHAs/run IDs и terminal verdict записываются в PR #26; первые FAIL сохранены.
 
 ## Mandatory reporting
 

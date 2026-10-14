@@ -2,11 +2,13 @@ import os
 import threading
 import time
 import uuid
+from collections import deque
 from dataclasses import replace
 
 import pytest
 from sqlalchemy import func, select
 from test_windows_runtime_native import installed_python as installed_python
+from windows_capture_diagnostics import outcome_metadata, runtime_snapshot, safe_failure
 
 from collectors.common.transport import DeliveryOutcome
 from collectors.windows.capture_process import CaptureProcess
@@ -46,17 +48,19 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                     self.all_bodies = []
                     self.lost = False
                     self.duplicate = False
+                    self.outcomes = deque(maxlen=24)
 
                 def send(self, claim):
                     self.all_bodies.append(claim.body)
                     if claim.domain == "changes":
                         assert self.bodies.setdefault(claim.batch_id, claim.body) == claim.body
-                    outcome = loaded.transport.send(claim)
+                    underlying = outcome = loaded.transport.send(claim)
                     if claim.domain == "changes" and outcome.kind == "accepted":
                         self.duplicate |= outcome.duplicate is True
                         if not self.lost:
                             self.lost = True
-                            return DeliveryOutcome("retry", code="NETWORK")
+                            outcome = DeliveryOutcome("retry", code="NETWORK")
+                    self.outcomes.append(outcome_metadata(claim.domain, underlying, outcome))
                     return outcome
 
             sender = LoseOnce()
@@ -67,19 +71,25 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                                                                  mode="usn"))
             stop = threading.Event()
             failures = []
+            failure_details = []
 
             def run():
                 try:
                     runtime.run(stop)
                 except Exception as error:
                     failures.append(type(error).__name__)
+                    failure_details.append(safe_failure(error))
 
-            def wait(condition, seconds=40):
+            def wait(condition, seconds=40, phase="initial_usn"):
                 deadline = time.monotonic() + seconds
                 while time.monotonic() < deadline and not condition():
-                    assert not failures
+                    assert not failures, {"phase": phase, **runtime_snapshot(
+                        runtime, loaded.outbox.path, failure_details, sender.outcomes,
+                    )}
                     time.sleep(0.1)
-                assert condition() and not failures
+                assert condition() and not failures, {"phase": phase, **runtime_snapshot(
+                    runtime, loaded.outbox.path, failure_details, sender.outcomes,
+                )}
 
             thread = threading.Thread(target=run)
             thread.start()
@@ -107,8 +117,8 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                         kinds = set(connection.scalars(select(change_events.c.event_type)))
                     return {"CREATE", "WRITE", "RENAME", "DELETE"} <= kinds and sender.duplicate
 
-                wait(accepted)
-                wait(lambda: loaded.outbox.status().pending_count == 0)
+                wait(accepted, phase="accepted_changes")
+                wait(lambda: loaded.outbox.status().pending_count == 0, phase="queue_drained")
                 page = client.get("/api/v1/activity", params={"source_id":str(source)}).json()
                 assert page["items"] and {"CREATE", "WRITE", "RENAME", "DELETE"} <= {
                     row["event_type"] for row in page["items"]
