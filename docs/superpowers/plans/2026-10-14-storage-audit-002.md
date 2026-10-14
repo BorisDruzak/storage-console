@@ -67,10 +67,10 @@
 
 **Interfaces:** Typed DirectoryPage and ClientNameObservation with source/domain/snapshot/page identity, observed_at/completeness/freshness. Authorized collector push and admin-only projections. Original evidence fields unchanged.
 
-- [ ] RED DTO/page bounds, duplicate/conflict/partial snapshot, cross-source auth, SID/GUID conflicts, outage/disabled/rename and indexed query limits.
-- [ ] Implement paged signed/sealed machine-identity collection and bounded durable delivery; no operator credential storage or direct DB insertion.
-- [ ] RED→GREEN PTR/forward/unique-computer resolver, negative cache/TTL/timeouts/ambiguity and immutable native WorkstationName.
-- [ ] RED→GREEN admin-only API/RBAC and i18n UI with explicit provenance/freshness. Verify schema upgrade/check/roundtrip, EXPLAIN, full backend/Web/Playwright/secret scan. Independent review, PR C exact-head/main CI.
+- [x] RED DTO/page bounds, duplicate/conflict/partial snapshot, cross-source auth, SID/GUID conflicts, outage/disabled/rename and indexed query limits.
+- [x] Implement paged signed/sealed machine-identity collection and bounded durable delivery; no operator credential storage or direct DB insertion.
+- [x] RED→GREEN PTR/forward/unique-computer resolver, negative cache/TTL/timeouts/ambiguity and immutable native WorkstationName.
+- [x] RED→GREEN admin-only API/RBAC and i18n UI with explicit provenance/freshness. Verify schema upgrade/check/roundtrip, EXPLAIN, full backend/Web/Playwright/secret scan. Independent review, PR C exact-head/main CI.
 
 ### Task 5: protected live rollout
 

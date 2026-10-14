@@ -858,3 +858,13 @@ pending replay are not accepted. The extended <=36-operation allowance is exhaus
 - Не подменять отсутствие 4663/SACL «нет событий». Не назначать пользователя по одному совпадению времени.
 - Не раскрывать реальные имена, SID, IP, пути, XML Security Events, ключи, токены и operator screenshots в публичном репозитории. Хранить это только в согласованном закрытом месте.
 - Не продолжать 5145, WEF, централизованный EVTX архив и версионные копии без отдельной задачи.
+
+
+## Authorized single-root expansion follow-up
+
+Original STORAGE-AUDIT-001 acceptance remains unchanged. The separately approved
+bounded department rollout, exact CI successors, additional data-disk migration
+and installed-runtime follow-up are recorded in
+[STORAGE-AUDIT-002 ledger](storage-audit-002-ledger.md). Data-disk migration PASS;
+permanent expanded Audit acceptance remains pending that ledger's final live gate.
+Existing USN-SOAK failure and immutable original evidence/GAP remain retained.
