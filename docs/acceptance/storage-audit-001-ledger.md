@@ -866,5 +866,7 @@ Original STORAGE-AUDIT-001 acceptance remains unchanged. The separately approved
 bounded department rollout, exact CI successors, additional data-disk migration
 and installed-runtime follow-up are recorded in
 [STORAGE-AUDIT-002 ledger](storage-audit-002-ledger.md). Data-disk migration PASS;
-permanent expanded Audit acceptance remains pending that ledger's final live gate.
+corrected runtime exact-SHA CI/installation PASS, permanent Audit RUNNING.
+Expanded ordinary-event/history acceptance remains PENDING in that ledger;
+bounded quiet-interval checks do not establish full live acceptance.
 Existing USN-SOAK failure and immutable original evidence/GAP remain retained.
