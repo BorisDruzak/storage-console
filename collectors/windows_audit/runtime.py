@@ -132,9 +132,12 @@ class Capture:
 
 
 def run_capture(state: Any, config: Any, stop: threading.Event) -> None:
-    if config.mode == "deliver" and getattr(config, "readiness_max_objects", 256) != 256:
+    if config.mode == "deliver":
         with ReadinessWorker(
-            native_probe(list(config.roots), config.audit_sids, config.readiness_max_objects)
+            native_probe(
+                list(config.roots), config.audit_sids,
+                getattr(config, "readiness_max_objects", 256),
+            )
         ) as verifier:
             _run_capture(state, config, stop, verifier=verifier)
         return

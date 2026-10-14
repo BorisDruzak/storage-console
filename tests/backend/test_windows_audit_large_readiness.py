@@ -316,3 +316,17 @@ def test_operator_lower_object_budget_cannot_use_unbounded_default_probe(tmp_pat
     )
     runtime.run_capture(None, config, threading.Event())
     assert results == [False]
+
+
+def test_default_budget_also_uses_asynchronous_expiring_readiness(monkeypatch):
+    from collectors.windows_audit import runtime
+    worker = object()
+    monkeypatch.setattr(runtime, "ReadinessWorker", lambda probe: nullcontext(worker))
+    monkeypatch.setattr(runtime, "native_probe", lambda *args: object())
+    seen = []
+    monkeypatch.setattr(runtime, "_run_capture", lambda *args, verifier=None: seen.append(verifier))
+    runtime.run_capture(None, SimpleNamespace(
+        mode="deliver", roots={r"D:\Synthetic": "volume"}, audit_sids=["sid"],
+        readiness_max_objects=256,
+    ), threading.Event())
+    assert seen == [worker]
