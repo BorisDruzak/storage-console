@@ -1,10 +1,11 @@
-# STORAGE-AUDIT-001 — журнал промежуточной приёмки
+# STORAGE-AUDIT-001 — журнал приёмки
 
 Задача: docs/tasks/storage-audit-001-windows-security-attribution.md
 
-**Статус:** A PASS → B PASS → C PARTIAL; живое продолжение ожидает закрытия
-живого испытания по согласованному закрытому плану. Оператор отдельно снял лимит числа операций;
-узкий scope, объём данных, 30 секунд Audit-only 503 и итоговый Audit STOPPED сохранены.
+**Статус живой приёмки:** A PASS → B PASS → C PASS. Окончательные exact-head/main
+SHA и CI публикации этого ledger фиксируются в PR #26; source CI приведён ниже.
+Оператор отдельно снял лимит числа операций; узкий scope, объём данных,
+30 секунд Audit-only 503 и итоговый Audit STOPPED сохранены.
 Следующий этап не начинается до предыдущего PASS.
 
 ## Выполнение 2026-10-13 — этап A
@@ -328,9 +329,10 @@ Independent review and known limitations:
 Remaining blocker / next step authorized:
 ~~~
 
-## C — operator-approved real pilot
+## Исторический ход C — operator-approved real pilot
 
-GATE C: PARTIAL / further live execution BLOCKED. Four approved bounded passes
+Исторический статус после первых четырёх проходов: GATE C PARTIAL /
+further live execution BLOCKED. Four approved bounded passes
 were fully rolled back. Strong live attribution for both users and byte-identical
 pending replay are not accepted. The extended <=36-operation allowance is exhausted.
 
@@ -737,30 +739,78 @@ pending replay are not accepted. The extended <=36-operation allowance is exhaus
   Обязательны последующие actual HIGH2, точный UI для цепочек4663/4660/4624,
   независимое acceptance review и final exact PR/main CI.
 
-~~~text
-Explicit approval reference (not this technical task):
-Exact narrow synthetic folder (private evidence only):
-Effective GPO / Audit File System before and after:
-Approved SACL diff and rollback:
-Security log capacity risk accepted:
-Approved test UserA and UserB (private evidence only):
-Approved PC-A and PC-B (private evidence only):
-Domain SID A/B observed in native 4663:
-Logon IDs and 4624 Type3 session linkage:
-SourceNetworkAddress/WorkstationName actually available?:
-USN CREATE/WRITE/RENAME/DELETE evidence:
-4660 deletion w/out fabricated path:
-Matching / ambiguous / unknown results and reasons:
-No false cross-user attribution:
-Admin Web history and evidence, nonadmin 403:
-Bookmark restart, network loss/replay, queue:
-Old USN remains healthy, unchanged cursor/collector identity:
-Operator-approved cleanup and SACL rollback:
-No reboot / no 5145 / no WEF:
-Exact installed Audit package SHA, central deployed SHA:
-Issue/PR/CI and live acceptance evidence:
-STOP or precise remaining operator action:
-~~~
+### Реальная приёмка C после штатного volume observation
+
+- 2026-10-14 05:08 UTC: actual admin API возвращает два CORRELATED_HIGH для
+  точных DELETE десятого прохода, остальные три изменения текущего окна UNKNOWN.
+  Read-only PostgreSQL подтверждает eligible dated alias1 для каждого DELETE;
+  ранее доказанные prior identity, полная цепочка и чистое историческое покрытие
+  сохранились. Штатный USN inventory не форсировался, confidence rules не менялись.
+- Финальный checker связывает ровно один DELETE каждой согласованной учётки
+  с утверждёнными source/window/generation, canonical volume и FileId; actor SID,
+  account/domain совпадают с исходным 4663. Единственная цепочка требует nonzero
+  handle/process, record order, linked 4660 без ObjectName и prior 4624 Type3
+  того же host/boot/generation/SID/logon. Возраст FileId36.352/37.855 s,
+  Access↔USN delta0.000011/0.000743 s, coverage TRUE (Audit6/WINDOWS55, bad0).
+- Windows Security подтверждает две доменные SID, два разных logon session и
+  два разных SourceNetworkAddress. WorkstationName отсутствует у обоих:
+  имена физических ПК по Windows Security **не установлены**, не выведены из IP.
+  Два согласованных компьютера подтверждены native client receipts; второй
+  использует точный доменный токен согласованного RDP-сеанса и SMB.
+- Actual browser PASS: strict TLS, два точных HIGH change ID, account/SID/session/
+  IP и отсутствие workstation, связанные 4663/4660/4624 с точными RecordID,
+  два object history с точными FileId/volume, desktop/mobile/reload, overflow0,
+  page errors0. Sources показывает USN HEALTHY и остановленный Audit STALE.
+  Unauthenticated Audit ingest401, sourceCount1; никакого дублирующего source.
+- Негативный сценарий проверен повторно по реальному API после volume observation.
+  В исходном согласованном пятом окне/source два scoped Shared-negative WRITE
+  имеют AMBIGUOUS и actor NULL. UNKNOWN проверяется отдельно на других scoped
+  изменениях того же окна/source; у них actor также NULL.
+  Общие классы snapshot (AMBIGUOUS17/UNKNOWN24) не подменяют exact-window checks.
+  Rename не объявлен DELETE по одному DELETE AccessMask; actual CREATE→RENAME
+  identity proof сохраняет тот же FileId/canonical volume для обоих файлов.
+- Независимое focused review финального verifier обнаружило missing account/domain
+  binding. RED `WINDOWS_ACCOUNT_DOMAIN_FALSE_PASS` → GREEN сравнение actor с
+  исходным 4663 единственной цепочки; wrong-account/wrong-domain отвергаются.
+  Actual scope10 + complete-chain14 + account/domain3 PASS; admission/finally/
+  pair32, post-coverage11, dispatch lifecycle5, Python compile/Node syntax PASS.
+  Повторное source review Critical/Important0. Финальный независимый evidence
+  review подтвердил HIGH2, exact Windows fields, обе истории и rollback; уточнено,
+  что Shared-negative WRITE доказывает AMBIGUOUS, а scoped UNKNOWN — другие
+  изменения пятого окна. Открытых Critical/Important нет; publication CI отдельно.
+- Ранее подтверждённый 30 s Audit-only HTTP503 и service restart сохраняют
+  byte-identical receipt, один unique event, duplicate0, bookmark и GAP null.
+  Replay не повторялся после успешной проверки. Четыре nonadmin роли — viewer,
+  analyst, storage_operator, auditor — получили403 на четырёх Audit endpoints;
+  чувствительного payload нет, временные sessions отозваны и fixture accounts
+  отключены, существующие роли сохранены. LDAP login этим тестом не проверялся.
+- Итог60 тестовых файловых операций /1015 bytes. Audit STOPPED/PID0, queue0,
+  собственная папка и exact-owned helper второго ПК удалены; исходные
+  SACL/policy/Failure bit/root ACL восстановлены. Старое protected state с GAP
+  сохранено целиком. Legacy USN service, token/state/scope/cadence не изменялись;
+  его исходный PID сохранён. Whole-package SHA legacy collector остаётся
+  UNCONFIRMED: ранее сопоставлены только пять critical modules, не весь пакет.
+- Installed Audit source `982c442e5760d265efba8e59bd2933b4b20e2889`, wheel SHA256
+  `d15e06d01e2af2b03ffbdb0cac6018fa03ea5cbe2d42f8be50d10dcb8e0fd6a5`;
+  124 source files сверены byte-for-byte. Central API/worker/Web deployed
+  `05eaa7fadd3d6d9c9833f40f6811b68db771a755`, schema0008. Их exact PR/main
+  CI (шесть обязательных jobs SUCCESS, Sonar SKIPPED как unconfigured)
+  приведён в разделах #29/#30. Эта документация не требует нового deployment.
+- Промежуточный docs head `a64dfadac1f511de8a22214bbfce19d197f88a33`:
+  run https://github.com/BorisDruzak/storage-console/actions/runs/38510783091,
+  six required jobs SUCCESS с этим exact SHA, Sonar SKIPPED. Окончательная
+  публикационная приёмка проверяется по exact head и merged-main PR
+  https://github.com/BorisDruzak/storage-console/pull/26; self-referential SHA
+  текущего документа не вписывается в его собственный commit.
+- Private evidence: `c-evidence-tenth-final.json`,
+  `c-evidence-fifth-final-negative.json`, `c-final-acceptance-browser.dpapi`,
+  `c-final-histories.json`, native receipts, replay и rollback proofs в
+  согласованном закрытом evidence directory. Real identities/IP/paths/event
+  bodies/screenshots/credentials в публичный Git не опубликованы.
+- Границы сохранены: MVP-005 history/RBAC не перезаписаны; SMB/USN journal/GPO,
+  Security log retention/size не менялись, FILESERVER не перезагружался.
+  5145/WEF/SIEM/версии/массовый аудит не реализованы; исходный USN soak остаётся
+  FAIL. После final review и exact publication CI — STOP, без новых live действий.
 
 ## Mandatory reporting
 
