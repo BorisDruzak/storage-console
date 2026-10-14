@@ -330,3 +330,85 @@ def test_default_budget_also_uses_asynchronous_expiring_readiness(monkeypatch):
         readiness_max_objects=256,
     ), threading.Event())
     assert seen == [worker]
+
+
+@pytest.mark.parametrize("duration,expected_wait", [(0, 30), (22, 8), (29.5, 0.5)])
+def test_probe_period_includes_scan_duration(duration, expected_wait):
+    from collectors.windows_audit.readiness_worker import ReadinessWorker
+
+    at = [0.0]
+    waits = []
+
+    class Stop:
+        def is_set(self):
+            return bool(waits)
+
+        def wait(self, timeout):
+            waits.append(timeout)
+            return True
+
+    def probe(_):
+        at[0] += duration
+        return True, True, 1
+
+    worker = ReadinessWorker(probe, clock=lambda: at[0])
+    worker._stop = Stop()
+    worker._run()
+    assert waits == [expected_wait]
+
+
+def test_consecutive_complete_probes_keep_previous_proof_fresh_until_publish():
+    from collectors.windows_audit.readiness_worker import ReadinessWorker
+
+    at = [0.0]
+    calls = []
+    waits = []
+    intervening = []
+
+    class Stop:
+        def is_set(self):
+            return len(waits) == 2
+
+        def wait(self, timeout):
+            waits.append(timeout)
+            at[0] += timeout
+            return self.is_set()
+
+    def probe(_):
+        at[0] += 22
+        if calls:
+            intervening.append(worker.snapshot())
+        calls.append(True)
+        return True, True, 1
+
+    worker = ReadinessWorker(probe, clock=lambda: at[0])
+    worker._stop = Stop()
+    worker._run()
+    assert len(intervening) == 1
+    assert intervening[0]["policy_verified"] and intervening[0]["sacl_verified"]
+    assert not intervening[0]["readiness_stale"]
+    assert intervening[0]["readiness_age_seconds"] <= 60
+
+
+def test_failed_probe_keeps_backoff_instead_of_repeating_a_full_failed_scan():
+    from collectors.windows_audit.readiness_worker import ReadinessWorker
+
+    at = [0.0]
+    waits = []
+
+    class Stop:
+        def is_set(self):
+            return bool(waits)
+
+        def wait(self, timeout):
+            waits.append(timeout)
+            return True
+
+    def probe(_):
+        at[0] += 30
+        raise ValueError("AUDIT_READINESS_INCOMPLETE")
+
+    worker = ReadinessWorker(probe, clock=lambda: at[0])
+    worker._stop = Stop()
+    worker._run()
+    assert waits == [30]
