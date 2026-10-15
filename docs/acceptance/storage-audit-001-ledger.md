@@ -890,3 +890,8 @@ Later2026-10-15 ordinary activity also confirms the fresh-generation path: four
 CREATE/WRITE changes linked to two new4663 records and verified in the actual UI.
 The earlier quiet-generation limitation is superseded in the002 ledger; actor
 remains unconfirmed and two fresh DELETE changes remain UNKNOWN. No operator CRUD.
+
+Publication follow-up: documentation-main CI hit an untraced delivery-thread
+failure in the portable USN-proof test; original FAIL is retained in the002
+ledger. Diagnostic-only successor requires new exact head/main gates. Live
+recovery/fresh-generation evidence and original001 acceptance remain unchanged.
