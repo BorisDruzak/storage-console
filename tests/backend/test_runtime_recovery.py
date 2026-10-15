@@ -29,38 +29,88 @@ def test_sqlite_busy_retains_numeric_cause_without_private_text(tmp_path):
         lock.close()
 
 
-def test_runtime_survives_writer_lock_and_resumes_delivery(tmp_path):
+@pytest.mark.parametrize("resume_delay", [0, 6])
+def test_runtime_survives_writer_lock_and_resumes_delivery(tmp_path, monkeypatch, resume_delay):
     loaded = prepared(tmp_path)
     loaded.outbox.limits = replace(loaded.outbox.limits, busy_timeout_seconds=1)
-    runtime = Runtime(loaded, capture_factory=lambda: BlockedCapture())
-    failures = []
+    busy_seen, resume = threading.Event(), threading.Event()
+    sent, acknowledged = [], []
+    send = loaded.transport.send
+    acknowledge = loaded.outbox.acknowledge
+
+    def observed_send(claim):
+        outcome = send(claim)
+        if claim.domain == "heartbeat":
+            sent.append(claim.batch_id)
+        return outcome
+
+    def observed_ack(claim):
+        changed = acknowledge(claim)
+        if changed:
+            acknowledged.append(claim.batch_id)
+        return changed
+
+    monkeypatch.setattr(loaded.outbox, "acknowledge", observed_ack)
+    monkeypatch.setattr(loaded.transport, "send", observed_send)
+
+    def diagnostic(value):
+        if json.loads(value).get("sqlite_errorcode") == sqlite3.SQLITE_BUSY:
+            busy_seen.set()
+            assert resume.wait(15), "test did not release the retry gate"
+
+    runtime = Runtime(loaded, capture_factory=lambda: BlockedCapture(), diagnostic=diagnostic)
+    failures, results = [], []
     host = RuntimeHost(lambda stop: runtime.run, lambda *args: None, failures.append)
-    worker = threading.Thread(target=host.run)
+    worker = threading.Thread(target=lambda: results.append(host.run()))
     worker.start()
     lock = sqlite3.connect(loaded.outbox.path, autocommit=True)
+    release_retry = threading.Timer(resume_delay, resume.set)
     try:
-        deadline = time.monotonic() + 4
-        while not loaded.transport.records and time.monotonic() < deadline:
+        deadline = time.monotonic() + 35
+        while not acknowledged and worker.is_alive() and time.monotonic() < deadline:
             time.sleep(0.02)
-        assert loaded.transport.records
-        while loaded.outbox.status().pending_count and time.monotonic() < deadline:
-            time.sleep(0.02)
-        assert loaded.outbox.status().pending_count == 0
+        assert loaded.transport.records and acknowledged, (failures, results, runtime.events)
         lock.execute("BEGIN IMMEDIATE")
-        time.sleep(2.3)
+        assert busy_seen.wait(10), "real SQLite BUSY was not exercised"
         assert worker.is_alive(), failures
         lock.execute("ROLLBACK")
         before = len(loaded.transport.records)
-        deadline = time.monotonic() + 4
-        while len(loaded.transport.records) == before and time.monotonic() < deadline:
+        sent_before = set(sent)
+        released_at = time.monotonic()
+        release_retry.start()
+        # This is a test guard, not a four-second recovery SLA. The runtime's
+        # own 30-second retry deadline and fatal-error policy remain unchanged.
+        deadline = released_at + 35
+        while (worker.is_alive() and not failures and time.monotonic() < deadline
+               and (len(loaded.transport.records) == before
+                    or not (set(sent) - sent_before).intersection(acknowledged))):
             time.sleep(0.02)
-        assert len(loaded.transport.records) > before
+        evidence = {
+            "worker_alive": worker.is_alive(),
+            "failures": failures[-2:],
+            "host_results": results,
+            "sqlite_busy_observed": busy_seen.is_set(),
+            "sent_before": before,
+            "sent_after": len(loaded.transport.records),
+            "new_sent": len(set(sent) - sent_before),
+            "new_acked": len((set(sent) - sent_before).intersection(acknowledged)),
+            "elapsed_seconds": time.monotonic() - released_at,
+            "events": [(event.kind, event.code) for event in runtime.events],
+        }
+        assert worker.is_alive() and not failures, evidence
+        assert len(loaded.transport.records) > before, evidence
+        assert (set(sent) - sent_before).intersection(acknowledged), evidence
+        assert time.monotonic() < deadline, evidence
     finally:
+        resume.set()
+        release_retry.cancel()
+        if release_retry.ident is not None:
+            release_retry.join(1)
         lock.close()
         host.control(1)
         worker.join(3)
     assert not worker.is_alive()
-    assert not failures
+    assert not failures and results == [0]
 
 
 def test_heartbeat_state_read_preserves_lock_error_for_runtime_retry(tmp_path):
