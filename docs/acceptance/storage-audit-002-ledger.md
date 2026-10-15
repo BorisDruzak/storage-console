@@ -632,3 +632,42 @@ Production scope and identities remain in the approved private operator design.
   and documentation publication witnesses are attached to the follow-up PR.
   Permanent Audit and existing USN remain RUNNING. Original001 acceptance and
   USN-SOAK failure retained; no5145/WEF/SIEM/version restore/mass audit. STOP.
+
+
+## Publication CI correction2026-10-15
+
+- Documentation PR #41 head4707e070d2414f066e2f9804540f486d0d85d4eb
+  [run38709396635](https://github.com/BorisDruzak/storage-console/actions/runs/38709396635)
+  failed native Audit restart:112 PASS/1 FAIL, IDLE_RESTART_CHANGED_BOOKMARK.
+  The Security bookmark advanced; the nature of those intervening host records
+  was not established. No unchanged rerun was used as a fix.
+- Original equality assertion reproduced RED on legitimate checkpoint progress.
+  Separate PR #42 adds21 positive/negative controls, identity/counter/bookmark
+  continuity and exact retained encrypted-queue prefix checks. Native SCM now
+  requires a distinct owned4663 written while stopped to appear after restart.
+  These file operations run only in the disposable Windows CI fixture.
+  Portable regression79 PASS, Ruff/diff check/Gitleaks PASS, independent review
+  APPROVE and21 independent portable controls PASS. Production unchanged.
+- Earlier PR-head run labels identify GitHub check metadata. PR #41 checkout
+  actually used a synthetic merge SHA. PR #42 explicitly selects the requested
+  PR-head or push SHA in all seven jobs and verifies git HEAD after checkout.
+  The new CI receipts supersede metadata-only claims of exact PR-head checkout;
+  historical failure and source/deployment receipts remain retained.
+- Read-only live recheck09:17 UTC: Activity COMPLETE/CONTINUOUS_SINCE_BASELINE,
+  source/Audit HEALTHY, full non-stale readiness51996, actual desktop/mobile
+  evidence UI and CSRF/anonymous-read/logout checks PASS. The128 scoped rows
+  and114 ordinary changes retain29 ACCESS_OBSERVED/10 AMBIGUOUS/75 UNKNOWN.
+  Fresh-generation positive ordinary-event limitation remains unchanged.
+  Audit/directory queues empty; USN briefly contained one497-byte pending batch
+  during an active sample, without collection error or continuity gap. Central
+  jobs pending0/failed0, history counts preserved, approved data UUID and
+  resource limits verified, free231.4GiB. Both services RUNNING, ownersQUIESCENT.
+- PR #42 head7e1c50dc333adfa5376c0f0853c170715c835682
+  [run38711751323](https://github.com/BorisDruzak/storage-console/actions/runs/38711751323):
+  all six required jobs PASS with actual checkout verification; backend1058 PASS/
+  91 platform SKIP, native groups14/41/134/81/101/1 PASS. Sonar SKIPPED/unverified.
+  Merged source successor1ad32b43114c16e50558ba2560ba18aab1f6adb8 uses
+  [main run38713384088](https://github.com/BorisDruzak/storage-console/actions/runs/38713384088).
+  Terminal main and documentation-head/main receipts must be verified before
+  final publication; their SHA/run/verdict records are attached to PRs #42/#41.
+  This test/CI-only successor is not a production deployment.
