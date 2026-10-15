@@ -870,3 +870,9 @@ corrected runtime exact-SHA CI/installation PASS, permanent Audit RUNNING.
 Expanded ordinary-event/history acceptance remains PENDING in that ledger;
 bounded quiet-interval checks do not establish full live acceptance.
 Existing USN-SOAK failure and immutable original evidence/GAP remain retained.
+
+2026-10-15: operator requested correction of Activity UNAVAILABLE/UNKNOWN and
+completion of the separately approved root's live acceptance. Confirmed inventory
+scope-transition omission, native/canonical volume mismatch and genuine narrow
+SACL coverage failure are recorded in the linked002 ledger. Correction/source
+verification does not by itself establish a new live PASS or clear any old GAP.

@@ -14,6 +14,7 @@ from uuid import UUID
 from collectors.common.outbox import Checkpoint, Outbox
 
 from .inventory import Scope
+from .producer import _state
 from .usn_state import UsnState, _Cursor, _Node
 
 
@@ -74,6 +75,7 @@ def commit_scope(
         if previous.value.get("new_scope") != proposed.fingerprint:
             raise ValueError("SCOPE_EXTENSION_CONFLICT")
         return
+    inventory = _state(readonly, "windows:inventory", current)
     with readonly._transaction() as connection:
         existing = connection.execute(
             "SELECT value FROM checkpoints WHERE substr(stream,1,12)='windows:usn:' "
@@ -134,6 +136,10 @@ def commit_scope(
                 }
             )
             yield state.stream, checkpoint.revision, cursor_value.model_dump()
+        if isinstance(inventory.value, dict):
+            yield "windows:inventory", inventory.revision, {
+                **inventory.value, "scope": proposed.fingerprint, "completed": False,
+            }
 
     box.advance_stream(
         marker,
@@ -426,6 +432,7 @@ def extend_scope(
         original.model_copy(update={"roots": new_roots}).model_dump_json()
     )
     if proposed.scope.fingerprint == original.scope.fingerprint:
+        repair_completed_inventory(state, original)
         return
     additions = additional_roots(original.scope, proposed.scope)
     if not _usn_enabled(state, original):
@@ -502,3 +509,61 @@ def extend_scope(
     with closing(stage.nodes()) as nodes:
         commit_scope(box, original.scope, proposed.scope, nodes, fences, identity)
     recover_scope(state)
+
+
+def repair_completed_inventory(state: Any, current: Any) -> bool:
+    """Explicit operator retry for a prior committed scope; never reset USN state."""
+    from .configuration import PrivateConfig, _outbox, _usn_enabled
+
+    if not (state.root / RECEIPT_NAME).exists():
+        return False
+    receipt = json.loads(state.read(RECEIPT_NAME, 1048576))
+    if receipt.get("phase") != "DONE" or receipt.get("new_scope") != current.scope.fingerprint:
+        raise ValueError("SCOPE_INVENTORY_CONFLICT")
+    identity = UUID(receipt["id"]).hex
+    before_name, _ = _backup_names(identity)
+    before = state.read(before_name, 131072)
+    proposed_bytes = base64.b64decode(receipt["new_config"], validate=True)
+    if (sha256(before).hexdigest() != receipt["original_config_sha256"]
+            or sha256(proposed_bytes).hexdigest() != receipt["proposed_config_sha256"]):
+        raise ValueError("SCOPE_RECEIPT_INVALID")
+    original = PrivateConfig.model_validate_json(before)
+    proposed = PrivateConfig.model_validate_json(proposed_bytes)
+    additional_roots(original.scope, proposed.scope)
+    if (original.collector_id != current.collector_id
+            or proposed.collector_id != current.collector_id
+            or proposed.scope.fingerprint != current.scope.fingerprint
+            or receipt.get("original_scope") != original.scope.fingerprint
+            or not _usn_enabled(state, current)):
+        raise ValueError("SCOPE_INVENTORY_CONFLICT")
+    box = _outbox(state, current)
+    if box.credential_binding() != current.credential_version:
+        raise ValueError("SCOPE_CREDENTIAL_CHANGED")
+    transition = box.checkpoint("windows:scope-transition").value
+    if not isinstance(transition, dict) or any(transition.get(key) != value for key, value in {
+        "id": identity, "phase": "COMMITTED", "old_scope": original.scope.fingerprint,
+        "new_scope": current.scope.fingerprint,
+    }.items()):
+        raise ValueError("SCOPE_INVENTORY_CONFLICT")
+    inventory = box.checkpoint("windows:inventory")
+    if inventory.value is None:
+        return False
+    if (isinstance(inventory.value, dict)
+            and inventory.value.get("scope") == current.scope.fingerprint):
+        _state(box, "windows:inventory", current.scope)
+        return False
+    if (not isinstance(inventory.value, dict)
+            or inventory.value.get("scope") != original.scope.fingerprint):
+        raise ValueError("SCOPE_INVENTORY_CONFLICT")
+    inventory = _state(box, "windows:inventory", original.scope)
+    assert isinstance(inventory.value, dict)
+    prior_inventory = inventory.value
+    marker = "windows:scope-inventory-repair"
+    previous = box.checkpoint(marker)
+    box.advance_stream(marker, previous.revision, {
+        "id": identity, "old_scope": original.scope.fingerprint,
+        "new_scope": current.scope.fingerprint, "prior_inventory": prior_inventory,
+    }, lambda _read: iter((("windows:inventory", inventory.revision, {
+        **prior_inventory, "scope": current.scope.fingerprint, "completed": False,
+    }),)))
+    return True
