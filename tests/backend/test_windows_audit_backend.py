@@ -454,6 +454,7 @@ def test_direct_sensitive_reads_403_for_all_non_admin_roles(authenticated_setup,
         "/api/v1/activity",
         f"/api/v1/audit/sources/{source}",
         f"/api/v1/audit/changes/{uuid4()}",
+        f"/api/v1/audit/changes/{uuid4()}/coverage",
     ):
         response = client.get(path)
         assert response.status_code == 403 and response.json() == {"detail": "AUTH_FORBIDDEN"}

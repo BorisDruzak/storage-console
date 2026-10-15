@@ -645,6 +645,91 @@
         "title": "AuditCandidateView",
         "type": "object"
       },
+      "AuditCoverage": {
+        "additionalProperties": false,
+        "properties": {
+          "change_id": {
+            "format": "uuid",
+            "title": "Change Id",
+            "type": "string"
+          },
+          "collectors": {
+            "items": {
+              "$ref": "#/components/schemas/CollectorCoverage"
+            },
+            "maxItems": 2,
+            "title": "Collectors",
+            "type": "array"
+          },
+          "evaluated_at": {
+            "format": "date-time",
+            "title": "Evaluated At",
+            "type": "string"
+          },
+          "identity_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Reason"
+          },
+          "interval_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval End"
+          },
+          "interval_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Start"
+          },
+          "passed": {
+            "default": false,
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "reason": {
+            "enum": [
+              "COMPLETE",
+              "COLLECTOR_TOPOLOGY",
+              "INCOMPLETE",
+              "NO_UNIQUE_ACCESS"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "rule_version": {
+            "title": "Rule Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "change_id",
+          "rule_version",
+          "evaluated_at",
+          "reason"
+        ],
+        "title": "AuditCoverage",
+        "type": "object"
+      },
       "AuditEvent": {
         "additionalProperties": false,
         "properties": {
@@ -3176,6 +3261,110 @@
           "state"
         ],
         "title": "ClientObservation",
+        "type": "object"
+      },
+      "CollectorCoverage": {
+        "additionalProperties": false,
+        "properties": {
+          "collector_type": {
+            "enum": [
+              "WINDOWS",
+              "AUDIT_WINDOWS"
+            ],
+            "title": "Collector Type",
+            "type": "string"
+          },
+          "covers_end": {
+            "default": false,
+            "title": "Covers End",
+            "type": "boolean"
+          },
+          "covers_start": {
+            "default": false,
+            "title": "Covers Start",
+            "type": "boolean"
+          },
+          "failures": {
+            "items": {
+              "enum": [
+                "WITNESS_LIMIT",
+                "AUDIT_CONFIGURATION",
+                "AUDIT_POLICY",
+                "AUDIT_SACL",
+                "AUDIT_GAP",
+                "AUDIT_BACKLOG",
+                "AUDIT_QUARANTINE",
+                "AUDIT_ERROR",
+                "AUDIT_STATE",
+                "AUDIT_HOST",
+                "AUDIT_BOOT",
+                "AUDIT_GENERATION",
+                "USN_CURSOR",
+                "USN_ERROR",
+                "USN_LAG",
+                "USN_PROOF_AGE",
+                "MISSING_START_WITNESS",
+                "MISSING_END_WITNESS"
+              ],
+              "type": "string"
+            },
+            "maxItems": 18,
+            "title": "Failures",
+            "type": "array"
+          },
+          "first_bad_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Bad At"
+          },
+          "first_proof_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Proof At"
+          },
+          "last_proof_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Proof At"
+          },
+          "overflow": {
+            "title": "Overflow",
+            "type": "boolean"
+          },
+          "witness_count": {
+            "maximum": 129.0,
+            "minimum": 0.0,
+            "title": "Witness Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "collector_type",
+          "witness_count",
+          "overflow"
+        ],
+        "title": "CollectorCoverage",
         "type": "object"
       },
       "CollectorCredential": {
@@ -5713,6 +5902,104 @@
           }
         ],
         "summary": "Evidence",
+        "tags": [
+          "security-audit"
+        ]
+      }
+    },
+    "/api/v1/audit/changes/{change_id}/coverage": {
+      "get": {
+        "operationId": "historical_coverage_api_v1_audit_changes__change_id__coverage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditCoverage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "UserSession": []
+          }
+        ],
+        "summary": "Historical Coverage",
         "tags": [
           "security-audit"
         ]

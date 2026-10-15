@@ -1,7 +1,8 @@
 """Indexed bounded background matching, independent of arrival order."""
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from sqlalchemy import func, literal, or_, select, tuple_
@@ -9,7 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Connection, RowMapping
 from sqlalchemy.sql import Select
 
-from packages.contracts.audit import AuditEvent
+from packages.contracts.audit import AuditEvent, CollectorCoverage, CoverageFailure
 from packages.shared.jobs import enqueue, lock_key
 from packages.shared.models.activity import change_events
 from packages.shared.models.audit import (
@@ -187,14 +188,68 @@ def identity(
     return "PROVEN_PRIOR_IDENTITY", prior["id"]
 
 
-def coverage(
+@dataclass(frozen=True)
+class CoverageReport:
+    passed: bool
+    reason: Literal["COMPLETE", "COLLECTOR_TOPOLOGY", "INCOMPLETE"]
+    start: datetime
+    end: datetime
+    collectors: list[CollectorCoverage]
+
+
+def _witness(
+    payload: dict[str, Any], kind: str, access: AuditEvent, at: datetime
+) -> tuple[list[CoverageFailure], datetime | None]:
+    if kind == "AUDIT_WINDOWS":
+        health = payload.get("audit") or {}
+        checks: list[tuple[CoverageFailure, bool]] = [
+            ("AUDIT_CONFIGURATION", not health.get("configured")),
+            ("AUDIT_POLICY", not health.get("policy_verified")),
+            ("AUDIT_SACL", not health.get("sacl_verified")),
+            ("AUDIT_GAP", bool(health.get("gap"))),
+            ("AUDIT_BACKLOG", bool(health.get("backlog_count"))),
+            ("AUDIT_QUARANTINE", bool(health.get("quarantine"))),
+            ("AUDIT_ERROR", bool(health.get("error_code"))),
+            ("AUDIT_STATE", health.get("state") != "HEALTHY"),
+            ("AUDIT_BOOT", health.get("boot_id") != access.boot_id),
+            ("AUDIT_GENERATION", health.get("generation") != str(access.generation)),
+            ("AUDIT_HOST", health.get("host_id") != str(access.host_id)),
+        ]
+        failures = [code for code, failed in checks if failed]
+        collected = health.get("last_collected_at")
+        return failures, datetime.fromisoformat(collected) if collected and not failures else None
+    pieces = (payload.get("cursor") or "").split(":")
+    failures = []
+    if (len(pieces) != 4 or pieces[:2] != ["ntfs-usn", "continuous"]
+            or not pieces[2].isascii() or not pieces[2].isdigit()):
+        failures.append("USN_CURSOR")
+    if payload.get("error_code"):
+        failures.append("USN_ERROR")
+    if (payload.get("lag_seconds") or 0) > 15:
+        failures.append("USN_LAG")
+    if failures:
+        return failures, None
+    try:
+        progress = int(pieces[2]) / 1000
+    except (ValueError, OverflowError):
+        return ["USN_CURSOR"], None
+    if not 0 <= at.timestamp() - progress < 15:
+        return ["USN_PROOF_AGE"], None
+    return [], datetime.fromtimestamp(progress, tz=at.tzinfo)
+
+
+def coverage_report(
     connection: Connection,
     source: UUID,
     access: AuditEvent,
     at: datetime,
     identity_at: datetime | None = None,
-) -> bool:
+    *, explain: bool = True,
+) -> CoverageReport:
     # Two dated witnesses around the historical interval, never current HEALTHY alone.
+    start, end = min(access.occurred_at, at) - WINDOW, max(access.occurred_at, at) + WINDOW
+    if identity_at is not None:
+        start = min(start, identity_at)
     rows = (
         connection.execute(
             select(collectors).where(
@@ -207,10 +262,8 @@ def coverage(
         .all()
     )
     if sorted(r["collector_type"] for r in rows) != ["AUDIT_WINDOWS", "WINDOWS"]:
-        return False
-    start, end = min(access.occurred_at, at) - WINDOW, max(access.occurred_at, at) + WINDOW
-    if identity_at is not None:
-        start = min(start, identity_at)
+        return CoverageReport(False, "COLLECTOR_TOPOLOGY", start, end, [])
+    reports: list[CollectorCoverage] = []
     for collector in rows:
         witnesses = (
             connection.execute(
@@ -226,48 +279,48 @@ def coverage(
             .mappings()
             .all()
         )
-        if len(witnesses) > 128:
-            return False
+        report = CollectorCoverage(
+            collector_type=collector["collector_type"], witness_count=len(witnesses),
+            overflow=len(witnesses) > 128,
+        )
+        reports.append(report)
+        if report.overflow:
+            report.failures.append("WITNESS_LIMIT")
+            if not explain:
+                return CoverageReport(False, "INCOMPLETE", start, end, reports)
+            continue
         good: list[datetime] = []
         for witness in witnesses:
-            payload = witness["payload"]
-            if collector["collector_type"] == "AUDIT_WINDOWS":
-                health = payload.get("audit") or {}
-                if (
-                    not health.get("configured")
-                    or not health.get("policy_verified")
-                    or not health.get("sacl_verified")
-                    or health.get("gap")
-                    or health.get("backlog_count")
-                    or health.get("quarantine")
-                    or health.get("error_code")
-                    or health.get("state") != "HEALTHY"
-                    or health.get("boot_id") != access.boot_id
-                    or health.get("generation") != str(access.generation)
-                    or health.get("host_id") != str(access.host_id)
-                ):
-                    return False
-                collected = health.get("last_collected_at")
-                if collected:
-                    good.append(datetime.fromisoformat(collected))
-            else:
-                cursor = payload.get("cursor") or ""
-                pieces = cursor.split(":")
-                if (
-                    len(pieces) != 4
-                    or pieces[:2] != ["ntfs-usn", "continuous"]
-                    or not pieces[2].isdigit()
-                    or payload.get("error_code")
-                    or (payload.get("lag_seconds") or 0) > 15
-                ):
-                    return False
-                progress = int(pieces[2]) / 1000
-                if not 0 <= witness["occurred_at"].timestamp() - progress < 15:
-                    return False
-                good.append(datetime.fromtimestamp(progress, tz=witness["occurred_at"].tzinfo))
-        if not good or min(good) > start or max(good) < end:
-            return False
-    return True
+            failures, proof = _witness(
+                witness["payload"], collector["collector_type"], access, witness["occurred_at"]
+            )
+            if failures and report.first_bad_at is None:
+                report.first_bad_at = witness["occurred_at"]
+            for failure in failures:
+                if failure not in report.failures:
+                    report.failures.append(failure)
+            if failures and not explain:
+                return CoverageReport(False, "INCOMPLETE", start, end, reports)
+            if proof is not None:
+                good.append(proof)
+        if good:
+            report.first_proof_at, report.last_proof_at = min(good), max(good)
+            report.covers_start, report.covers_end = min(good) <= start, max(good) >= end
+        if not report.covers_start:
+            report.failures.append("MISSING_START_WITNESS")
+        if not report.covers_end:
+            report.failures.append("MISSING_END_WITNESS")
+        if report.failures and not explain:
+            return CoverageReport(False, "INCOMPLETE", start, end, reports)
+    passed = all(not report.failures for report in reports)
+    return CoverageReport(passed, "COMPLETE" if passed else "INCOMPLETE", start, end, reports)
+
+
+def coverage(
+    connection: Connection, source: UUID, access: AuditEvent, at: datetime,
+    identity_at: datetime | None = None,
+) -> bool:
+    return coverage_report(connection, source, access, at, identity_at, explain=False).passed
 
 
 def correlate(connection: Connection, change: RowMapping) -> None:

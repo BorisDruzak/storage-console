@@ -33,6 +33,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/changes/{change_id}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Historical Coverage */
+        get: operations["historical_coverage_api_v1_audit_changes__change_id__coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit/objects/{object_id}": {
         parameters: {
             query?: never;
@@ -491,6 +508,39 @@ export interface components {
             /** Rule Version */
             rule_version: string;
         };
+        /** AuditCoverage */
+        AuditCoverage: {
+            /**
+             * Change Id
+             * Format: uuid
+             */
+            change_id: string;
+            /** Collectors */
+            collectors?: components["schemas"]["CollectorCoverage"][];
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Identity Reason */
+            identity_reason?: string | null;
+            /** Interval End */
+            interval_end?: string | null;
+            /** Interval Start */
+            interval_start?: string | null;
+            /**
+             * Passed
+             * @default false
+             */
+            passed: boolean;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "COMPLETE" | "COLLECTOR_TOPOLOGY" | "INCOMPLETE" | "NO_UNIQUE_ACCESS";
+            /** Rule Version */
+            rule_version: string;
+        };
         /** AuditEvent */
         AuditEvent: {
             /** Access Mask */
@@ -857,6 +907,36 @@ export interface components {
              * @default 0
              */
             valid_for_ms: number;
+        };
+        /** CollectorCoverage */
+        CollectorCoverage: {
+            /**
+             * Collector Type
+             * @enum {string}
+             */
+            collector_type: "WINDOWS" | "AUDIT_WINDOWS";
+            /**
+             * Covers End
+             * @default false
+             */
+            covers_end: boolean;
+            /**
+             * Covers Start
+             * @default false
+             */
+            covers_start: boolean;
+            /** Failures */
+            failures?: ("WITNESS_LIMIT" | "AUDIT_CONFIGURATION" | "AUDIT_POLICY" | "AUDIT_SACL" | "AUDIT_GAP" | "AUDIT_BACKLOG" | "AUDIT_QUARANTINE" | "AUDIT_ERROR" | "AUDIT_STATE" | "AUDIT_HOST" | "AUDIT_BOOT" | "AUDIT_GENERATION" | "USN_CURSOR" | "USN_ERROR" | "USN_LAG" | "USN_PROOF_AGE" | "MISSING_START_WITNESS" | "MISSING_END_WITNESS")[];
+            /** First Bad At */
+            first_bad_at?: string | null;
+            /** First Proof At */
+            first_proof_at?: string | null;
+            /** Last Proof At */
+            last_proof_at?: string | null;
+            /** Overflow */
+            overflow: boolean;
+            /** Witness Count */
+            witness_count: number;
         };
         /** CollectorCredential */
         CollectorCredential: {
@@ -1424,6 +1504,82 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChangeAudit"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Content Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    historical_coverage_api_v1_audit_changes__change_id__coverage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                change_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditCoverage"];
                 };
             };
             /** @description Unauthorized */

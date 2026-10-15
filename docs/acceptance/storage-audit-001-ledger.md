@@ -896,6 +896,13 @@ failure in the portable USN-proof test; original FAIL is retained in the002
 ledger. Diagnostic-only successor requires new exact head/main gates. Live
 recovery/fresh-generation evidence and original001 acceptance remain unchanged.
 
+Current-root two-account actor follow-up2026-10-15: four authorized owned-file
+operations produced real4663/4660/4624 and USN DELETE chains, but the next ordinary
+volume witness exposed INTERVAL_COVERAGE_UNKNOWN for both changes. This is not a
+new strong-attribution PASS. The002 ledger records the bounded diagnostic API
+needed to explain the historical rejection without direct database access or
+confidence overrides. Original001 acceptance, retained GAP and USN-SOAK FAIL remain.
+
 2026-10-15 actor-proof follow-up: coverage diagnostics PR #44 exact head
 `5830057a1166df8b14372d6265cbab5ce39c934b`, run38738840435, retained its first
 Windows FAIL: native inventory stopped with retryable SQLite contention after
