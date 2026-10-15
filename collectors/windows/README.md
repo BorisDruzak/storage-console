@@ -9,6 +9,17 @@ CA сохраняется отдельно для каждой version. `configu
 binding в SQLite schema3 и не снимает сохранённый auth suspension при перезапуске.
 Сбой между активацией БД и заменой config требует повторной настройки оператором.
 Изменение identity/scope отклоняется; backlog никогда не удаляется автоматически.
+
+Дочерний capture начинает слушать STOP до открытия очереди. Только временные
+SQLite BUSY/LOCKED при открытии outbox и проверке credential binding допускают
+повторную попытку; unsafe state, схема, identity и mismatch не повторяются.
+30 секунд ограничивают начало новых попыток. Последняя уже начатая SQLite-операция
+может закончиться позже, поскольку constructor содержит несколько statements со
+своими настроенными busy timeout. Жёсткую отмену обеспечивает существующий parent
+process/Job lifecycle. Retry не снимает auth suspension, не сбрасывает checkpoints
+и не начинает capture до полной проверки binding. Исчерпание бюджета остаётся
+ошибкой наблюдения, а не healthy-свидетельством.
+
 Операторский CLI установлен через wheel: `storage-collector activate`, `status`,
 `inventory-once`, `run`. Первый live pilot выполняется по
 [русскому runbook](../../docs/pilot/windows-live-pilot-ru.md).
