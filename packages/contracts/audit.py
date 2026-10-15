@@ -214,6 +214,38 @@ class ChangeAudit(Contract):
     stream: AuditStream
 
 
+CoverageFailure = Literal[
+    "WITNESS_LIMIT", "AUDIT_CONFIGURATION", "AUDIT_POLICY", "AUDIT_SACL", "AUDIT_GAP",
+    "AUDIT_BACKLOG", "AUDIT_QUARANTINE", "AUDIT_ERROR", "AUDIT_STATE", "AUDIT_HOST",
+    "AUDIT_BOOT", "AUDIT_GENERATION", "USN_CURSOR", "USN_ERROR", "USN_LAG",
+    "USN_PROOF_AGE", "MISSING_START_WITNESS", "MISSING_END_WITNESS",
+]
+
+
+class CollectorCoverage(Contract):
+    collector_type: Literal["WINDOWS", "AUDIT_WINDOWS"]
+    witness_count: int = Field(ge=0, le=129)
+    overflow: bool
+    first_bad_at: AwareDatetime | None = None
+    first_proof_at: AwareDatetime | None = None
+    last_proof_at: AwareDatetime | None = None
+    covers_start: bool = False
+    covers_end: bool = False
+    failures: list[CoverageFailure] = Field(default_factory=list, max_length=18)
+
+
+class AuditCoverage(Contract):
+    change_id: UUID
+    rule_version: str
+    evaluated_at: AwareDatetime
+    identity_reason: str | None = None
+    interval_start: AwareDatetime | None = None
+    interval_end: AwareDatetime | None = None
+    passed: bool = False
+    reason: Literal["COMPLETE", "COLLECTOR_TOPOLOGY", "INCOMPLETE", "NO_UNIQUE_ACCESS"]
+    collectors: list[CollectorCoverage] = Field(default_factory=list, max_length=2)
+
+
 class AuditObject(Contract):
     object_id: UUID
     source_id: UUID

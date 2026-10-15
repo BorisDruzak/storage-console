@@ -16,6 +16,8 @@ from apps.api.user_auth.dependencies import require_csrf, require_permission
 from packages.contracts.audit import (
     AuditActor,
     AuditCandidateView,
+    AuditCoverage,
+    AuditEvent,
     AuditHealth,
     AuditObject,
     AuditPage,
@@ -25,11 +27,14 @@ from packages.contracts.audit import (
     ChangeAudit,
 )
 from packages.contracts.directory import DirectoryStream
+from packages.shared.audit.correlation import RULE_VERSION
+from packages.shared.audit.engine import coverage_report, identity
 from packages.shared.models.activity import change_events
 from packages.shared.models.audit import (
     audit_candidates,
     audit_correlations,
     audit_evidence,
+    audit_identity_observations,
     audit_streams,
 )
 from packages.shared.models.core import collectors, filesystem_objects, source_nodes, volumes
@@ -205,6 +210,49 @@ def router(engine: Engine) -> APIRouter:
                 has_more=len(rows) > filters.limit,
                 evaluated_at=now,
             )
+
+    @result.get("/changes/{change_id}/coverage")
+    def historical_coverage(change_id: UUID, response: Response) -> AuditCoverage:
+        stamp(response)
+        with snapshot(engine) as connection:
+            now = database_time(connection)
+            change = connection.execute(
+                select(change_events).where(change_events.c.id == change_id)
+            ).mappings().one_or_none()
+            if change is None:
+                raise HTTPException(404, detail="CHANGE_NOT_FOUND")
+            # Diagnose one exact candidate only; never expand an arbitrary
+            # search or run the writing correlate() path on a read request.
+            accesses = connection.execute(
+                select(audit_evidence.c.payload)
+                .join(audit_candidates, audit_candidates.c.audit_evidence_id == audit_evidence.c.id)
+                .where(audit_candidates.c.change_event_id == change_id,
+                       audit_evidence.c.source_node_id == change["source_node_id"],
+                       audit_evidence.c.event_id == 4663,
+                       audit_candidates.c.rule_version == RULE_VERSION)
+                .limit(2)
+            ).scalars().all()
+            value = AuditCoverage(
+                change_id=change_id, evaluated_at=now, rule_version=RULE_VERSION,
+                reason="NO_UNIQUE_ACCESS",
+            )
+            if len(accesses) != 1:
+                return value
+            access = AuditEvent.model_validate(accesses[0])
+            relative = (change["old_relative_path"] if change["event_type"] == "DELETE"
+                        else change["new_relative_path"])
+            reason, prior = identity(connection, change, access, relative or "")
+            identity_at = connection.scalar(select(audit_identity_observations.c.occurred_at).where(
+                audit_identity_observations.c.id == prior
+            )) if prior else None
+            report = coverage_report(
+                connection, change["source_node_id"], access, change["occurred_at"], identity_at
+            )
+            return value.model_copy(update={
+                "identity_reason": reason, "passed": report.passed, "reason": report.reason,
+                "interval_start": report.start, "interval_end": report.end,
+                "collectors": report.collectors,
+            })
 
     @result.get("/changes/{change_id}")
     def evidence(change_id: UUID, response: Response) -> ChangeAudit:

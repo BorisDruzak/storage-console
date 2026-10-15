@@ -895,3 +895,10 @@ Publication follow-up: documentation-main CI hit an untraced delivery-thread
 failure in the portable USN-proof test; original FAIL is retained in the002
 ledger. Diagnostic-only successor requires new exact head/main gates. Live
 recovery/fresh-generation evidence and original001 acceptance remain unchanged.
+
+Current-root two-account actor follow-up2026-10-15: four authorized owned-file
+operations produced real4663/4660/4624 and USN DELETE chains, but the next ordinary
+volume witness exposed INTERVAL_COVERAGE_UNKNOWN for both changes. This is not a
+new strong-attribution PASS. The002 ledger records the bounded diagnostic API
+needed to explain the historical rejection without direct database access or
+confidence overrides. Original001 acceptance, retained GAP and USN-SOAK FAIL remain.

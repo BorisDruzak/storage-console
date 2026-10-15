@@ -733,3 +733,37 @@ Production scope and identities remain in the approved private operator design.
   Both original runtimes RUNNING, ownersQUIESCENT, old GAP/backups/history retained;
   data UUID and limits verified, central failed jobs0, two young pending jobs
   about2s old during the active sample. No service/policy/SACL/file operation.
+
+## Historical coverage explanation2026-10-15
+
+- In the separately authorized current-root pilot, two existing domain accounts
+  on different computers each created39 bytes and deleted their own synthetic
+  file after ordinary inventory: four file operations,78 bytes total. Actual
+  4663/linked4660/unique Type3 4624 and prior FileId witnesses were captured
+  protected. No business file, runtime, SACL/policy/GPO or baseline was changed.
+- At12:36:30 UTC the next ordinary volume witness closed the alias interval.
+  Both unchanged DELETE rows moved from UNKNOWN/NO_SCOPED_ACCESS to
+  ACCESS_OBSERVED/INTERVAL_COVERAGE_UNKNOWN, with all three native event types.
+  Current HEALTHY does not explain the historical failure. Two-account strong
+  attribution and its browser acceptance remain PENDING; no HIGH is claimed.
+- Existing APIs omitted dated coverage diagnostics; accepted heartbeat payloads
+  are not reconstructed from a collector's current status. A bounded admin-only
+  exact-change coverage endpoint shares the engine evaluator, returning only
+  fixed failure codes, counts and time boundaries. It reads one snapshot, never
+  runs writing correlation and does not change rule/confidence/identity bounds.
+  Boolean short-circuit and128-witness/120-second guard limits are preserved.
+- RED404 on the real API -> GREEN33 PostgreSQL/backend tests; expanded focused
+  regression68 PASS before final parser controls. Unicode numeric cursor and
+  oversized conversion controls reproduced ValueError/OverflowError RED ->
+  GREEN8 boundary tests. Malformed cursor now fails closed. Independent review
+  APPROVE,22 portable/OpenAPI checks PASS and2000 parity scenarios PASS. Frontend
+  contracts/typecheck/lint/i18n,135 tests and build PASS. Final full PostgreSQL
+  regression1083 PASS/91 platform SKIP, Ruff/mypy136/OpenAPI PASS. Standalone
+  Alembic initially addressed an unavailable default fixture hostname; explicit
+  disposable TEST_DATABASE_URL upgrade/check/base/head/check PASS. No production
+  database was used for tests. Gitleaks findings0; existing OpenAPI paths/schemas
+  structurally unchanged, one additive endpoint/two schemas.
+- Canonical current-release backup and hash-verified encrypted off-VM copy PASS;
+  full archive restored transactionally in a unique network-isolated512MiB
+  disposable database, then removed. No production SQL diagnostic reads or
+  restore/writes. Exact PR/main CI remain required before central deployment.
