@@ -1,6 +1,8 @@
 import ctypes
+import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import sysconfig
@@ -157,3 +159,78 @@ def test_installed_child_captures_only_owned_tree_with_no_credentials_in_process
             assert loaded.outbox.checkpoint("windows:inventory").revision == 1
         finally:
             capture.stop(0.05)
+
+
+@pytest.mark.parametrize("action", ["resume", "stop"])
+def test_installed_child_startup_busy_retries_or_stops_without_mutating_binding(
+    tmp_path, authorities, installed_python, monkeypatch, action
+):
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "synthetic.txt").write_bytes(b"synthetic")
+    marker = tmp_path / "synthetic-startup-busy.txt"
+    program = '''
+from pathlib import Path
+from collectors.windows import _capture_worker as worker
+from collectors.common.outbox import OutboxError
+original = worker.Outbox
+def observed(*args, **kwargs):
+    try:
+        return original(*args, **kwargs)
+    except OutboxError as error:
+        if error.retryable:
+            Path(MARKER).write_text('SQLITE_BUSY', encoding='ascii')
+        raise
+worker.Outbox = observed
+raise SystemExit(worker.main())
+'''.replace("MARKER", json.dumps(str(marker)))
+    original_popen = subprocess.Popen
+    command = [str(installed_python), "-I", "-m", "collectors.windows._capture_worker"]
+
+    def observed(args, **kwargs):
+        if args == command:
+            args = [str(installed_python), "-I", "-c", program]
+        return original_popen(args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", observed)
+    with ProtectedState(tmp_path / "state", create=True) as state:
+        activate(
+            state, uuid4(), "https://localhost", Scope((str(data),)), "a" * 43,
+            (authorities[0] / "ca.pem").read_bytes(),
+        )
+        loaded = load(state)
+        before = loaded.outbox.credential_binding()
+        writer = sqlite3.connect(loaded.outbox.path, autocommit=True)
+        capture = None
+        try:
+            writer.execute("BEGIN EXCLUSIVE")
+            capture = CaptureProcess(loaded, python=installed_python)
+            deadline = time.monotonic() + 10
+            while not marker.exists() and time.monotonic() < deadline:
+                assert capture.poll() is None, "child exited before retry could recover"
+                time.sleep(0.02)
+            assert marker.read_text(encoding="ascii") == "SQLITE_BUSY"
+            assert capture.poll() is None
+            if action == "resume":
+                writer.execute("ROLLBACK")
+                deadline = time.monotonic() + 10
+                while (report := capture.poll()) is None and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                assert report is not None and report.completed and not report.errors
+                assert report.records == 3 and report.batches == 1
+                assert loaded.outbox.checkpoint("windows:inventory").revision == 1
+            else:
+                started = time.monotonic()
+                report = capture.stop(3)
+                assert report.errors == ("STOPPED",) and time.monotonic() - started < 5
+                assert capture._process.returncode == 0, "cooperative STOP was not consumed"
+                writer.execute("ROLLBACK")
+                assert loaded.outbox.checkpoint("windows:inventory").revision == 0
+            assert loaded.outbox.credential_binding() == before
+            assert not loaded.outbox.auth_suspended()
+        finally:
+            if writer.in_transaction:
+                writer.execute("ROLLBACK")
+            writer.close()
+            if capture is not None:
+                capture.stop(0.05)

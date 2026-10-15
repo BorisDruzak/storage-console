@@ -201,7 +201,7 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                     print("SYNTHETIC_CAPTURE_FAILURE:" + json.dumps({
                         "elapsed_seconds": round(time.monotonic() - observed_since, 3),
                         "heartbeat_seconds": heartbeat_seconds,
-                        "committed_heartbeats": observed_heartbeats,
+                        "committed_heartbeats": observed_heartbeats if completed else None,
                         "completed": completed, "pending": pending,
                         "high_water": high_water,
                         "lost_ack": sender.lost, "duplicates": sender.duplicates,

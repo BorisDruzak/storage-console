@@ -1150,3 +1150,46 @@ operation is performed for this delivery fix.
   Final evidence review, tracked-source secret scan and new exact head/main CI
   remain required before publication/STOP. Final immutable receipts/run links
   are published in the follow-up PR metadata, keeping the candidate pinned.
+
+
+## Capture child initialization contention follow-up2026-10-15
+
+- PR48 head154ed1df4fdfe60d7ca4d556176ef6f059611189,
+  run38771119240: six required jobs PASS with exact checkout verification;
+  backend1152 PASS/92 platform SKIP. Same-tree merge/main
+  d35e94cd584bef9e2d279a2118045ca898db58ca, run38772616990:
+  five required jobs PASS, Windows FAIL (one failure/93 PASS in the SCM step).
+  The failed pin/log remains retained, not retried unchanged. Sonar is separately
+  SKIPPED/unconfigured.
+- New actual trace identifies retryable SQLite BUSY5 during the installed child's
+  Outbox constructor, at PRAGMA synchronous=FULL. Blanket OutboxError handling
+  returned STATE_MISMATCH; inventory never began, and its next attempt was delayed
+  by the normal3600-second schedule. This differs from the repaired premature
+  heartbeat test shutdown. Diagnostic heartbeat count0 was an unmeasured default
+  because inventory never completed, not evidence that no heartbeat committed;
+  the test now reports null for that unmeasured value.
+- Real SQLite RED: the original worker blob from the failed exact main still
+  returned STATE_MISMATCH after a real exclusive writer was released. The narrow
+  child startup repair retries only BUSY/LOCKED for outbox opening and credential
+  binding, revalidating protected state each time. STOP/control starts before
+  initialization and is checked before capture. Unsafe/schema/identity/binding
+  failures remain fail-closed; auth suspension/checkpoints/credentials are intact.
+- The30-second budget limits starting another retry. An already-started
+  constructor has multiple configured SQLite statement waits and can finish
+  later; no hard30-second constructor guarantee is claimed. The unchanged parent
+  process/Job lifecycle remains the hard cancellation boundary. Waits are
+  cancellable. No common Outbox API, schema, journal or timeout setting changes.
+- Final targeted Windows25 PASS, including actual installed-wheel BUSY/unlock
+  capture and cooperative STOP while still locked (exit0), plus prior Job/crash,
+  bad-input and startup controls. Independent Windows15 PASS and source review
+  APPROVE. Related Linux26 PASS/11 platform SKIP; unchanged native Windows
+  USN/strict-HTTPS/PostgreSQL/Activity plus5/45-second runtime cases3 PASS.
+  Ruff/mypy138+7/diff checks and deployment63 PASS. Full PostgreSQL regression,
+  final evidence review, secret scan and new exact head/main CI remain required;
+  final immutable receipts/run links are published through follow-up PR metadata.
+- This repair is verified in source and an isolated installed wheel. No new
+  FILESERVER package, service, policy/SACL, USN state or live file operation is
+  applied. The accepted two-account/two-computer actor gate on central3dc4454 and
+  its existing Windows packages remains unchanged. Original001 acceptance,
+  old GAP/state/backups, business history/RBAC and the earlier USN soak failure
+  remain intact. Publication does not imply a new production collector rollout.

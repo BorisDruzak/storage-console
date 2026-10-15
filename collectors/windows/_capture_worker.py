@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import threading
+import time
 from io import BufferedReader, RawIOBase
 from pathlib import Path
 from typing import Literal, cast
@@ -32,6 +33,50 @@ class _Request(BaseModel):
     roots: tuple[str, ...] = Field(repr=False, min_length=1, max_length=32)
     settings: RuntimeSettings
     mode: Literal["inventory", "usn"] = "inventory"
+
+
+_STARTUP_RETRY_SECONDS = 30
+
+
+def _open_outbox(state: ProtectedState, request: _Request, stopped: threading.Event) -> Outbox:
+    # This bounds starting another retry, not an in-flight SQLite constructor:
+    # its existing per-statement busy timeout can finish after this deadline.
+    # Parent process/Job shutdown remains the hard cancellation boundary.
+    deadline = time.monotonic() + _STARTUP_RETRY_SECONDS
+    delay = 0.05
+    last: OutboxError | None = None
+    while True:
+        if stopped.is_set():
+            raise CaptureError("STOPPED")
+        if time.monotonic() >= deadline:
+            raise last or OutboxError("STATE_UNAVAILABLE", sqlite_errorcode=5)
+        try:
+            state.validate_file("outbox.sqlite3")
+            box = Outbox(
+                state.root / "outbox.sqlite3", request.collector_id, request.settings.limits()
+            )
+            if stopped.is_set():
+                raise CaptureError("STOPPED")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise last or OutboxError("STATE_UNAVAILABLE", sqlite_errorcode=5)
+            with box.busy_budget(remaining):
+                binding = box.credential_binding()
+            if binding != request.credential_version:
+                raise CaptureError("STATE_MISMATCH")
+            if stopped.is_set():
+                raise CaptureError("STOPPED")
+            return box
+        except OutboxError as error:
+            if not error.retryable:
+                raise
+            last = error
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise
+            if stopped.wait(min(delay, remaining)):
+                raise CaptureError("STOPPED") from None
+            delay = min(delay * 2, 1)
 
 
 def main() -> int:
@@ -86,16 +131,13 @@ def main() -> int:
 
         try:
             with ProtectedState(Path(request.state), _child=True) as state:
-                state.validate_file("outbox.sqlite3")
-                box = Outbox(
-                    state.root / "outbox.sqlite3", request.collector_id, request.settings.limits()
-                )
-                if box.credential_binding() != request.credential_version:
-                    raise CaptureError("STATE_MISMATCH")
                 control_thread = threading.Thread(
                     target=control, name="capture-control", daemon=False
                 )
                 control_thread.start()
+                box = _open_outbox(state, request, stopped)
+                if stopped.is_set():
+                    raise CaptureError("STOPPED")
                 if request.mode == "usn":
                     report = capture_usn(box, scope, stopped=stopped.is_set)
                 else:
