@@ -703,3 +703,33 @@ Production scope and identities remain in the approved private operator design.
   [run38713384088](https://github.com/BorisDruzak/storage-console/actions/runs/38713384088):
   all six required jobs PASS, Sonar SKIPPED/unverified. Final documentation-head/
   main exact-checkout receipts and queue disposition are attached to PR #41.
+
+## Merge-CI diagnostic follow-up2026-10-15
+
+- Documentation main2b439a8d221ddef40c7732cc93d89aa3bd85da61
+  [run38716886593](https://github.com/BorisDruzak/storage-console/actions/runs/38716886593):
+  backend FAIL1057 PASS/1 FAIL/91 platform SKIP; Windows/frontend/compose/production/
+  secrets PASS, Sonar SKIPPED. The default30s USN-proof test observed only the
+  initial heartbeat; its runtime thread reported RUNTIME_FAILED in delivery.
+  The underlying state error was not captured. This run is not publication PASS.
+- Twenty ordinary and100 high-thread-switch Linux repetitions with diagnostic
+  instrumentation PASS. Neither those repetitions nor a timing/ACK review prove
+  the original failure cause; it remains UNKNOWN. A transient sidecar condition
+  is a hypothesis only. No production Outbox/collector behavior changed.
+- The test now captures background exceptions with existing sanitized metadata,
+  prints bounded runtime/SQLite diagnostics on delivery/progress/shutdown failure
+  paths and asserts no
+  background failure at shutdown. Original5s emergency bounds, fake-clock values,
+  proof-age bound and30s configured heartbeat assertion remain unchanged.
+  It does not swallow failures or rerun the unchanged failing revision for green.
+- Fault-injection control: original witness RED INNER_FAILURE_WITNESS_MISSING;
+  instrumented witness GREEN with inner delivery/Outbox metadata and no exception
+  text. Focused runtime/recovery/sidecar regression43 PASS; final targeted1 PASS,
+  Ruff/diff check PASS. Independent review and successor exact head/main CI are
+  required before publication closes; their receipts are attached to the follow-up
+  PR. A later green result must not be called proof of the original failure RCA.
+- Read-only production recheck10:06 UTC: Activity COMPLETE/CONTINUOUS_SINCE_BASELINE,
+  source/Audit HEALTHY, full non-stale readiness51997, Audit/directory/USN queues0.
+  Both original runtimes RUNNING, ownersQUIESCENT, old GAP/backups/history retained;
+  data UUID and limits verified, central failed jobs0, two young pending jobs
+  about2s old during the active sample. No service/policy/SACL/file operation.

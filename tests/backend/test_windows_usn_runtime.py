@@ -11,6 +11,7 @@ from test_windows_runtime import Sender, prepared
 from windows_capture_diagnostics import readonly_observer, runtime_snapshot, safe_failure
 
 from collectors.common.outbox import OutboxError
+from collectors.windows.diagnostics import valid_detail
 from collectors.windows.inventory import CaptureError
 from collectors.windows.producer import CaptureReport
 from collectors.windows.runtime import Runtime
@@ -283,23 +284,43 @@ def test_default_thirty_second_config_publishes_usn_proof_before_it_expires(tmp_
             return CaptureReport(0, 0, False, ("STOPPED",))
 
     clock = [0.0]
+    failures = []
+    diagnostics = []
     runtime = Runtime(loaded, capture_factory=Capture, usn_factory=Capture,
-                      monotonic=lambda: clock[0])
+                      monotonic=lambda: clock[0], diagnostic=diagnostics.append)
     stop = threading.Event()
-    thread = threading.Thread(target=runtime.run, args=(stop,))
+
+    def snapshot():
+        value = {
+            "runtime": runtime_snapshot(runtime, loaded.outbox.path, failures),
+            "diagnostics": [json.loads(entry) for entry in diagnostics if valid_detail(entry)],
+        }
+        print("USN_RUNTIME_DIAGNOSTIC " + json.dumps(value), flush=True)
+        return value
+
+    def run():
+        try:
+            runtime.run(stop)
+        except Exception as error:
+            failures.append(safe_failure(error))
+
+    thread = threading.Thread(target=run)
     thread.start()
     try:
         def received(count):
             deadline = time.monotonic() + 5
-            while len(loaded.transport.records) < count and time.monotonic() < deadline:
+            while (len(loaded.transport.records) < count
+                   and time.monotonic() < deadline and not failures):
                 time.sleep(0.01)
-            assert len(loaded.transport.records) >= count
+            assert len(loaded.transport.records) >= count, snapshot()
 
         def completed_usn(count):
             deadline = time.monotonic() + 5
-            while sum(e.kind == "usn" and e.code is None for e in runtime.events) < count:
-                assert time.monotonic() < deadline
+            while (sum(e.kind == "usn" and e.code is None for e in runtime.events) < count
+                   and not failures):
+                assert time.monotonic() < deadline, snapshot()
                 time.sleep(0.01)
+            assert not failures, snapshot()
 
         received(1)
         completed_usn(1)
@@ -317,4 +338,4 @@ def test_default_thirty_second_config_publishes_usn_proof_before_it_expires(tmp_
     finally:
         stop.set()
         thread.join(2)
-    assert not thread.is_alive()
+    assert not thread.is_alive() and not failures, snapshot()
