@@ -28,11 +28,13 @@ pytestmark = [
 ]
 
 
+@pytest.mark.parametrize("heartbeat_seconds", [5, 45])
 def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
     authenticated_setup,
     tmp_path,
     installed_python,
     monkeypatch,
+    heartbeat_seconds,
 ):
     client, engine, collector, token, _ = authenticated_setup
     data = tmp_path / "data"
@@ -54,7 +56,7 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
     with serving_ingest(client.app, tmp_path / "tls") as (origin, ca):
         with ProtectedState(tmp_path / "state", create=True) as state:
             settings = RuntimeSettings(
-                heartbeat_seconds=5,
+                heartbeat_seconds=heartbeat_seconds,
                 inventory_seconds=3600,
                 poll_seconds=0.05,
                 batch_records=2,
@@ -138,8 +140,12 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
             thread.start()
             high_water = 0
             completed = False
+            settled = False
+            observed_heartbeats = 0
+            pending = None
             try:
-                deadline = time.monotonic() + 60
+                observed_since = time.monotonic()
+                deadline = observed_since + 60
                 while time.monotonic() < deadline and thread.is_alive():
                     # Observe completion first, then the queue: otherwise a producer
                     # can finish between an old empty-queue read and the event read.
@@ -147,6 +153,13 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                         event.kind == "inventory" and event.code is None and event.records == 12
                         for event in runtime.events
                     )
+                    if completed:
+                        with engine.connect() as connection:
+                            observed_heartbeats = connection.scalar(
+                                select(func.count()).select_from(collector_heartbeats).where(
+                                    collector_heartbeats.c.collector_id == collector
+                                )
+                            )
                     try:
                         pending = observer.status().pending_count
                     except OutboxError as error:
@@ -177,18 +190,29 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
                         }), flush=True)
                         raise
                     high_water = max(high_water, pending)
-                    if completed and pending == 0:
+                    # Fast inventory can drain before the next heartbeat is due.
+                    # Observe both committed heartbeats before the queue snapshot
+                    # and before stopping the runtime that must produce them.
+                    settled = completed and observed_heartbeats >= 2 and pending == 0
+                    if settled:
                         break
                     time.sleep(0.05)
-                if not completed or failures:
+                if not settled or failures:
                     print("SYNTHETIC_CAPTURE_FAILURE:" + json.dumps({
+                        "elapsed_seconds": round(time.monotonic() - observed_since, 3),
+                        "heartbeat_seconds": heartbeat_seconds,
+                        "committed_heartbeats": observed_heartbeats,
+                        "completed": completed, "pending": pending,
+                        "high_water": high_water,
+                        "lost_ack": sender.lost, "duplicates": sender.duplicates,
+                        "worker_alive": thread.is_alive(),
                         "trace": read_trace(diagnostic_path),
                         "failures": failures,
                         "events": [{"kind": e.kind, "code": e.code,
                                     "records": e.records, "batches": e.batches}
                                    for e in runtime.events],
                     }), flush=True)
-                assert completed and not failures, (runtime.events, observer.status())
+                assert settled and not failures, (runtime.events, observer.status())
                 assert high_water >= 3 and sender.lost and sender.duplicates == 1
                 # Heartbeats remain live; assert the same post-completion snapshot.
                 assert pending == 0
@@ -201,7 +225,11 @@ def test_native_runtime_queue_pressure_and_lost_ack_replay_over_strict_https(
             with engine.connect() as connection:
                 assert connection.scalar(select(func.count()).select_from(filesystem_objects)) == 11
                 assert (
-                    connection.scalar(select(func.count()).select_from(collector_heartbeats)) >= 2
+                    connection.scalar(
+                        select(func.count()).select_from(collector_heartbeats).where(
+                            collector_heartbeats.c.collector_id == collector
+                        )
+                    ) >= 2
                 )
             assert observer.checkpoint("windows:inventory").revision == 6
             assert len(runtime.events) <= 64

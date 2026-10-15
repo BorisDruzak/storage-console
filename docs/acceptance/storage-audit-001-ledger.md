@@ -1116,3 +1116,37 @@ operation is performed for this delivery fix.
   PostgreSQL regression and exact revised head/main CI must pass before STOP;
   immutable receipts and final run links are published through PR47 metadata,
   keeping the source and documentation pinned during CI. No runtime deployment.
+
+
+## Native heartbeat publication follow-up2026-10-15
+
+- PR47 head27d3c2f95c9fe268ffd19b1b7d392115aedeac72,
+  run38766628203: all six required jobs PASS, actual checkout verified in each;
+  Sonar SKIPPED/unconfigured. Merge2e6e6f18c1476296e9931e1c0b1918d1d8274606
+  has the same reviewed tree. Its main run38768425593 has five required jobs
+  PASS and Windows FAIL; this failed pin/log is retained without unchanged retry.
+- The native queue-pressure fixture stopped on inventory completion and empty
+  outbox, then required two committed heartbeats. In this actual failure the
+  runtime lifetime was below3.42seconds, shorter than the configured5-second
+  second-heartbeat interval; the first heartbeat was committed successfully.
+  Source and timestamps establish premature test shutdown. This is not a new
+  production runtime, delivery, actor or live-evidence failure.
+- Controlled native RED with a45-second test heartbeat interval reproduced the
+  old predicate's one-versus-two committed heartbeat failure. The10-second
+  local probe passed and is retained as such, not presented as RED. The revised
+  fixture observes completed inventory, two committed heartbeats for the exact
+  synthetic collector, then a read-only empty-queue snapshot before shutdown.
+  The same45-second case is retained alongside5seconds as regression coverage.
+- Existing60-second observation deadline, shutdown5seconds, queue high-water,
+  one lost inventory ACK/one duplicate,11 objects, checkpoint revision6, no
+  runtime failures and bounded event history remain required. Safe failure
+  diagnostics include elapsed/interval/counts/runtime state. No production
+  source, settings, installed wheels or live operations change; the accepted
+  actor evidence, cleanup, original001 gate, old GAP and backups remain intact.
+
+- Native Windows GREEN: both5/45-second heartbeat cases plus the unchanged
+  USN/strict-HTTPS/PostgreSQL/Activity test3 PASS. Ruff, Linux-target mypy138,
+  compile/diff checks PASS. Independent exact test-blob review APPROVE.
+  Final evidence review, tracked-source secret scan and new exact head/main CI
+  remain required before publication/STOP. Final immutable receipts/run links
+  are published in the follow-up PR metadata, keeping the candidate pinned.
