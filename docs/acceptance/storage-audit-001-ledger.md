@@ -957,3 +957,102 @@ operation is performed for this delivery fix.
 - Actual recheck of the same two immutable DELETEs, positive browser acceptance
   and owned empty-directory cleanup remain PENDING until exact PR/main CI and
   deployment. Original acceptance, GAP and USN-SOAK FAIL remain unchanged.
+
+
+## Two-account mutation-actor live acceptance follow-up2026-10-15
+
+- Scope: same separately approved root, two approved domain users on two
+  different computers, one owned synthetic directory. Four authorized file
+  operations only: two39-byte CREATEs and two DELETEs,78 bytes total. The second
+  participant used an ordinary interactive session. No business file changed.
+  No new service/task, protection bypass, SACL/policy/GPO edit, baseline or
+  forced inventory was needed for this follow-up.
+- Each DELETE followed ordinary inventory. Protected original batch bytes,
+  digest and checkpoint prove prior FileId ages4.018363/3.548444 seconds at4663.
+  Exclusive verified handles enforced expected FileId/volume/link count/marker.
+  Independently retained native/USN/inventory/operator checks:21 per participant,
+  including distinct expected SIDs/computers, same source/host/boot/generation,
+  compatible4663 DELETE, linked4660 and unique earlier Type3 4624. Both chains
+  have native IP/workstation; no DNS/AD inference is needed for these two events.
+- The next ordinary inventory closed both aliases. Initial UNKNOWN and later
+  ACCESS_OBSERVED/INTERVAL_COVERAGE_UNKNOWN results were retained as negative
+  controls, including actual desktop/mobile/reload showing no confirmed actor.
+  Grouped Activity rows retain null actor/client/confidence; the exact selected
+  event's confirmation panel carries attribution and its evidence.
+- Diagnostic PR44 head db4958e24293cf85132c72d26a11d708432f2089,
+  run38744543787 and main5c29ccb87bda45676f5873f1b74ba07036dc1b19,
+  run38746324694: six required checks PASS with actual exact checkout verification.
+  Combined Python3.13/PostgreSQL1094 PASS/91 platform SKIP, Ruff/mypy136 and
+  Gitleaks0 PASS, independent combined-tree review APPROVE. Central deployed5c29
+  after canonical backup/off-VM/full isolated restore and guarded storage check.
+  Original PR44 native Windows failure remains retained, not retried unchanged.
+- Delivery PR45 independently reproduced and fixed loss of a completed local
+  Delivery outcome on SQLite BUSY. Head5583ec123e9bbf03e0bb311b6c29686afa9fd641
+  run38742698371 and main22a53838ce70dfadcbbbed9801779e8051ba7743
+  run38744603167: six exact required checks PASS. This does not prove the precise
+  contention stage of the original Windows failure.
+- Historical coverage API identified the exact actor-gate RCA: pure Audit
+  backlog after both operation intervals, with a later dated healthy drain.
+  Rulev2 fixes only this case and requires all former identity/continuity/
+  health/ambiguity bounds. Current HEALTHY is not borrowed for old coverage.
+  Explicit recheck jobs preserve source data, USN history, raw evidence and
+  prior-rule links. No broad historical sweep or manual actor override.
+- Rulev2 source PR46 head d23a6db67e57457f9fcc0f8951ad9f60748013b7,
+  run38752633899 and main3dc445414ed34d6aaf2d2e15fa518faf8cf939fe,
+  run38754547522: six required jobs PASS with exact checkout verification.
+  Reviewed tree92ebe8aa5fe4ae36ddd49d0acfd16c7f65ab84a2 is identical on
+  merged main. Full regression1140 PASS/91 platform SKIP, Ruff/mypy138+7,
+  disposable Alembic roundtrip/check, OpenAPI, frontend135/types/lint/i18n/build
+  and Gitleaks0 findings PASS. Independent source/rollout/helper reviews APPROVE.
+  Central build/preflight/deploy/healthcheck all PASS at that main SHA, schema0009;
+  both Windows wheels/configurations unchanged. Sonar SKIPPED/unconfigured.
+  Fresh canonical138349648-byte backup/off-VM archive/config/full isolated
+  transactional restore PASS,512MiB fixture removed. Disk UUID, actual PG bind,
+  image IDs/revisions, deployment lock and rollback guards preserved.
+- Exact two-ID admin/CSRF API recheck: both actual DELETEs CORRELATED_HIGH /
+  UNIQUE_DELETE_CHAIN with the expected distinct accounts/sessions/computers,
+  native client IP/workstation and4663/4660/4624. Both historical coverage
+  reports PASS with PROVEN_PRIOR_IDENTITY and the dated cleared backlog.
+  Original immutable change payload hashes equal their pre-recheck values;
+  a repeated request returned the same COMPLETE job per rule/change, not new work.
+- Actual isolated admin browser PASS: both exact events, rulev2, account/SID,
+  logon session, native client IP/workstation, identity witness and exact native
+  event records/methods rendered. Desktop1440, mobile390 and reload preserve
+  the same actors, errors0 and no overflow. Actual screenshots inspected;
+  strict TLS/logout/revocation and ephemeral-state removal verified. User-owned
+  browser tabs untouched. Earlier observed-access UI remains a negative control.
+- Owned empty-directory cleanup PASS after the strict actual-HIGH/UI gate,
+  fresh health admission and ordinary USN outbox drain. Verified handles/FileId/
+  volume/deadline, no recursive deletion, business files0. Both file receipts
+  and all source history/evidence are retained protected; no working file changed.
+- Post-cleanup native read-only snapshots: both collectors RUNNING, Audit HEALTHY,
+  policy/SACL/readiness complete and fresh,52044 objects/~24.3 seconds. Audit,
+  directory and USN queues0, GAP/error/quarantine absent; inventory completed,
+  exact scope, cadence3600, selected root present,62464 USN nodes. Both existing
+  runtimes/identities/credentials retained; all operation owners QUIESCENT,
+  old GAP/full backups retained. No service/policy/SACL mutation during follow-up.
+- Resource sample: RAM available~13.24GiB, PG~758MiB/2GiB, API~84MiB/768MiB,
+  worker~58MiB/512MiB, Web~6.3MiB/128MiB; noOOM. Root free~17.95GiB. Approved
+  data disk250GiB has~230.5GiB available; PostgreSQL remains on its verified
+  RW bind/device, not the system disk. No direct production data SQL reads.
+- Extra operator logins hit the existing5-per10-minute account limit; actual
+  HTTP429 explains a legacy helper's25-second wait timeout. No auth policy was
+  weakened, no recheck/CRUD repeated. Bounded RO helper, sealed failure receipt
+  and independent session revocation used; final read after cooldown: PASS.
+  It includes the exact two original HIGH decisions with unchanged payloads and
+  one extra owned-directory DELETE from cleanup. That extra row is checked by
+  exact directory FileId/path/source/volume and a two-second receipt window;
+  its UNKNOWN/actorNULL is retained. No new API/CRUD/recheck was needed to
+  validate the already sealed response. Independent final-evidence review
+  APPROVE,14 independent plus19 local negative fence controls PASS.
+- CREATE negative controls retain observed-access/actorNULL. CREATE disposition,
+  WRITE aggregation bounds and RENAME operation links remain absent; this
+  acceptance does not establish universal everyday authorship or fleet rollout.
+  A60-second prior FileId bound against3600-second ordinary inventory still
+  restricts eligible events. Original001 acceptance, old GAP, backups/state and
+  USN-SOAK FAIL remain unchanged. Real identities/evidence/plans stay private.
+
+- Bounded two-account/two-computer DELETE follow-up live gate: PASS. Source/CI,
+  deployed runtime, actual native/API evidence, positive and negative browser
+  controls and cleanup are distinguished above. No broader readiness or other
+  operation author claim. STOP after publishing this acceptance record.
