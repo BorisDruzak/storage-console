@@ -1,7 +1,10 @@
 # STORAGE-AUDIT-002 — bounded single-root rollout ledger
 
 Status: A/B/C source PASS; corrected runtime CI/installation PASS; data-disk
-migration PASS; ordinary new-root activity acceptance PENDING.
+migration PASS; bounded ordinary new-root history/evidence acceptance PASS through
+retained replay and fresh-generation ordinary CREATE/WRITE observations.
+Mutation actors remain unconfirmed; native client fields may be absent.
+Permanent Audit RUNNING; STOP.
 Specification and plan: docs/superpowers/{specs,plans}/2026-10-14-storage-audit-002.md.
 Production scope and identities remain in the approved private operator design.
 
@@ -546,3 +549,157 @@ Production scope and identities remain in the approved private operator design.
   counts failed (archive992 changes versus post-dump993). Restored schema and
   counts then verified within the retained closed-baseline/post-dump bounds;
   no exact active-database snapshot equality claimed, no production restore.
+
+
+## Live recovery verification2026-10-15
+
+- Source PR #40 merged as1540c2e9a0f7d4169e90b0417cebdeb9136ae13d.
+  Exact head9bc52ecd6b0102922f410827af337099f464c2de
+  [CI38701674972](https://github.com/BorisDruzak/storage-console/actions/runs/38701674972)
+  and exact merged-main
+  [CI38702966626](https://github.com/BorisDruzak/storage-console/actions/runs/38702966626)
+  each pass backend/frontend/windows-pilot/compose-smoke/production-smoke/secrets.
+  Sonar SKIPPED/unverified. Independent source and protected-operator reviews
+  APPROVE; findings were corrected before the affected apply operation.
+- Central API/worker/Web deployed1540; schema remains0009. The exact wheel has
+  139 source members checked against Git and SHA-256
+  b401c00c000dd4fad58d6f94cb17faa0aab18a2f1715515376af3572d9e24bfd.
+  It is a protected operator artifact for the stopped-state repair. Existing USN
+  runtime927e4c5107785765b5040f571dd6b9cf6f119014 and Audit runtime
+  9296ca51357635207325e50c447f2213997e4093 remain installed; no unsupported
+  claim that both services were upgraded to the deployed central SHA.
+- Explicit receipt-bound USN inventory repair PASS: stopped complete state/SQLite
+  backup retained; exact queued bytes/digests, unrelated checkpoints/cursor/GAP,
+  configuration and credentials unchanged. Original registration/runtime restarted.
+  A real full inventory then completed with the new scope, removing STATE_MISMATCH.
+  Repeated API reads now show sourceHEALTHY/CURRENT and ActivityCOMPLETE with
+  CONTINUOUS_SINCE_BASELINE and advancing continuous progress. Gates not relaxed.
+- First immutable retained Audit batch changed from403 AUDIT_VOLUME_REQUIRED to202
+  on the corrected central API. After stopped-state backup/hash verification, all
+  31 batches/52 records replayed with unchanged original bodies. Delivery resumed
+  through the existing store/HTTPS delivery API. Old GAP/bookmark/configuration
+  and the full encrypted pre-replay queue backup remain preserved.
+- Fresh pre-apply scan51996 objects/23.65s found three ordinary PDFs with empty,
+  unprotected SACL, including one additional file since the first diagnostic scan.
+  The exact three-target before/intent/after receipts are retained privately.
+  Restored only inherited versions of the approved11 Success ACEs. DACL/owner/
+  group, root/parent SACL and policy remain unchanged. No business-file content read/write,
+  test production CRUD or broad recursive ACL replacement. Metadata size/times
+  remained unchanged during the bounded handle checks; no atomic NTFS transaction
+  or share-mode prevention of hardlink creation is claimed.
+- Full readiness51996 PASS before explicit fresh Audit generation/state. Same
+  host/source/collector credentials, directory scope and existing SCM name/runtime;
+  canonical volume mapping. Both services RUNNING, operation ownersQUIESCENT.
+  Original Audit state/GAP and complete Audit/USN backups retained. The old stream
+  observed-through06:02:35 UTC and new baseline08:35:17 UTC remain separate;
+  the historical coverage gap is not cleared or represented as covered.
+- Strict-TLS owned Chromium/admin UI PASS on desktop/mobile: actual selected-root
+  USN row, two linked4663/4624 evidence cards, native account/LogonId/client fields,
+  separate current AD observation/provenance and explicit unknown mutation actor.
+  Missing-CSRF search403, anonymous sensitive reads401, confirmed logout204 and
+  session revocation401; no page errors or body overflow. User browser untouched.
+  No roles or business ACL/SMB permissions changed.
+- At08:43:44 UTC, bounded fixed24h API window read171 of171 rows:125 exact-root rows, comprising
+  34 CREATE/30 WRITE/20 RENAME/30 DELETE and11 METADATA_CHANGE. Administrative SACL
+  changes are not ordinary-operation proof. Among114 ordinary changes,29 are
+  ACCESS_OBSERVED,10 AMBIGUOUS,75 UNKNOWN;39 have candidates using23 unique genuine
+  audit records, event IDs4663/4624. No confirmed mutation actor, new department
+  CORRELATED_HIGH or4660 proof claimed. Native client fields are shown only where
+  present; current DNS/AD names do not establish historical workstation identity.
+- These matched ordinary events are genuine retained OLD-GENERATION observations,
+  accepted through replay during this recovery. The fresh generation is quiet in
+  the bounded observation interval: zero pending Audit/directory batches and no
+  accepted new Audit batch. Its positive ordinary-operation path is not claimed
+  as separately exercised. Independent live-evidence review approves the bounded
+  ordinary/history/evidence-honesty portion with this explicit limitation.
+- Final08:47 UTC local snapshots: USN queue0/0 bytes, completed inventory with
+  correct scope; Audit/directory queues0, no new GAP/error/suspension/quarantine,
+  full non-stale readiness51996 in24.76s and advancing observed-through. Central
+  jobs pending0/failed0. Inventory catch-up completed without increasing limits.
+  All12 retained history-table counts remain at least the protected migration
+  baseline;62222 objects/path-history rows and997 changes. The three administrative
+  SACL changes are SECURITY_CHANGE observations, excluded from ordinary-operation
+  proof. Final08:48:15 UTC API read174/174 rows,128 scoped including those three;
+  the114 ordinary changes and their29/10/75 classifications remain unchanged.
+- Post-drain measured container memory PostgreSQL334/API100.4/worker57.8/Web6.4MiB,
+  enforced memory==swap limits2048/768/512/128MiB; all healthy, no OOM. Worker use
+  fell after catch-up; VM available RAM about13.5GiB. Data and history remain on
+  the approved250GiB filesystem UUID, free231.4GiB; original database copy and
+  off-VM backup retained. No second format, automatic history purge or promise
+  of unlimited history retention. This is a bounded measured acceptance window,
+  not a fleet, reboot, long soak or future-capacity guarantee.
+- Task5 ordinary selected-root history/evidence/UI/resource gate PASS with the
+  old-generation replay limitation above. Final independent acceptance review
+  and documentation publication witnesses are attached to the follow-up PR.
+  Permanent Audit and existing USN remain RUNNING. Original001 acceptance and
+  USN-SOAK failure retained; no5145/WEF/SIEM/version restore/mass audit. STOP.
+
+
+## Publication CI correction2026-10-15
+
+- Documentation PR #41 head4707e070d2414f066e2f9804540f486d0d85d4eb
+  [run38709396635](https://github.com/BorisDruzak/storage-console/actions/runs/38709396635)
+  failed native Audit restart:112 PASS/1 FAIL, IDLE_RESTART_CHANGED_BOOKMARK.
+  The Security bookmark advanced; the nature of those intervening host records
+  was not established. No unchanged rerun was used as a fix.
+- Original equality assertion reproduced RED on legitimate checkpoint progress.
+  Separate PR #42 adds21 positive/negative controls, identity/counter/bookmark
+  continuity and exact retained encrypted-queue prefix checks. Native SCM now
+  requires a distinct owned4663 written while stopped to appear after restart.
+  These file operations run only in the disposable Windows CI fixture.
+  Portable regression79 PASS, Ruff/diff check/Gitleaks PASS, independent review
+  APPROVE and21 independent portable controls PASS. Production unchanged.
+- Earlier PR-head run labels identify GitHub check metadata. PR #41 checkout
+  actually used a synthetic merge SHA. PR #42 explicitly selects the requested
+  PR-head or push SHA in all seven jobs and verifies git HEAD after checkout.
+  The new CI receipts supersede metadata-only claims of exact PR-head checkout;
+  historical failure and source/deployment receipts remain retained.
+- Read-only live recheck09:17 UTC: Activity COMPLETE/CONTINUOUS_SINCE_BASELINE,
+  source/Audit HEALTHY, full non-stale readiness51996, actual desktop/mobile
+  evidence UI and CSRF/anonymous-read/logout checks PASS. The128 scoped rows
+  and114 ordinary changes retain29 ACCESS_OBSERVED/10 AMBIGUOUS/75 UNKNOWN.
+  Fresh-generation positive ordinary-event limitation remains unchanged.
+  Audit/directory queues empty; USN briefly contained one497-byte pending batch
+  during an active sample, without collection error or continuity gap. Central
+  jobs pending0/failed0, history counts preserved, approved data UUID and
+  resource limits verified, free231.4GiB. Both services RUNNING, ownersQUIESCENT.
+- PR #42 head7e1c50dc333adfa5376c0f0853c170715c835682
+  [run38711751323](https://github.com/BorisDruzak/storage-console/actions/runs/38711751323):
+  all six required jobs PASS with actual checkout verification; backend1058 PASS/
+  91 platform SKIP, native groups14/41/134/81/101/1 PASS. Sonar SKIPPED/unverified.
+  Merged source successor1ad32b43114c16e50558ba2560ba18aab1f6adb8 uses
+  [main run38713384088](https://github.com/BorisDruzak/storage-console/actions/runs/38713384088).
+  Terminal main and documentation-head/main receipts must be verified before
+  final publication; their SHA/run/verdict records are attached to PRs #42/#41.
+  This test/CI-only successor is not a production deployment.
+
+## Fresh-generation ordinary evidence2026-10-15
+
+- Later09:36/09:38 UTC read-only checks supersede the earlier quiet-generation
+  limitation. Without operator file operations, six new ordinary selected-root
+  USN changes occurred09:22-09:25 UTC: two CREATE, two WRITE, two DELETE.
+  Four CREATE/WRITE changes link to two unique native4663 records, both observed
+  and first received after the fresh baseline. Evidence host/boot/generation and
+  collector match current API health; read-only protected configuration and SQLite
+  checkpoint independently confirm that active identity. No rebaseline or replay
+  of old-generation records is used for these four fresh matches.
+- Fresh matches remain ACCESS_OBSERVED, actor NULL; the two DELETE changes are
+  UNKNOWN with no candidate. No fresh4660/HIGH or proven mutation actor is claimed.
+  Native client IP/workstation are absent in these fresh4663 records; account and
+  logon session are shown, without substituting DNS/AD as historical client proof.
+- Owned strict-TLS desktop/mobile UI09:38:59 PASS: exact selected change ID
+  matched the rendered detail response; current-generation4663/account/LogonId
+  card visible, unknown actor retained, no page errors/overflow. CSRF/anonymous
+  rejection and confirmed logout/revocation PASS. API184/184 rows,134 scoped,
+  120 ordinary:33 ACCESS_OBSERVED/10 AMBIGUOUS/77 UNKNOWN;43 with candidates.
+  Source/Audit HEALTHY, Activity COMPLETE/CONTINUOUS_SINCE_BASELINE, full51996
+  readiness non-stale, Audit/directory queues0. This exercises the fresh ordinary
+  capture/delivery/correlation/UI path and closes the prior quiet limitation.
+- Regular hourly inventory created a bounded USN queue87 batches/23.3MiB, later
+  70/19.1MiB and decreasing; continuity and current heartbeat preserved. No forced
+  inventory, limit increase or production CRUD. Measured worker58.1/API91.4/
+  PostgreSQL335.2/Web6.5MiB within enforced caps, no OOM; VM available13.5GiB.
+- PR #42 merged-main1ad32b43114c16e50558ba2560ba18aab1f6adb8
+  [run38713384088](https://github.com/BorisDruzak/storage-console/actions/runs/38713384088):
+  all six required jobs PASS, Sonar SKIPPED/unverified. Final documentation-head/
+  main exact-checkout receipts and queue disposition are attached to PR #41.
