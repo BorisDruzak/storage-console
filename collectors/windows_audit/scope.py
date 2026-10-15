@@ -10,6 +10,8 @@ from hashlib import sha256
 from pathlib import PureWindowsPath
 from typing import Any
 
+from packages.contracts.storage_identity import canonical_volume_identity
+
 from .events import AuditEvent
 
 
@@ -57,7 +59,9 @@ class AuditScope:
             not path_parts(root) or not volume for root, volume in roots.items()
         ):
             raise ValueError("AUDIT_SCOPE_INVALID")
-        self.roots = {path_parts(root): volume for root, volume in roots.items()}
+        self.roots = {
+            path_parts(root): canonical_volume_identity(volume) for root, volume in roots.items()
+        }
         self.guard = guard
 
     def select(self, event: AuditEvent) -> AuditEvent | None:

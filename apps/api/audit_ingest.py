@@ -14,6 +14,7 @@ from apps.api.auth import collector_token, token_hash
 from apps.api.ingest import ApiError, Receipt
 from packages.contracts.audit import AuditBatch
 from packages.contracts.directory import normalized_ip
+from packages.contracts.storage_identity import canonical_volume_identity
 from packages.shared.jobs import enqueue
 from packages.shared.models.audit import audit_evidence, audit_streams
 from packages.shared.models.core import collectors, source_nodes, volumes
@@ -105,12 +106,19 @@ def accept_audit(engine: Engine, batch: AuditBatch, token: str, digest: str) -> 
             )
         )
         for wire in batch.records:
+            try:
+                volume_identity = (
+                    canonical_volume_identity(wire.volume_id)
+                    if wire.volume_id is not None else None
+                )
+            except ValueError:
+                raise HTTPException(403, detail="AUDIT_VOLUME_REQUIRED") from None
             if (
-                wire.volume_id is not None
+                volume_identity is not None
                 and conn.scalar(
                     select(volumes.c.id).where(
                         volumes.c.source_node_id == source,
-                        volumes.c.unique_identity == wire.volume_id,
+                        volumes.c.unique_identity == volume_identity,
                     )
                 )
                 is None
@@ -126,7 +134,7 @@ def accept_audit(engine: Engine, batch: AuditBatch, token: str, digest: str) -> 
                 record_id=record.record_id,
                 event_id=record.event_id,
                 occurred_at=record.occurred_at,
-                volume_id=record.volume_id,
+                volume_id=volume_identity,
                 path_key=path_key(record.path),
                 sid=record.sid,
                 logon_id=str(record.logon_id) if record.logon_id else None,

@@ -103,3 +103,63 @@ def test_new_generation_allows_reused_record_id(audit_setup):
 
     with audit_setup[1].connect() as conn:
         assert len(conn.execute(select(audit_evidence)).all()) == 2
+
+
+def test_native_volume_guid_resolves_registered_identity_without_rewriting_evidence(audit_setup):
+    _, engine, collector, _, source = audit_setup
+    identity = uuid4()
+    native = "\\\\?\\Volume{" + str(identity).upper() + "}\\"
+    canonical = "volume:" + str(identity)
+    with engine.begin() as conn:
+        conn.execute(insert(volumes).values(
+            source_node_id=source, unique_identity=canonical, filesystem="NTFS",
+        ))
+    event = parse(xml()).model_copy(update={"volume_id": native})
+    payload = batch(collector)
+    payload["records"] = [{**event.model_dump(mode="json"), "digest": event.digest()}]
+    response = post(audit_setup, payload)
+    assert response.status_code == 202
+    from packages.shared.models.audit import audit_evidence
+
+    with engine.connect() as conn:
+        row = conn.execute(select(audit_evidence)).mappings().one()
+    assert row["volume_id"] == canonical
+    assert row["payload"]["volume_id"] == native
+    assert row["digest"] == event.digest()
+    assert post(audit_setup, payload).json() == {"accepted": True, "duplicate": True}
+    changed = event.model_copy(update={"volume_id": canonical})
+    payload["batch_id"] = uuid4().hex
+    payload["records"] = [{**changed.model_dump(mode="json"), "digest": changed.digest()}]
+    assert post(audit_setup, payload).status_code == 409
+    with engine.connect() as conn:
+        retained = conn.execute(select(audit_evidence)).mappings().one()
+    assert retained["payload"] == row["payload"] and retained["digest"] == row["digest"]
+
+
+def test_unregistered_native_volume_still_refused(audit_setup):
+    event = parse(xml()).model_copy(update={"volume_id": "\\\\?\\Volume{" + str(uuid4()) + "}\\"})
+    payload = batch(audit_setup[2])
+    payload["records"] = [{**event.model_dump(mode="json"), "digest": event.digest()}]
+    response = post(audit_setup, payload)
+    assert response.status_code == 403
+    assert response.json() == {"detail": "AUDIT_VOLUME_REQUIRED"}
+
+
+def test_other_source_volume_does_not_authorize_native_guid(audit_setup):
+    from packages.shared.models.core import source_nodes
+
+    identity, other = uuid4(), uuid4()
+    with audit_setup[1].begin() as conn:
+        conn.execute(insert(source_nodes).values(
+            id=other, source_type="FILESERVER", hostname="other-synthetic",
+            instance_id=str(other),
+        ))
+        conn.execute(insert(volumes).values(
+            source_node_id=other, unique_identity="volume:" + str(identity), filesystem="NTFS",
+        ))
+    event = parse(xml()).model_copy(update={"volume_id": "\\\\?\\Volume{" + str(identity) + "}\\"})
+    payload = batch(audit_setup[2])
+    payload["records"] = [{**event.model_dump(mode="json"), "digest": event.digest()}]
+    response = post(audit_setup, payload)
+    assert response.status_code == 403
+    assert response.json() == {"detail": "AUDIT_VOLUME_REQUIRED"}
