@@ -1056,3 +1056,30 @@ operation is performed for this delivery fix.
   deployed runtime, actual native/API evidence, positive and negative browser
   controls and cleanup are distinguished above. No broader readiness or other
   operation author claim. STOP after publishing this acceptance record.
+
+
+## Final publication recovery-test gate2026-10-15
+
+- PR47 original head9cceb764a01c59f588dff9da944ac093523eafe2,
+  run38758910160: five required jobs PASS; Windows FAIL at the portable recovery
+  test after writer-lock release,91 other tests in that step PASS. The failing
+  assertion hid worker/fatal diagnostics. Its exact runtime failure cause remains
+  UNKNOWN; no production defect or scheduling RCA is claimed. This run is retained
+  and is not retried unchanged.
+- Controlled real-SQLite RED: a six-second retry scheduling gate inside the
+  existing30-second operation budget fails the former four-second assertion with
+  a live worker and no fatal failures. The fixture now observes actual BUSY,
+  rolls back the real writer, then requires a new heartbeat and its committed
+  local ACK by the same batch ID, live worker, no fatal diagnostics and graceful
+  host exit0. A35-second test guard does not alter the runtime30-second deadline.
+  Existing fatal/deadline/stop negative controls remain. Failure output includes
+  bounded safe worker/host/stage/elapsed/progress diagnostics.
+- Atomic test commit d83b84bc683bd7e68b8e9a0fd168d25eaa512c83 changes only
+  test_runtime_recovery.py. Focused Windows50 PASS, Linux41 PASS/9 platform SKIP;
+  after final same-batch-ID strengthening, the full modified file21 Windows PASS.
+  Ruff/mypy138/diff check and Gitleaks0 PASS. Independent final test-blob review
+  APPROVE. Production code/configuration and the accepted live evidence are
+  unchanged; no new deployment, live operation, service or policy change.
+- The test commit is integrated normally into PR47 together with these append-only
+  acceptance records. The previous failed head/pin remains retained. Revised
+  exact head/main CI is required before publication; no force push/history rewrite.
