@@ -104,3 +104,9 @@ OLD-GENERATION replay, with UNKNOWN/AMBIGUOUS retained. A positive ordinary even
 from the fresh quiet generation is not claimed. Final queues empty, central jobs
 pending0/failed0, enforced memory limits/no OOM, approved data UUID/history/backup
 preserved; see acceptance ledger for measurements. Both services RUNNING. STOP.
+
+Later2026-10-15 read-only verification supersedes the quiet-generation limitation:
+ordinary CREATE/WRITE captured after the fresh baseline, delivered and linked to
+new4663 evidence; actual exact-change desktop/mobile UI verified. DELETE/actor
+uncertainty remains honest. No operator file operations; see002 ledger and PR #41
+for bounded queue/resource observations and final exact publication CI.

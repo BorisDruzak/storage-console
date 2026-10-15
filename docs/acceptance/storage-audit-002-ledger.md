@@ -2,7 +2,8 @@
 
 Status: A/B/C source PASS; corrected runtime CI/installation PASS; data-disk
 migration PASS; bounded ordinary new-root history/evidence acceptance PASS through
-old-generation replay. Fresh-generation positive ordinary events are not claimed.
+retained replay and fresh-generation ordinary CREATE/WRITE observations.
+Mutation actors remain unconfirmed; native client fields may be absent.
 Permanent Audit RUNNING; STOP.
 Specification and plan: docs/superpowers/{specs,plans}/2026-10-14-storage-audit-002.md.
 Production scope and identities remain in the approved private operator design.
@@ -671,3 +672,34 @@ Production scope and identities remain in the approved private operator design.
   Terminal main and documentation-head/main receipts must be verified before
   final publication; their SHA/run/verdict records are attached to PRs #42/#41.
   This test/CI-only successor is not a production deployment.
+
+## Fresh-generation ordinary evidence2026-10-15
+
+- Later09:36/09:38 UTC read-only checks supersede the earlier quiet-generation
+  limitation. Without operator file operations, six new ordinary selected-root
+  USN changes occurred09:22-09:25 UTC: two CREATE, two WRITE, two DELETE.
+  Four CREATE/WRITE changes link to two unique native4663 records, both observed
+  and first received after the fresh baseline. Evidence host/boot/generation and
+  collector match current API health; read-only protected configuration and SQLite
+  checkpoint independently confirm that active identity. No rebaseline or replay
+  of old-generation records is used for these four fresh matches.
+- Fresh matches remain ACCESS_OBSERVED, actor NULL; the two DELETE changes are
+  UNKNOWN with no candidate. No fresh4660/HIGH or proven mutation actor is claimed.
+  Native client IP/workstation are absent in these fresh4663 records; account and
+  logon session are shown, without substituting DNS/AD as historical client proof.
+- Owned strict-TLS desktop/mobile UI09:38:59 PASS: exact selected change ID
+  matched the rendered detail response; current-generation4663/account/LogonId
+  card visible, unknown actor retained, no page errors/overflow. CSRF/anonymous
+  rejection and confirmed logout/revocation PASS. API184/184 rows,134 scoped,
+  120 ordinary:33 ACCESS_OBSERVED/10 AMBIGUOUS/77 UNKNOWN;43 with candidates.
+  Source/Audit HEALTHY, Activity COMPLETE/CONTINUOUS_SINCE_BASELINE, full51996
+  readiness non-stale, Audit/directory queues0. This exercises the fresh ordinary
+  capture/delivery/correlation/UI path and closes the prior quiet limitation.
+- Regular hourly inventory created a bounded USN queue87 batches/23.3MiB, later
+  70/19.1MiB and decreasing; continuity and current heartbeat preserved. No forced
+  inventory, limit increase or production CRUD. Measured worker58.1/API91.4/
+  PostgreSQL335.2/Web6.5MiB within enforced caps, no OOM; VM available13.5GiB.
+- PR #42 merged-main1ad32b43114c16e50558ba2560ba18aab1f6adb8
+  [run38713384088](https://github.com/BorisDruzak/storage-console/actions/runs/38713384088):
+  all six required jobs PASS, Sonar SKIPPED/unverified. Final documentation-head/
+  main exact-checkout receipts and queue disposition are attached to PR #41.

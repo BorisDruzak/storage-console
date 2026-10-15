@@ -885,3 +885,8 @@ ledger. Old Audit GAP/state and all immutable queue backups remain retained;
 original001 HIGH/delete acceptance and historical USN-SOAK failure are unchanged.
 Final002 queue drain/resource/history witnesses close its bounded live gate PASS,
 including the explicit old-generation replay limitation. Both services RUNNING; STOP.
+
+Later2026-10-15 ordinary activity also confirms the fresh-generation path: four
+CREATE/WRITE changes linked to two new4663 records and verified in the actual UI.
+The earlier quiet-generation limitation is superseded in the002 ledger; actor
+remains unconfirmed and two fresh DELETE changes remain UNKNOWN. No operator CRUD.
