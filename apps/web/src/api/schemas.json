@@ -1840,6 +1840,25 @@
           "title": "Overflow",
           "type": "boolean"
         },
+        "post_interval_backlog_cleared_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Post Interval Backlog Cleared At"
+        },
+        "post_interval_backlog_count": {
+          "default": 0,
+          "maximum": 128,
+          "minimum": 0,
+          "title": "Post Interval Backlog Count",
+          "type": "integer"
+        },
         "witness_count": {
           "maximum": 129,
           "minimum": 0,

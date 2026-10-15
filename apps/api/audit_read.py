@@ -289,7 +289,12 @@ def router(engine: Engine) -> APIRouter:
                         audit_candidates,
                         audit_candidates.c.audit_evidence_id == audit_evidence.c.id,
                     )
-                    .where(audit_candidates.c.change_event_id == change_id)
+                    .where(
+                        audit_candidates.c.change_event_id == change_id,
+                        audit_candidates.c.rule_version == (
+                            verdict["rule_version"] if verdict else RULE_VERSION
+                        ),
+                    )
                     .order_by(audit_evidence.c.occurred_at, audit_evidence.c.id)
                     .limit(256)
                 )

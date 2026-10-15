@@ -290,10 +290,29 @@ def coverage_report(
                 return CoverageReport(False, "INCOMPLETE", start, end, reports)
             continue
         good: list[datetime] = []
+        late_backlog: list[tuple[datetime, datetime]] = []
+        dated_good: list[tuple[datetime, datetime]] = []
         for witness in witnesses:
             failures, proof = _witness(
                 witness["payload"], collector["collector_type"], access, witness["occurred_at"]
             )
+            if (collector["collector_type"] == "AUDIT_WINDOWS"
+                    and failures == ["AUDIT_BACKLOG"] and witness["occurred_at"] > end):
+                # A queue after the operation is not itself loss during it. Do
+                # not use that row as a healthy bracket: defer it until a later
+                # dated, fully healthy collected-through proof settles it.
+                health = witness["payload"]["audit"]
+                try:
+                    _, collected = _witness(
+                        {**witness["payload"], "audit": {**health, "backlog_count": 0}},
+                        "AUDIT_WINDOWS", access, witness["occurred_at"],
+                    )
+                except (TypeError, ValueError, OverflowError):
+                    collected = None
+                if (collected is not None and collected.utcoffset() is not None
+                        and end <= collected <= witness["occurred_at"]):
+                    late_backlog.append((witness["occurred_at"], collected))
+                    continue
             if failures and report.first_bad_at is None:
                 report.first_bad_at = witness["occurred_at"]
             for failure in failures:
@@ -303,6 +322,21 @@ def coverage_report(
                 return CoverageReport(False, "INCOMPLETE", start, end, reports)
             if proof is not None:
                 good.append(proof)
+                dated_good.append((witness["occurred_at"], proof))
+        report.post_interval_backlog_count = len(late_backlog)
+        if late_backlog:
+            last_observed = max(when for when, _ in late_backlog)
+            clears = [proof for observed, proof in dated_good
+                      if observed > last_observed and last_observed <= proof <= observed]
+            if clears:
+                report.post_interval_backlog_cleared_at = min(clears)
+            else:
+                if "AUDIT_BACKLOG" not in report.failures:
+                    report.failures.append("AUDIT_BACKLOG")
+                first_late = min(when for when, _ in late_backlog)
+                report.first_bad_at = (
+                    min(report.first_bad_at, first_late) if report.first_bad_at else first_late
+                )
         if good:
             report.first_proof_at, report.last_proof_at = min(good), max(good)
             report.covers_start, report.covers_end = min(good) <= start, max(good) >= end
