@@ -895,3 +895,24 @@ Publication follow-up: documentation-main CI hit an untraced delivery-thread
 failure in the portable USN-proof test; original FAIL is retained in the002
 ledger. Diagnostic-only successor requires new exact head/main gates. Live
 recovery/fresh-generation evidence and original001 acceptance remain unchanged.
+
+2026-10-15 actor-proof follow-up: coverage diagnostics PR #44 exact head
+`5830057a1166df8b14372d6265cbab5ce39c934b`, run38738840435, retained its first
+Windows FAIL: native inventory stopped with retryable SQLite contention after
+four batches. Other five required jobs passed. The exact contention stage in
+that run remains unproven; the run is not retried unchanged or reported PASS.
+
+A separate real-SQLite RED reproduction proves that Delivery loses a completed
+HTTP outcome when subsequent local generation/settlement encounters BUSY. The
+same controller then returns idle until the old lease expires. The bounded fix
+retains one claim/outcome for local finalization before claiming more work,
+preserves generation/lease/close fences and network outside the controller lock,
+and keeps the original retry deadline. Real writer-contention tests cover all
+four outcomes; refresh, reclaim, close and concurrent calls are negative controls.
+GREEN regression: Python3.13/Linux/PostgreSQL1069 PASS/91 platform SKIP;
+Ruff and strict mypy136 modules PASS. Windows focused88 PASS/4 platform SKIP,
+independent focused68 PASS/4 SKIP, reviewAPPROVE; tracked Gitleaks findings0.
+This fixes the reproduced defect, without claiming it establishes the original
+CI root cause or the historical live coverage failure. Publication and live
+actor/UI acceptance remain PENDING; no collector installation or business-file
+operation is performed for this delivery fix.
