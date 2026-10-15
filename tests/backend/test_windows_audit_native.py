@@ -345,7 +345,10 @@ def _installed_wheel_scm(
     received=None,
     extra_diagnostics=None,
 ):
+    import sqlite3
     import subprocess
+
+    from audit_restart_proof import assert_restart_continuity, assert_retained_prefix
 
     from collectors.windows_audit.scm import AuditBackend, AuditServiceSpec
 
@@ -486,6 +489,32 @@ def _installed_wheel_scm(
                 "accepted"
             ] > 0
             assert queue.peek() == before, "LOST_ACK_CHANGED_BODY"
+            with sqlite3.connect(state.root / "audit.sqlite3") as connection:
+                retained = connection.execute("SELECT id,body FROM queue ORDER BY seq").fetchall()
+        # The Security log is shared with unrelated host activity. Create a
+        # distinct owned access while stopped to prove strict unread-event resume;
+        # unrelated filtered records may legitimately advance the bookmark too.
+        pending = owned_security_scope / "restart-pending.synthetic"
+        pending.write_text("synthetic pending restart", encoding="utf-8")
+        pending.unlink()
+
+        def pending_access_replayed():
+            try:
+                database = (Path(spec.state_path) / "audit.sqlite3").as_uri() + "?mode=ro"
+                with sqlite3.connect(database, uri=True, timeout=0.2) as connection:
+                    connection.execute("PRAGMA query_only=ON")
+                    bodies = connection.execute("SELECT body FROM queue ORDER BY seq").fetchall()
+                return any(
+                    event.get("event_id") == 4663
+                    and str(event.get("path", "")).casefold() == str(pending).casefold()
+                    for (body,) in bodies
+                    for event in json.loads(MachineCipher().unprotect(body))["records"]
+                )
+            except sqlite3.OperationalError as error:
+                if "locked" not in str(error) and "busy" not in str(error):
+                    raise
+                return False
+
         manager.start()
         restarted_pid = manager.status().pid
         eventually(
@@ -494,6 +523,7 @@ def _installed_wheel_scm(
                 == restarted_pid
             )
         )
+        eventually(pending_access_replayed, seconds=45, diagnostics=safe_diagnostics)
         manager.stop()
         with ProtectedState(Path(spec.state_path)) as state:
             state.validate_file("audit.sqlite3")
@@ -501,7 +531,11 @@ def _installed_wheel_scm(
                 state.root / "audit.sqlite3", uuid4_from(config["collector_id"]), MachineCipher()
             )
             assert queue.peek() == before, "RESTART_CHANGED_QUEUED_BODY"
-            assert queue.checkpoint()[0] == bookmark, "IDLE_RESTART_CHANGED_BOOKMARK"
+            assert queue.status()["gap"] is None, "RESTART_LATCHED_GAP"
+            assert_restart_continuity((bookmark, cache), queue.checkpoint())
+            with sqlite3.connect(state.root / "audit.sqlite3") as connection:
+                current = connection.execute("SELECT id,body FROM queue ORDER BY seq").fetchall()
+            assert_retained_prefix(retained, current)
     finally:
         with native._service(cast(ServiceSpec, spec), 0x10000 | 0x20 | 4) as handle:
             if handle is not None:
