@@ -1083,3 +1083,36 @@ operation is performed for this delivery fix.
 - The test commit is integrated normally into PR47 together with these append-only
   acceptance records. The previous failed head/pin remains retained. Revised
   exact head/main CI is required before publication; no force push/history rewrite.
+
+
+## Final publication localhost HTTPS fixture gate2026-10-15
+
+- PR47 revised head94c256177ffdb1ea66806e177a38d0669db65461,
+  run38762743706: five required jobs PASS; Windows recovery/SCM step PASS,
+  final native USN/HTTPS/Activity step FAIL. The final API correctly returned
+  UNAVAILABLE/UNKNOWN: proof age16233ms exceeded the unchanged15000ms bound,
+  despite general source health. This failed run/pin/log remains retained;
+  no unchanged-SHA rerun or freshness relaxation.
+- The shared test HTTPS server bound only IPv4 while its origin and verified
+  certificate used localhost. The native resolver attempted IPv6 first. A real
+  local TCP probe measured2086ms through localhost versus16ms through IPv4;
+  strict-CA/SNI TLS RED passed IPv4 and failed IPv6 with connection refused.
+  This proves a fixture mismatch and a latency contributor. Exclusive causality
+  for the original CI expiry is not claimed.
+- The fixture now binds only both explicit loopbacks on one port, IPv6 V6ONLY;
+  fallback is limited to unsupported IPv6 errors. Unexpected errors, including
+  port collision, fail closed. Owned sockets close on partial setup, startup,
+  body and shutdown failures. Hostname/CA checks remain strict; production
+  transport, freshness limits and all four native Activity assertions are intact.
+- Real TLS GREEN11 Windows PASS, including both address families and negative
+  lifecycle/error controls; independent reviewer11 Windows PASS and APPROVE.
+  The unchanged native Windows USN/HTTPS/PostgreSQL/Activity test1 PASS with the
+  repaired fixture. No production/file/service/policy/deployment operation.
+
+- Atomic fixture commit b0543be1b02a62d1406d5ed4e0b47ff6e75f5161 contains only
+  the HTTPS fixture and its regression tests. Focused Windows61 PASS, Linux
+  deployment63 PASS, Ruff, Linux-target mypy138 and deployment mypy7 PASS;
+  Gitleaks0 findings. Independent source/evidence reviews APPROVE. Full
+  PostgreSQL regression and exact revised head/main CI must pass before STOP;
+  immutable receipts and final run links are published through PR47 metadata,
+  keeping the source and documentation pinned during CI. No runtime deployment.
