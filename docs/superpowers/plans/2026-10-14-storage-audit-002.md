@@ -81,7 +81,7 @@
 - [x] Fresh private preflight: root/volume, GPO policy owner, current roots/state/package, queue, RAM/disk; verified backup with off-VM copy. Resolve disk deployment headroom before changing services.
 - [x] Stage and verify wheel/source hashes, use tested stopped-runtime USN transition retaining old data; own Audit new state and scope. Apply only precise selected-root SACL/Success-policy diff after backup; do not touch DACL/SMB/Failure/other roots.
 - [x] Verify actual machine-identity directory read and collector push; never install operator password. Apply enforced central resource limits through canonical deployment with rollback.
-- [ ] Observe ordinary operations: exact new-root events/history, evidence/UNKNOWN/AMBIGUOUS honesty, UI/RBAC, queues, stable RSS/cgroups/disk and unchanged old-root history. No production CRUD or outage injection.
+- [x] Observe ordinary operations: exact new-root events/history, evidence/UNKNOWN/AMBIGUOUS honesty, UI/RBAC, queues, stable RSS/cgroups/disk and unchanged old-root history. No production CRUD or outage injection.
 - [x] Record installed/deployed SHA, CI, live counts, limitations and final disposition. Stop work after acceptance; no new scheduled monitor.
 
 2026-10-14 final disposition: CI correction and approved250GiB migration PASS;
@@ -90,3 +90,17 @@ Central/USN remain927e4c5107785765b5040f571dd6b9cf6f119014. Four live Audit/dire
 samples PASS; ordinary new-root history acceptance remains PENDING because the
 bounded Activity sample has no selected-root rows and reports UNAVAILABLE/UNKNOWN.
 No synthetic production CRUD or scheduled monitor. See acceptance ledger.
+
+
+2026-10-15 recovery acceptance: source PR #40/central1540 fixes inventory scope
+and stable-volume ingest. Explicit stopped-state repair preserves original USN
+runtime/registration/cursor/GAP/queue/credentials; actual full inventory completed.
+Three exact missing-SACL files restored with the approved inherited Success ACEs,
+without business content I/O or DACL/owner/group/policy changes. All31 retained
+Audit batches replayed unchanged; old GAP/backup retained. Explicit fresh Audit
+state/generation uses the same identity/runtime with canonical volume mapping.
+Task5 PASS: selected-root ordinary history and actual UI/evidence verified through
+OLD-GENERATION replay, with UNKNOWN/AMBIGUOUS retained. A positive ordinary event
+from the fresh quiet generation is not claimed. Final queues empty, central jobs
+pending0/failed0, enforced memory limits/no OOM, approved data UUID/history/backup
+preserved; see acceptance ledger for measurements. Both services RUNNING. STOP.

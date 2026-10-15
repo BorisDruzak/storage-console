@@ -876,3 +876,12 @@ completion of the separately approved root's live acceptance. Confirmed inventor
 scope-transition omission, native/canonical volume mismatch and genuine narrow
 SACL coverage failure are recorded in the linked002 ledger. Correction/source
 verification does not by itself establish a new live PASS or clear any old GAP.
+
+
+2026-10-15 recovery follow-up: PR #40 repairs the inventory scope mismatch and
+stable-volume ingest aliasing. Full inventory/continuous Activity and genuine
+selected-root ordinary-event replay/evidence are now verified in the linked002
+ledger. Old Audit GAP/state and all immutable queue backups remain retained;
+original001 HIGH/delete acceptance and historical USN-SOAK failure are unchanged.
+Final002 queue drain/resource/history witnesses close its bounded live gate PASS,
+including the explicit old-generation replay limitation. Both services RUNNING; STOP.
