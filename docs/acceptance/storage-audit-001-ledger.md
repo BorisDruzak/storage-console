@@ -923,3 +923,37 @@ This fixes the reproduced defect, without claiming it establishes the original
 CI root cause or the historical live coverage failure. Publication and live
 actor/UI acceptance remain PENDING; no collector installation or business-file
 operation is performed for this delivery fix.
+
+
+## Post-interval Audit backlog RCA and explicit recheck2026-10-15
+
+- Authenticated coverage explanations of the two existing owned DELETEs proved
+  prior FileId identity and complete historical USN brackets. The only failure
+  was a pure Audit backlog observation more than16 seconds after both operation
+  intervals ended. A later dated healthy collected-through witness covered that
+  observation. Current HEALTHY was not substituted for historical evidence.
+- Rule windows-security-usn-v2 defers only that fully bounded post-interval
+  backlog and requires the later historical drain. It never treats the queued
+  row as a healthy bracket. Pre/in-interval backlog, missing/old/future drain,
+  policy/SACL/GAP/host/boot/generation/quarantine/errors, USN lag, ambiguity and
+  prior limits remain fail-closed. CREATE/WRITE/RENAME do not gain strong actors.
+- Added admin+CSRF exact-change, once-per-rule recheck through the canonical
+  transaction/job/worker flow, with two-second lock timeout, version fencing,
+  conflict rejection and audit log before/after. No actor/confidence override,
+  source mutation or broad historical sweep. Raw rows and v1 candidate links
+  are retained; detail selects the stored verdict's version without duplicates.
+- Real PostgreSQL RED reproduced ACCESS_OBSERVED instead of the eligible HIGH
+  and404 for explicit recheck. Focused118 tests PASS, frontend135 tests PASS;
+  generated contracts/typecheck/lint/i18n/build PASS. Independent source review
+  found no material blockers. Full Python3.13/PostgreSQL regression1140 PASS,
+  91 platform SKIP; Ruff and strict mypy138 PASS. Tracked Gitleaks findings0.
+  Exact publication gates remain required before rollout.
+- A fresh canonical backup, hash-verified encrypted off-VM archive/config and
+  full transactional restore in an isolated512MiB database PASS. Namespaced
+  central-only rollout preserves disk UUID/bind/image/lock/rollback guards;
+  independent ops review APPROVE and21 local guard controls PASS. No business
+  file operation, FILESERVER installation/configuration, forced inventory,
+  baseline change or direct production data SQL was required for this fix.
+- Actual recheck of the same two immutable DELETEs, positive browser acceptance
+  and owned empty-directory cleanup remain PENDING until exact PR/main CI and
+  deployment. Original acceptance, GAP and USN-SOAK FAIL remain unchanged.

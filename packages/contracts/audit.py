@@ -231,6 +231,8 @@ class CollectorCoverage(Contract):
     last_proof_at: AwareDatetime | None = None
     covers_start: bool = False
     covers_end: bool = False
+    post_interval_backlog_count: int = Field(default=0, ge=0, le=128)
+    post_interval_backlog_cleared_at: AwareDatetime | None = None
     failures: list[CoverageFailure] = Field(default_factory=list, max_length=18)
 
 
@@ -244,6 +246,18 @@ class AuditCoverage(Contract):
     passed: bool = False
     reason: Literal["COMPLETE", "COLLECTOR_TOPOLOGY", "INCOMPLETE", "NO_UNIQUE_ACCESS"]
     collectors: list[CollectorCoverage] = Field(default_factory=list, max_length=2)
+
+
+class AuditRecheckRequest(Contract):
+    rule_version: str = Field(min_length=1, max_length=64)
+
+
+class AuditRecheck(Contract):
+    change_id: UUID
+    job_id: UUID
+    rule_version: str
+    status: Literal["PENDING", "RETRY", "COMPLETE", "FAILED"]
+    requested_at: AwareDatetime
 
 
 class AuditObject(Contract):

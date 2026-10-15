@@ -1,7 +1,8 @@
-"""v1: access facts for all operations; HIGH requires a corroborated deletion.
+"""v2: access facts for all operations; HIGH requires a corroborated deletion.
 
 CREATE disposition, WRITE aggregation bounds and RENAME two-name operation links
-are absent from the current streams. They deliberately never become HIGH in v1.
+are absent from the current streams. They deliberately never become HIGH.
+Coverage permits only a later, historically drained post-interval Audit backlog.
 """
 
 from collections.abc import Mapping
@@ -11,7 +12,7 @@ from typing import Any
 
 from packages.contracts.audit import AuditEvent
 
-RULE_VERSION = "windows-security-usn-v1"
+RULE_VERSION = "windows-security-usn-v2"
 WINDOW = timedelta(seconds=2)
 
 

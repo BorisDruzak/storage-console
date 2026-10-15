@@ -935,6 +935,13 @@ export interface components {
             last_proof_at?: string | null;
             /** Overflow */
             overflow: boolean;
+            /** Post Interval Backlog Cleared At */
+            post_interval_backlog_cleared_at?: string | null;
+            /**
+             * Post Interval Backlog Count
+             * @default 0
+             */
+            post_interval_backlog_count: number;
             /** Witness Count */
             witness_count: number;
         };
