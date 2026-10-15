@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import shutil
@@ -11,7 +12,7 @@ import sys
 import threading
 import time
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
@@ -103,11 +104,35 @@ def setup_tls(root: Path) -> None:
 
 
 @contextmanager
-def serving_ingest(app: ASGIApp, root: Path) -> Iterator[tuple[str, Path]]:
-    setup_tls(root)
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.bind(("127.0.0.1", 0))
-    origin = "https://localhost:" + str(listener.getsockname()[1])
+def _loopback_listeners() -> Iterator[list[socket.socket]]:
+    """Serve localhost without a refused IPv6 attempt before each HTTPS request."""
+    with ExitStack() as cleanup:
+        ipv4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        cleanup.callback(ipv4.close)
+        ipv4.bind(("127.0.0.1", 0))
+        listeners = [ipv4]
+        ipv6 = None
+        try:
+            ipv6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+            cleanup.callback(ipv6.close)
+            ipv6.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+            ipv6.bind(("::1", ipv4.getsockname()[1]))
+        except OSError as exc:
+            if exc.errno not in {
+                errno.EAFNOSUPPORT,
+                errno.EPROTONOSUPPORT,
+                errno.EADDRNOTAVAIL,
+                errno.ENOPROTOOPT,
+            }:
+                raise
+            if ipv6 is not None:
+                ipv6.close()
+        else:
+            listeners.append(ipv6)
+        yield listeners
+
+
+def _ingest_server(app: ASGIApp, root: Path) -> uvicorn.Server:
     config = uvicorn.Config(
         app,
         loop="asyncio",
@@ -117,22 +142,30 @@ def serving_ingest(app: ASGIApp, root: Path) -> Iterator[tuple[str, Path]]:
         ssl_certfile=str(root / "cert.pem"),
         timeout_graceful_shutdown=2,
     )
-    server = uvicorn.Server(config)
-    thread = threading.Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
-    thread.start()
-    try:
-        deadline = time.monotonic() + 10
-        while not server.started and thread.is_alive() and time.monotonic() < deadline:
-            time.sleep(0.01)
-        if not server.started:
-            raise RuntimeError("NATIVE_INGEST_START_FAILED")
-        yield origin, root / "ca.pem"
-    finally:
-        server.should_exit = True
-        thread.join(timeout=5)
-        listener.close()
-        if thread.is_alive():
-            raise RuntimeError("NATIVE_INGEST_STOP_FAILED")
+    return uvicorn.Server(config)
+
+
+@contextmanager
+def serving_ingest(app: ASGIApp, root: Path) -> Iterator[tuple[str, Path]]:
+    setup_tls(root)
+    with _loopback_listeners() as listeners:
+        origin = "https://localhost:" + str(listeners[0].getsockname()[1])
+        server = _ingest_server(app, root)
+        thread = threading.Thread(target=server.run, kwargs={"sockets": listeners}, daemon=True)
+        try:
+            thread.start()
+            deadline = time.monotonic() + 10
+            while not server.started and thread.is_alive() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            if not server.started:
+                raise RuntimeError("NATIVE_INGEST_START_FAILED")
+            yield origin, root / "ca.pem"
+        finally:
+            server.should_exit = True
+            if thread.ident is not None:
+                thread.join(timeout=5)
+            if thread.is_alive():
+                raise RuntimeError("NATIVE_INGEST_STOP_FAILED")
 
 
 def crash_after_accept() -> None:
