@@ -179,7 +179,11 @@ def observed(*args, **kwargs):
         return original(*args, **kwargs)
     except OutboxError as error:
         if error.retryable:
-            Path(MARKER).write_text('SQLITE_BUSY', encoding='ascii')
+            marker = Path(MARKER)
+            if not marker.exists():
+                pending = marker.with_suffix('.pending')
+                pending.write_text('SQLITE_BUSY', encoding='ascii')
+                pending.replace(marker)
         raise
 worker.Outbox = observed
 raise SystemExit(worker.main())

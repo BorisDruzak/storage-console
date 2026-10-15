@@ -1037,3 +1037,25 @@ Production scope and identities remain in the approved private operator design.
   its existing Windows packages remains unchanged. Original001 acceptance,
   old GAP/state/backups, business history/RBAC and the earlier USN soak failure
   remain intact. Publication does not imply a new production collector rollout.
+
+
+## Atomic native startup probe follow-up2026-10-15
+
+- PR49 original headd302c8242911a2c8a58256f9dc4bac090faa78fa,
+  run38776947713: Windows FAIL, two new marker cases failed while94 other tests
+  in the SCM step passed, including runtime pressure/heartbeat cases. The actual
+  reads found an existing marker with empty content: write_text created/truncated
+  the public marker before writing its fixed SQLITE_BUSY value. This is a test
+  proof publication race, distinct from the repaired child initialization fault.
+  Preserve the failed head/log; no unchanged-SHA rerun.
+- The sole test writer now writes and closes an owned pending file, then publishes
+  it with same-directory replace. An existing published marker is never rewritten.
+  Actual Windows native-file GREEN4 PASS; independent exact test-blob review
+  APPROVE. The worker retry source and prior security/cancellation assertions are
+  unchanged. Ruff/diff checks PASS; no production or live operation.
+- The source candidate's complete Linux/Python3.13/PostgreSQL regression1164 PASS,
+  94 platform SKIP, deployment63 PASS and targeted Windows25/native integration3
+  PASS remain retained. This correction changes only test marker publication and
+  these append-only ledgers. New exact head/main CI and final tree/evidence review
+  remain required before publication/STOP; receipts/run links are recorded in
+  PR49 metadata without moving the candidate during CI.
