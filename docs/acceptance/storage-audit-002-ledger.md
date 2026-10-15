@@ -500,3 +500,49 @@ Production scope and identities remain in the approved private operator design.
 - Independent final documentation review APPROVE: all three changed documents,
   private CI/install/migration/live receipts and all138 wheel members verified;
   no material discrepancy. Documentation-only diff check and secret scan PASS.
+
+## Activity recovery requested2026-10-15
+
+- Operator requested root-cause correction and completion of selected-root live
+  acceptance, avoiding unnecessary working-file changes. Original single-root,
+  history/RBAC, bounded resources and no synthetic production CRUD constraints
+  remain. Current main before correction50d130b380de983831723eb4f4e6b92a00853a36.
+- Fresh API proof: source UNKNOWN/COLLECTION_ERROR despite current continuous USN
+  cursor; heartbeat errorSTATE_MISMATCH. Read-only state proves inventory still
+  uses the committed transition's old scope. Scope extension updated USN/config
+  but omitted the inventory checkpoint. That mismatch prevents real inventory
+  completion and correctly prevents Activity COMPLETE; no freshness gate relaxed.
+- RED3 plus rollback control PASS; GREEN33 scope tests. Future transitions now
+  atomically rebind inventory with completed=false. An explicit stopped-runtime
+  same-scope retry repairs only a verified completed transition, retaining its
+  prior inventory witness and preserving USN cursor/GAP, credentials and queue.
+  Independent scope review APPROVE:12 tests including exact queued bytes/digests,
+  foreign receipt/hash/credential rejection and late transaction rollback.
+- Fresh selected-root evidence exists: bounded API pagination found93 rows;
+  original quiet-interval sample was insufficient acceptance. Audit has31 retained
+  batches52 records, no accepted Audit batch, suspended with AUTH_REQUIRED. Exact
+  first-batch HTTPS replay instead returns403 AUDIT_VOLUME_REQUIRED; configured
+  token/collector match enrollment. Generic transport's403 label does not prove
+  a bad credential. Local volume mapping incorrectly used the native GUID alias.
+- Audit scope now emits the stable canonical volume GUID identity. Ingest maps an
+  exact native volume GUID alias only to an already registered same-source volume;
+  indexed volume identity is canonical, original evidence payload/digest and batch
+  replay remain immutable. Unknown/other-source volumes and malformed/path-suffixed
+  aliases are refused. No drive-letter inference or higher confidence rule.
+- Typed PostgreSQL route RED1/GREEN8; portable volume/events/runtime55 PASS.
+  Independent review found malformed hyphen positions accepted by UUID parsing:
+  actual RED then strict8-4-4-4-12 GUID GREEN. Final independent Audit review
+  APPROVE,72 portable checks; source/identity/coverage/delete rules unchanged.
+- Fresh complete read-only scan51997 objects in23.30s found two ordinary files with
+  empty, unprotected SACL. The configuration-change GAP is genuine; the cause of
+  missing ACEs is unproven. No SACL repair, GAP clearing, baseline, service or
+  production-file mutation has yet been performed during this correction.
+- Frozen PostgreSQL full regression1037 PASS /91 platform SKIP /74 upstream
+  warnings (400.52s); global Ruff, mypy136 plus strict deploy7 and OpenAPI PASS.
+  New scope/volume tests are included in native Windows CI. Exact head/main CI,
+  protected recovery helpers and live acceptance remain PENDING before apply.
+- Fresh schema0009 backup/off-VM DPAPI decrypt/hash verification PASS; isolated
+  PostgreSQL16 restore PASS at512MiB. First comparison against changing post-dump
+  counts failed (archive992 changes versus post-dump993). Restored schema and
+  counts then verified within the retained closed-baseline/post-dump bounds;
+  no exact active-database snapshot equality claimed, no production restore.
