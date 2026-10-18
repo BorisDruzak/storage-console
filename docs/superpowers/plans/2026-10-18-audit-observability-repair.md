@@ -28,29 +28,29 @@
 
 ## Task 1: Audit diagnostics and safe status publication
 
-- [ ] Add failing regression tests for blocked readiness refresh and protected status replacement under a genuine held Windows handle.
-- [ ] Implement bounded refresh while capture remains blocked, retaining GAP and never opening a subscription on an unproved scope.
-- [ ] Retry only transient sharing/lock failures when replacing an owned temporary status file; preserve validation and bounded failure.
-- [ ] Run native security, Audit runtime/service/readiness/delivery regressions.
+- [x] Add failing regression tests for blocked readiness refresh and protected status replacement under a genuine held Windows handle.
+- [x] Implement bounded refresh while capture remains blocked, retaining GAP and never opening a subscription on an unproved scope.
+- [x] Retry only transient sharing/lock failures when replacing an owned temporary status file; preserve validation and bounded failure.
+- [x] Run native security, Audit runtime/service/readiness/delivery regressions.
 
 ## Task 2: API freshness fence
 
-- [ ] Add RED tests for a freshly received heartbeat carrying an old/future readiness timestamp.
-- [ ] Recompute readiness age in the response without modifying stored evidence; never promote stale proof to HEALTHY.
-- [ ] Verify legacy receipt compatibility, authorization, correlation and generated contracts.
+- [x] Add RED tests for a freshly received heartbeat carrying an old/future readiness timestamp.
+- [x] Recompute readiness age in the response without modifying stored evidence; never promote stale proof to HEALTHY.
+- [x] Verify legacy receipt compatibility, authorization, correlation and generated contracts.
 
 ## Task 3: Scope and resource root causes
 
-- [ ] Record the exact failed SACL objects and before/after metadata privately; diagnose physical allocation and queue work through permitted interfaces.
-- [ ] Reproduce throughput/storage defects with synthetic data before changing implementation.
-- [ ] Repair only proved causes; keep retention and existing history intact.
+- [x] Record the exact failed SACL objects and before/after metadata privately; diagnose physical allocation and queue work through permitted interfaces.
+- [x] Reproduce throughput/storage defects with synthetic data before changing implementation.
+- [x] Repair only proved causes; keep retention and existing history intact.
 
 ## Task 4: Publication and installed acceptance
 
-- [ ] Independent review, small logical PRs and exact-head/main CI before deployment.
-- [ ] Back up current state/configuration and verify rollback material before changing installed components.
-- [ ] Verify live API/UI, fresh proofs, independent USN continuity, queue progression and unchanged accepted witnesses.
-- [ ] Record observed acceptance and any remaining gate honestly in the ledgers; stop after acceptance.
+- [x] Independent review, small logical PRs and exact-head/main CI before deployment.
+- [x] Back up current state/configuration and verify rollback material before changing installed components.
+- [x] Verify live API/UI, fresh proofs, independent USN continuity, queue progression and unchanged accepted witnesses.
+- [x] Record observed acceptance and any remaining gate honestly in the ledgers; stop after acceptance.
 
 ## Rulings
 
