@@ -63,3 +63,18 @@ open. Source tests alone are not recovery acceptance.
 - Full isolated first-candidate Linux/PostgreSQL gate: Ruff, mypy138, OpenAPI,
   1242 backend/deployment PASS and98 platform SKIP. This is source validation,
   not live installed acceptance. New exact head/main CI remains required.
+## Inventory refresh efficiency, separate change
+
+- Synthetic PostgreSQL RED: observing 20 unchanged, explicitly single-link files
+  again took 340 SQL statements. Their dated history remained unchanged.
+- GREEN: the conservative sole-path refresh takes 100 SQL statements for the
+  same input, preserving history rows and advancing freshness timestamps.
+- Differential tests compare optimized state with the unchanged general
+  reconciler for stable metadata, metadata/path/count changes, older observations,
+  partial rename, delayed/equal-time follow-up events and deletion/reuse.
+- Independent review found an Important partial-rename counterexample. Its actual
+  PostgreSQL RED was preserved, then fixed by requiring absence of other active
+  paths inside the existing lookup. No additional database round trip is needed.
+- 37 real PostgreSQL cost/history tests pass; independent revised review approves
+  with no remaining Critical/Important findings. Full candidate CI, publication
+  and installed acceptance remain pending. No retention cleanup is included.
