@@ -47,3 +47,19 @@ dated path history and authorization behavior intact.
 Full regression, exact-SHA CI, publication, protected rollout/rollback material,
 live resource/queue and API/UI checks, and explicit installed acceptance remain
 open. Source tests alone are not recovery acceptance.
+
+## Exact-head CI follow-up
+
+- Candidate `0e3120d874c3d449a6f1d99e49be2db48f576328`, run
+  [39155273220](https://github.com/BorisDruzak/storage-console/actions/runs/39155273220):
+  native Audit/security cases passed, but the existing end-to-end USN test failed
+  on its first final Activity assertion. Retained diagnostics showed that data
+  and lost-ACK replay were accepted while the latest received heartbeat still
+  reported `USN_BOOTSTRAP`. Data receipt does not prove readiness receipt.
+- The fixture now waits on the existing bounded condition mechanism for actual
+  API continuity/freshness admission before its unchanged four consecutive
+  assertions. No heartbeat interval, source-quality rule or product assertion
+  was relaxed; the failed SHA/run are retained rather than rerun unchanged.
+- Full isolated first-candidate Linux/PostgreSQL gate: Ruff, mypy138, OpenAPI,
+  1242 backend/deployment PASS and98 platform SKIP. This is source validation,
+  not live installed acceptance. New exact head/main CI remains required.

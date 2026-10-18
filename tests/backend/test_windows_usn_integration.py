@@ -176,6 +176,21 @@ def test_native_usn_runtime_changes_https_lost_ack_and_activity_read(
                 assert any(e.kind == "inventory" and e.code is None for e in runtime.events)
                 assert any(e.kind == "heartbeat" for e in runtime.events)
                 assert loaded.config.settings.heartbeat_seconds == 30
+
+                def activity_proved():
+                    # Data ACKs can precede the first post-bootstrap heartbeat.
+                    # Admit the freshness assertions only after the read API has
+                    # actually received an eligible continuity proof.
+                    response = client.get("/api/v1/activity", params={"source_id": str(source)})
+                    page = response.json()
+                    return (
+                        response.status_code == 200
+                        and page.get("quality") == "COMPLETE"
+                        and page.get("continuity") == "CONTINUOUS_SINCE_BASELINE"
+                        and 0 < int(response.headers["X-Evidence-Valid-For-Ms"]) <= 15000
+                    )
+
+                wait(activity_proved, phase="post_bootstrap_activity_proof")
                 for _ in range(4):
                     response = client.get("/api/v1/activity", params={"source_id":str(source)})
                     assert (response.json()["quality"] == "COMPLETE"
