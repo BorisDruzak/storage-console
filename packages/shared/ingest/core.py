@@ -166,6 +166,8 @@ def inventory(
             .mappings()
             .one_or_none()
         )
+        if existing is not None and paths.refresh_single(connection, existing, record):
+            return
         if (
             existing is not None
             and record.link_count is None

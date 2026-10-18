@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import func, insert, select, update
 from sqlalchemy.engine import Connection, RowMapping
 
+from packages.contracts.inventory import FileObjectRecord
 from packages.shared.models.core import filesystem_objects, object_path_history, object_path_states
 
 from .errors import IngestConflict
@@ -49,6 +50,83 @@ def _state(connection: Connection, target: UUID, path: str) -> RowMapping:
         .mappings()
         .one()
     )
+
+
+def refresh_single(
+    connection: Connection, obj: RowMapping, record: FileObjectRecord
+) -> bool:
+    """Refresh a proved unchanged sole path without rewriting its history.
+
+    Ambiguous, dated, deleted, renamed and legacy observations keep the general
+    reconciliation path below. The caller still owns the source transaction.
+    """
+    at = record.occurred_at
+    if (
+        record.link_count != 1
+        or obj["link_count"] != 1
+        or obj["multiple_paths_observed"]
+        or obj["object_type"] != record.object_type
+        or obj["current_relative_path"] != record.relative_path
+        or obj["current_name"] != record.name
+        or obj["parent_file_id"] != record.parent_file_id
+        or obj["size_bytes"] != record.size_bytes
+        or obj["deleted_at"] is not None
+        or obj["last_deleted_at"] is not None
+        or at < obj["last_seen_at"]
+        or at < obj["first_seen_at"]
+        or obj["link_count_at"] is None
+        or at < obj["link_count_at"]
+        or obj["sole_path_at"] is None
+        or at < obj["sole_path_at"]
+        or obj["sole_path_digest"] != digest(record.relative_path)
+    ):
+        return False
+    other = object_path_states.alias("other_active_inventory_path")
+    row = (
+        connection.execute(
+            select(
+                object_path_states,
+                object_path_history.c.valid_from_at,
+                object_path_history.c.valid_until_at,
+            )
+            .join(
+                object_path_history,
+                object_path_states.c.active_history_id == object_path_history.c.id,
+            )
+            .where(
+                object_path_states.c.object_id == obj["id"],
+                object_path_states.c.path_digest == obj["sole_path_digest"],
+                object_path_history.c.object_id == obj["id"],
+                ~select(other.c.id).where(
+                    other.c.object_id == obj["id"],
+                    other.c.active_history_id.is_not(None),
+                    other.c.path_digest != obj["sole_path_digest"],
+                ).exists(),
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if (
+        row is None
+        or row["relative_path"] != record.relative_path
+        or row["seen_at"] is None
+        or at < row["seen_at"]
+        or row["ended_at"] is not None
+        or row["event_ended_at"] is not None
+        or row["valid_until_at"] is not None
+        or at < row["valid_from_at"]
+    ):
+        return False
+    connection.execute(
+        update(filesystem_objects)
+        .where(filesystem_objects.c.id == obj["id"])
+        .values(last_seen_at=at, link_count_at=at, sole_path_at=at)
+    )
+    connection.execute(
+        update(object_path_states).where(object_path_states.c.id == row["id"]).values(seen_at=at)
+    )
+    return True
 
 
 def observe(
