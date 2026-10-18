@@ -1223,3 +1223,14 @@ append-only [recovery ledger](storage-audit-recovery-2026-10-18.md) records RED/
 review, publication and installed acceptance separately. Original source/live
 acceptance, historical gaps, source payloads and prior soak limitations remain
 unchanged. Recovery is not accepted until its remaining gates pass.
+
+### Recovery closure — 2026-10-18 UTC
+
+The later [recovery acceptance](storage-audit-recovery-2026-10-18.md#installed-recovery-acceptance--2026-10-18-utc)
+closes this recovery gate for the existing approved scope. Separate PR50/51 and
+their exact head/main CI passed; the deployed code is
+`b56143b7c80ea32a830ee7dd3c83d31b90bac242`. Fresh Audit coverage, independent USN
+continuity, UI/API behavior, bounded resources and preservation of both accepted
+native DELETE witnesses were verified. Original GAP/state/history remain intact.
+No new business CRUD, retention cleanup, audit-policy/GPO write or monitoring
+restart occurred. Sonar remains externally unverified. STOP after acceptance.
