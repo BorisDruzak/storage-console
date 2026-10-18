@@ -99,6 +99,102 @@ def test_private_hardlink_is_rejected(tmp_path):
             state.read("config.json", 64)
 
 
+def test_status_replace_retries_real_windows_sharing_contention(tmp_path, monkeypatch):
+    with security.ProtectedState(tmp_path / str(uuid4()), create=True) as state:
+        state.write("audit-status.json", b"old")
+        handle = state._open(state.root / "audit-status.json")
+        original = os.replace
+        sharing_codes = []
+
+        def replace(source, target):
+            nonlocal handle
+            try:
+                return original(source, target)
+            except OSError as error:
+                sharing_codes.append(error.winerror)
+                state._api.kernel.CloseHandle(handle)
+                handle = None
+                raise
+
+        monkeypatch.setattr(security.os, "replace", replace)
+        try:
+            state.write("audit-status.json", b"new")
+        finally:
+            if handle is not None:
+                state._api.kernel.CloseHandle(handle)
+        # MoveFileEx can report ACCESS_DENIED for a reader denying share-delete.
+        assert sharing_codes in ([5], [32])
+        assert state.read("audit-status.json", 64) == b"new"
+        assert not list(state.root.glob("*.tmp"))
+
+
+def test_status_replace_never_retries_access_denial(tmp_path, monkeypatch):
+    with security.ProtectedState(tmp_path / str(uuid4()), create=True) as state:
+        state.write("config.json", b"old")
+        calls = []
+
+        def denied(*args):
+            calls.append(args)
+            error = PermissionError("synthetic")
+            error.winerror = 5
+            raise error
+
+        monkeypatch.setattr(security.os, "replace", denied)
+        with pytest.raises(security.SecurityError, match="^STATE_INVALID$"):
+            state.write("config.json", b"new")
+        assert len(calls) == 1
+        assert state.read("config.json", 64) == b"old"
+
+
+def test_status_contention_retry_is_bounded_and_preserves_previous_status(tmp_path, monkeypatch):
+    with security.ProtectedState(tmp_path / str(uuid4()), create=True) as state:
+        state.write("audit-status.json", b"old")
+        attempts = []
+
+        def denied(*args):
+            attempts.append(args)
+            error = PermissionError("synthetic")
+            error.winerror = 5
+            raise error
+
+        monkeypatch.setattr(security.os, "replace", denied)
+        monkeypatch.setattr(security.time, "sleep", lambda _: None)
+        with pytest.raises(security.SecurityError, match="^STATE_INVALID$"):
+            state.write("audit-status.json", b"new")
+        assert len(attempts) == 10
+        assert state.read("audit-status.json", 64) == b"old"
+        assert not list(state.root.glob("*.tmp"))
+
+
+def test_status_retry_stops_if_revalidation_fails(tmp_path, monkeypatch):
+    with security.ProtectedState(tmp_path / str(uuid4()), create=True) as state:
+        state.write("audit-status.json", b"old")
+        attempts = []
+        checks = []
+        validate = state._validate_file
+
+        def denied(*args):
+            attempts.append(args)
+            error = PermissionError("synthetic")
+            error.winerror = 5
+            raise error
+
+        def revalidate(path):
+            if path.name == "audit-status.json":
+                checks.append(path)
+                if len(checks) == 2:
+                    raise security.SecurityError("UNSAFE_STATE")
+            validate(path)
+
+        monkeypatch.setattr(security.os, "replace", denied)
+        monkeypatch.setattr(state, "_validate_file", revalidate)
+        with pytest.raises(security.SecurityError, match="^UNSAFE_STATE$"):
+            state.write("audit-status.json", b"new")
+        assert len(attempts) == 1
+        assert (state.root / "audit-status.json").read_bytes() == b"old"
+        assert not list(state.root.glob("*.tmp"))
+
+
 def test_restricted_windows_token_cannot_read_or_write_private_state(tmp_path):
     api = security._api()
     pointer = ctypes.c_void_p

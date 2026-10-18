@@ -1215,3 +1215,11 @@ operation is performed for this delivery fix.
   these append-only ledgers. New exact head/main CI and final tree/evidence review
   remain required before publication/STOP; receipts/run links are recorded in
   PR49 metadata without moving the candidate during CI.
+
+## Post-observation repair initiated 2026-10-18
+
+The operator requested recovery after the bounded observation period. The
+append-only [recovery ledger](storage-audit-recovery-2026-10-18.md) records RED/GREEN,
+review, publication and installed acceptance separately. Original source/live
+acceptance, historical gaps, source payloads and prior soak limitations remain
+unchanged. Recovery is not accepted until its remaining gates pass.
