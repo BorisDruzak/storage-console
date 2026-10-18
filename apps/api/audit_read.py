@@ -1,6 +1,6 @@
 """Admin-only projections; sensitive filters are CSRF-protected POST bodies."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, Literal
 from uuid import UUID
 
@@ -85,6 +85,8 @@ def stream(connection: Connection, source: UUID) -> AuditStream:
         return AuditStream(state="UNKNOWN", evaluated_at=now, enabled=True)
     row = rows[0]
     health = AuditHealth.model_validate(row["health"]) if row["health"] else None
+    if health is not None and health.readiness_complete is not None:
+        health = readiness_projection(health, now)
     state: Literal[
         "NOT_CONFIGURED", "UNKNOWN", "HEALTHY", "STALE", "GAP", "ERROR", "OBSERVE", "BACKPRESSURE"
     ] = "UNKNOWN"
@@ -123,6 +125,29 @@ def stream(connection: Connection, source: UUID) -> AuditStream:
     )
 
 
+def readiness_projection(health: AuditHealth, now: datetime) -> AuditHealth:
+    """Expire scope proof independently of heartbeat arrival; never mutate its receipt."""
+    checked = health.readiness_checked_at
+    age = (
+        max(
+            health.readiness_age_seconds or 0,
+            (now - checked).total_seconds() + (health.readiness_duration_seconds or 0),
+        )
+        if checked is not None and checked <= now
+        else None
+    )
+    stale = (
+        health.readiness_complete is not True
+        or health.readiness_stale is not False
+        or age is None
+        or age > 60
+    )
+    updates: dict[str, Any] = {"readiness_age_seconds": age, "readiness_stale": stale}
+    if stale:
+        updates.update(policy_verified=False, sacl_verified=False)
+    return health.model_copy(update=updates)
+
+
 def stamp_stream(
     connection: Connection, response: Response, source: UUID, value: AuditStream
 ) -> None:
@@ -136,6 +161,14 @@ def stamp_stream(
                 remaining = min(
                     remaining, max(0.0, (at - value.evaluated_at).total_seconds() + 2 * cadence)
                 )
+        if value.diagnostics.readiness_complete is not None:
+            proof = readiness_projection(value.diagnostics, value.evaluated_at)
+            remaining = min(
+                remaining,
+                0.0 if proof.readiness_stale else max(
+                    0.0, 60 - (proof.readiness_age_seconds or 0)
+                ),
+            )
     stamp(response, remaining)
 
 

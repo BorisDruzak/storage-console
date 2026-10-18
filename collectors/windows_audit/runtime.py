@@ -245,9 +245,17 @@ def _capture(
         if publish_status:
             publish_status(value)
 
+    def blocked(health: str) -> None:
+        # Keep diagnostics live even when capture is intentionally stopped.
+        # Later readiness cannot clear a durable GAP or start a subscription.
+        while not stop.is_set():
+            if verifier is not None:
+                diagnostics.update(verifier.snapshot())
+            status("GAP" if store.gap() else health)
+            stop.wait(1)
+
     if not config.configured:
-        status("NOT_CONFIGURED")
-        stop.wait()
+        blocked("NOT_CONFIGURED")
         return
     if config.mode == "deliver":
         if verifier is None:
@@ -264,16 +272,14 @@ def _capture(
                 return
             policy, sacl = diagnostics["policy_verified"], diagnostics["sacl_verified"]
         if not (policy and sacl):
-            status("NOT_CONFIGURED")
-            stop.wait()
+            blocked("NOT_CONFIGURED")
             return
     bookmark, cache = store.checkpoint()
     boot, boot_started_at = boot_epoch()
     if cache.get("boot_id", boot) != boot:
         store.latch_gap("AUDIT_BOOT_CHANGED")
     if store.gap():
-        status("GAP")
-        stop.wait()
+        blocked("GAP")
         return
     try:
         reader = SecurityReader(
@@ -284,8 +290,7 @@ def _capture(
     except EventLogError as error:
         if error.code in STALE:
             store.latch_gap("AUDIT_BOOKMARK_STALE")
-            status("GAP")
-            stop.wait()
+            blocked("GAP")
             return
         raise AuditReadFailure(error) from None
     with reader:

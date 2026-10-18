@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes
 import os
 import re
+import time
 from pathlib import Path, PureWindowsPath
 from typing import Any
 from uuid import uuid4
@@ -487,7 +488,25 @@ class ProtectedState:
         temporary = self._root / (str(uuid4()) + ".tmp")
         try:
             self._write_new(temporary, value)
-            os.replace(temporary, path)
+            # Native readers/antivirus may briefly deny FILE_SHARE_DELETE.
+            # Retry only sharing/lock contention on this owned temporary file;
+            # access denial and all integrity checks remain fail-closed.
+            for attempt in range(10):
+                try:
+                    os.replace(temporary, path)
+                    break
+                except OSError as error:
+                    code = getattr(error, "winerror", None)
+                    # MoveFileEx also returns ACCESS_DENIED for a valid status
+                    # file held without share-delete. Scope that ambiguous case
+                    # to status publication and revalidate both files each time.
+                    status_busy = name == "audit-status.json" and code == 5
+                    if (code not in (32, 33) and not status_busy) or attempt == 9:
+                        raise
+                    if status_busy:
+                        self._validate_file(path)
+                        self._validate_file(temporary)
+                    time.sleep(0.05)
             self._validate_file(path)
         except OSError:
             raise SecurityError("STATE_INVALID") from None

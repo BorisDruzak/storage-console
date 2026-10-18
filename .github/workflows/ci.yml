@@ -97,6 +97,9 @@ jobs:
       - name: Independent Security audit, strict native bookmark and installed SCM
         run: >-
           python -m pytest tests/backend/test_windows_audit_events.py
+          tests/backend/test_windows_security.py
+          tests/backend/test_audit_blocked_status.py
+          tests/backend/test_audit_readiness_projection.py
           tests/backend/test_windows_audit_store.py tests/backend/test_windows_audit_runtime.py
           tests/backend/test_windows_audit_volume_identity.py
           tests/backend/test_windows_audit_native.py tests/backend/test_audit_restart_proof.py
